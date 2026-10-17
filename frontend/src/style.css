@@ -362,3 +362,6 @@ input{font-family:inherit}
 #widget-banner{width:100%;animation-delay:.28s}
 @media (max-width:760px){.st-clock{font-size:56px}.st-recent{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){.st-wrap>*,.qa,.st-card,.st-logo,.st-logo-w,.st-halo,.st-bg i,.st-glow,.pill i{animation:none!important;transition:none!important}.st-logo{transform:none}}
+
+.st-waves{position:absolute;inset:0;width:100%;height:100%;display:block}
+.st-wrap{padding-top:64px}

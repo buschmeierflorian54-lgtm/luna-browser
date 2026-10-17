@@ -274,7 +274,6 @@ function renderBar() {
 }
 /* ---------- Startseite ---------- */
 const GREET = () => { const h = new Date().getHours(); return h < 5 ? 'Gute Nacht' : h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend'; };
-const TIPS = ['Wetter in Berlin', 'Rezept Pasta Carbonara', 'swift concurrency Tutorial', 'brave.com öffnen', 'Fußball Ergebnisse heute', 'Zugverbindung nach Hamburg'];
 const QUICK = [
   ['show-bookmarks', 'Lesezeichen', '<path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/>'],
   ['show-history', 'Verlauf', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
@@ -287,7 +286,7 @@ function startHTML() {
   const d = new Date();
   const date = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   const delay = (i) => `style="--d:${120 + i * 55}ms"`;
-  return `<div class="st-bg"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+  return `<div class="st-bg"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><canvas class="st-waves" aria-hidden="true"></canvas></div>
   <div class="st-scroll"><div class="st-wrap">
     <header class="st-hero">
       <div class="st-logo-w"><img class="st-logo" src="${logoUrl}" alt="" draggable="false"><span class="st-halo"></span></div>
@@ -295,11 +294,6 @@ function startHTML() {
       <h1 class="st-greet">${GREET()}</h1>
       <p class="st-date">${esc(date)}</p>
     </header>
-    <form id="startForm" class="st-search" autocomplete="off">
-      <svg class="st-si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="startQ" type="text" placeholder="Im Web suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
-      <kbd>⌘L</kbd><span class="st-glow"></span>
-    </form>
     <div class="st-status">${S.hasKey ? '<span class="pill ok"><i></i>Suche bereit · Brave</span>' : '<button class="pill warn" data-act="settings"><i></i>Eigene Suche einrichten – Brave-Schlüssel hinterlegen</button>'}</div>
     <div class="st-quick">${QUICK.map((q, i) => `<button class="qa" data-act="cmd" data-cmd="${q[0]}" ${delay(i + 3)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${q[2]}</svg>${q[1]}</button>`).join('')}</div>
     <section id="widget-banner" hidden></section>
@@ -311,9 +305,58 @@ const hueOf = (s) => { let h = 0; for (const c of s || '') h = (h * 31 + c.charC
 
 /* Bewegung: Parallax (Maus), 3D-Neigung des Logos, Lichtreflex auf Karten, laufende Uhr, tippender Platzhalter */
 let startTimers = [];
+let startStop = [];      // Aufräumfunktionen (Animationsframes, Beobachter)
+function stopStartMotion() { startTimers.forEach(clearInterval); startTimers = []; startStop.forEach((f) => f()); startStop = []; }
+
+// Wabernde Wellen: mehrere übereinanderliegende Sinus-Bänder, die langsam fließen und auf die Maus reagieren.
+function startWaves(canvas, host, still) {
+  const ctx = canvas.getContext('2d');
+  let w = 0, h = 0, raf = 0, mx = 0, my = 0, tx = 0, ty = 0;
+  const L = [
+    { b: .58, a: 38, k: 1.0, s: .16, p: 0.0, l: ['255,159,207', .34], d: ['196,72,152', .30] },
+    { b: .67, a: 46, k: 0.7, s: -.12, p: 2.1, l: ['183,156,242', .34], d: ['96,76,214', .32] },
+    { b: .76, a: 34, k: 1.3, s: .20, p: 4.0, l: ['255,208,166', .38], d: ['160,70,104', .30] },
+    { b: .85, a: 28, k: 0.9, s: -.18, p: 1.2, l: ['159,216,255', .32], d: ['54,116,190', .30] },
+    { b: .93, a: 22, k: 1.6, s: .24, p: 3.1, l: ['255,176,214', .34], d: ['140,60,130', .30] },
+  ];
+  const resize = () => {
+    const r = host.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+    w = Math.max(1, r.width); h = Math.max(1, r.height);
+    canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (still) draw(0);
+  };
+  const draw = (t) => {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    mx += (tx - mx) * 0.04; my += (ty - my) * 0.04;          // weiches Nachziehen der Mausposition
+    ctx.clearRect(0, 0, w, h);
+    L.forEach((ly, i) => {
+      const [rgb, al] = dark ? ly.d : ly.l;
+      const base = h * ly.b + my * 22 * (i + 1) * 0.5;
+      const ph = ly.p + t * ly.s * 6.283 + mx * 1.4 * (i % 2 ? -1 : 1);
+      ctx.beginPath(); ctx.moveTo(0, h);
+      for (let x = 0; x <= w + 8; x += 8) {
+        const u = x / w * 6.283;
+        const y = base + Math.sin(u * ly.k * 1.3 + ph) * ly.a + Math.sin(u * ly.k * 2.7 - t * 0.55 + i * 1.7) * ly.a * 0.38 + Math.sin(u * 0.6 + t * 0.2 + i) * ly.a * 0.5;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(w, h); ctx.closePath();
+      const g = ctx.createLinearGradient(0, base - ly.a, 0, h);
+      g.addColorStop(0, `rgba(${rgb},${al})`); g.addColorStop(1, `rgba(${rgb},${al * 0.15})`);
+      ctx.fillStyle = g; ctx.fill();
+    });
+  };
+  const t0 = performance.now();
+  const loop = (now) => { draw((now - t0) / 1000); raf = requestAnimationFrame(loop); };
+  const ro = new ResizeObserver(resize); ro.observe(host); resize();
+  const onMove = (e) => { const r = host.getBoundingClientRect(); tx = ((e.clientX - r.left) / r.width - 0.5) * 2; ty = ((e.clientY - r.top) / r.height - 0.5) * 2; };
+  host.parentElement.addEventListener('pointermove', onMove);
+  if (!still) raf = requestAnimationFrame(loop);
+  startStop.push(() => { cancelAnimationFrame(raf); ro.disconnect(); host.parentElement?.removeEventListener('pointermove', onMove); });
+}
 function startMotion(el) {
-  startTimers.forEach(clearInterval); startTimers = [];
+  stopStartMotion();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cv = el.querySelector('.st-waves'); if (cv) startWaves(cv, cv.parentElement, reduce);
   const clock = $('#stClock');
   const tick = () => { const n = new Date(), sep = n.getSeconds() % 2 ? ' ' : ':'; if (clock) clock.innerHTML = `${String(n.getHours()).padStart(2, '0')}<b>${sep}</b>${String(n.getMinutes()).padStart(2, '0')}`; };
   tick(); startTimers.push(setInterval(tick, 1000));
@@ -328,16 +371,6 @@ function startMotion(el) {
   });
   el.addEventListener('pointerleave', () => { el.style.setProperty('--mx', 0); el.style.setProperty('--my', 0); });
   el.addEventListener('pointerout', (e) => { const c = e.target.closest?.('.st-card'); if (c && !c.contains(e.relatedTarget)) { c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); } });
-  // tippender Platzhalter
-  const q = $('#startQ'); let ti = 0, ci = 0, dir = 1, hold = 0;
-  startTimers.push(setInterval(() => {
-    if (!q || document.activeElement === q || q.value) { if (q && !q.value) q.placeholder = 'Im Web suchen oder Adresse eingeben'; return; }
-    if (hold > 0) { hold--; return; }
-    const w = TIPS[ti]; ci += dir;
-    q.placeholder = w.slice(0, Math.max(0, ci)) + (ci < w.length || dir < 0 ? '▍' : '');
-    if (ci >= w.length + 1 && dir > 0) { dir = -1; hold = 14; }
-    if (ci <= 0 && dir < 0) { dir = 1; ti = (ti + 1) % TIPS.length; hold = 4; }
-  }, 85));
 }
 let startSig = '';
 async function renderStart() {
@@ -345,7 +378,7 @@ async function renderStart() {
   const show = t && t.mode === 'start' && !t.lazy;
   const wasHidden = el.hidden;
   el.hidden = !show;
-  if (!show) { setBanner(null); startSig = ''; startTimers.forEach(clearInterval); startTimers = []; return; }
+  if (!show) { setBanner(null); startSig = ''; stopStartMotion(); return; }
   const sig = [S.hasKey, S.bookmarks.map((b) => b.url).join('|')].join('#');
   if (!wasHidden && sig === startSig) return;      // nichts geändert: Einblend-Animation nicht neu starten
   startSig = sig;
@@ -632,10 +665,6 @@ document.addEventListener('click', async (ev) => {
     case 'key-test': testKey(); break;
     case 'key-clear': await api.keyClear(); S.hasKey = false; openSettings('Schlüssel entfernt.'); renderStart(); break;
   }
-});
-document.addEventListener('submit', (ev) => {
-  if (ev.target.id !== 'startForm') return;
-  ev.preventDefault(); const q = $('#startQ').value; if (q.trim()) visit(cur(), q);
 });
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
 document.addEventListener('keydown', (ev) => {
