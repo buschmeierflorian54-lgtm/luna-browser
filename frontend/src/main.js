@@ -294,6 +294,11 @@ function startHTML() {
       <h1 class="st-greet">${GREET()}</h1>
       <p class="st-date">${esc(date)}</p>
     </header>
+    <form id="startForm" class="st-search" autocomplete="off">
+      <svg class="st-si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="startQ" type="text" placeholder="Im Web suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
+      <kbd>⌘L</kbd><span class="st-glow"></span>
+    </form>
     <div class="st-status">${S.hasKey ? '<span class="pill ok"><i></i>Suche bereit · Brave</span>' : '<button class="pill warn" data-act="settings"><i></i>Eigene Suche einrichten – Brave-Schlüssel hinterlegen</button>'}</div>
     <div class="st-quick">${QUICK.map((q, i) => `<button class="qa" data-act="cmd" data-cmd="${q[0]}" ${delay(i + 3)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${q[2]}</svg>${q[1]}</button>`).join('')}</div>
     <section id="widget-banner" hidden></section>
@@ -665,6 +670,10 @@ document.addEventListener('click', async (ev) => {
     case 'key-test': testKey(); break;
     case 'key-clear': await api.keyClear(); S.hasKey = false; openSettings('Schlüssel entfernt.'); renderStart(); break;
   }
+});
+document.addEventListener('submit', (ev) => {
+  if (ev.target.id !== 'startForm') return;
+  ev.preventDefault(); const q = $('#startQ').value; if (q.trim()) visit(cur(), q);
 });
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
 document.addEventListener('keydown', (ev) => {
