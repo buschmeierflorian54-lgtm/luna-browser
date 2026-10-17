@@ -328,9 +328,10 @@ input{font-family:inherit}
 .st-search input{flex:1;min-width:0;height:100%;border:0;background:transparent;outline:none;font:600 17px Manrope,sans-serif;color:var(--ink);-webkit-user-select:text;user-select:text}
 .st-search input::placeholder{color:var(--mute);font-weight:600}
 .st-search kbd{font:700 11px Manrope,sans-serif;color:var(--mute);border:1px solid var(--line);border-bottom-width:2px;border-radius:7px;padding:2px 7px;background:var(--input)}
-.st-glow{position:absolute;inset:-2px;border-radius:31px;z-index:-1;opacity:0;background:conic-gradient(from 0deg,#ff8fc8,#8fb0ff,#ffd08f,#ff8fc8);filter:blur(14px);transition:opacity .35s}
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+.st-glow{position:absolute;inset:-2px;border-radius:31px;z-index:-1;opacity:0;pointer-events:none;background:conic-gradient(from var(--ang),#ff8fc8,#8fb0ff,#ffd08f,#ff8fc8);filter:blur(14px);transition:opacity .35s}
 .st-search:focus-within .st-glow{opacity:.55;animation:stSpin 5s linear infinite}
-@keyframes stSpin{to{transform:rotate(360deg)}}
+@keyframes stSpin{to{--ang:360deg}}
 .st-status{animation-delay:.2s}
 .pill{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 14px;border-radius:15px;border:1px solid var(--line);background:color-mix(in srgb,var(--card) 70%,transparent);font:700 12px Manrope,sans-serif;color:var(--mute2)}
 .pill i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 var(--ok);animation:stDot 2s infinite}
