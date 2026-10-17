@@ -28,6 +28,8 @@ func buildMenu(app *App) *menu.Menu {
 	file.AddText("Neuer Tab", keys.CmdOrCtrl("t"), cmd("new-tab"))
 	file.AddText("Tab schließen", keys.CmdOrCtrl("w"), cmd("close-tab"))
 	file.AddSeparator()
+	file.AddText("Einstellungen …", keys.CmdOrCtrl(","), cmd("settings"))
+	file.AddSeparator()
 	file.AddText("Adresse öffnen", keys.CmdOrCtrl("l"), cmd("focus-url"))
 	file.AddText("Auf der Seite suchen", keys.CmdOrCtrl("f"), cmd("find"))
 

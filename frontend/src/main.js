@@ -5,8 +5,11 @@ import { initSpotify, setBanner, refresh as spRefresh, setHooks, closeOverlay } 
 /* ---------- Helfer ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SEARCH = 'https://duckduckgo.com/?q=';
-const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+let searchBase = '';   // lokale Ergebnisseite der eigenen Suche (Brave), endet auf "?q="
+const isSearch = (u) => !!searchBase && !!u && u.startsWith(searchBase.split('?')[0]);
+const queryOf = (u) => { try { return new URL(u).searchParams.get('q') || ''; } catch { return ''; } };
+const hostOf = (u) => { if (isSearch(u)) return 'Suche'; try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const shown = (u) => (isSearch(u) ? queryOf(u) : u);   // in der Adressleiste steht der Suchbegriff, nicht die lokale URL
 const initial = (t) => (t || '?').trim().charAt(0).toUpperCase() || '?';
 
 // Eingabe → URL: echte Adressen bleiben, "beispiel.de" bekommt https://, alles andere wird gesucht.
@@ -16,7 +19,7 @@ function toURL(input) {
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s) || /^(about|data|file|mailto):/i.test(s)) return s;
   if (/^(localhost|(\d{1,3}\.){3}\d{1,3})(:\d+)?([/?#]|$)/i.test(s)) return 'http://' + s;
   if (!/\s/.test(s) && /^[^\s/]+\.[a-z]{2,}(:\d+)?([/?#]|$)/i.test(s)) return 'https://' + s;
-  return SEARCH + encodeURIComponent(s);
+  return searchBase + encodeURIComponent(s);
 }
 
 const ICON = {
@@ -25,6 +28,7 @@ const ICON = {
   star: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/></svg>',
   starOn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="#a24d84" stroke="#a24d84" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/></svg>',
   lock: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  search: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
   globe: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg>',
   x: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   plus: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -32,7 +36,7 @@ const ICON = {
 
 /* ---------- Zustand ---------- */
 const S = {
-  tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
+  hasKey: false, tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
   side: false, sideTab: 'bookmarks', bar: true, cover: 0, sugg: [], suggSel: -1, findOpen: false,
 };
 const tabById = (id) => S.tabs.find((t) => t.id === id);
@@ -157,8 +161,8 @@ function renderToolbar() {
   $('#bReload').innerHTML = t.loading ? ICON.stop : ICON.reload;
   $('#bReload').classList.toggle('off', !t.native);
   const input = $('#url');
-  if (document.activeElement !== input) input.value = t.url && !t.error ? t.url : (t.error ? t.url : '');
-  $('#lock').innerHTML = t.url.startsWith('https://') ? ICON.lock : '';
+  if (document.activeElement !== input) input.value = shown(t.url || '');
+  $('#lock').innerHTML = isSearch(t.url) ? ICON.search : t.url.startsWith('https://') ? ICON.lock : '';
   const bm = !!t.url && isBookmarked(t.url);
   $('#bStar').innerHTML = bm ? ICON.starOn : ICON.star;
   $('#bStar').classList.toggle('off', !t.native);
@@ -176,6 +180,7 @@ function startHTML() {
   const bms = S.bookmarks.slice(0, 12);
   return `<div class="hero">Neuer Tab</div>
   <form id="startForm" style="width:100%;display:flex;justify-content:center"><input class="sbox" id="startQ" type="text" placeholder="Im Web suchen oder Adresse eingeben" spellcheck="false" autocomplete="off"></form>
+  ${S.hasKey ? '' : '<div class="sec"><div class="keyhint"><b>Eigene Suche einrichten</b><span>Hinterlege deinen Brave-API-Schlüssel, dann sucht die Adressleiste über Brave.</span><button class="btn pri" data-act="settings">Einstellungen öffnen</button></div></div>'}
   <section id="widget-banner" hidden></section>
   ${bms.length ? `<div class="sec"><h3>Lesezeichen</h3><div class="tiles">${bms.map((b) => `<button class="tile" data-act="open-url" data-url="${esc(b.url)}"><div class="big">${esc(initial(b.title))}</div><span>${esc(b.title)}</span></button>`).join('')}</div></div>` : ''}
   <div class="sec" id="recent"><h3>Zuletzt besucht</h3><div class="hint">Lade …</div></div>`;
@@ -225,7 +230,7 @@ async function cover(on) {
     const t = cur(); if (t && t.native) api.show(t.id);
   }
 }
-function closeOverlays() { closeMenu(); closeSugg(); closeOverlay(); }
+function closeOverlays() { closeMenu(); closeSugg(); closeOverlay(); closeSettings(); }
 
 /* ---------- Menü ---------- */
 let menuOpen = false;
@@ -236,6 +241,7 @@ function openMenu() {
   const items = [
     ['Neuer Tab', '⌘T', 'new-tab'], ['Auf der Seite suchen', '⌘F', 'find'], '-',
     ['Vergrößern', '⌘+', 'zoom-in'], ['Verkleinern', '⌘−', 'zoom-out'], ['Tatsächliche Größe (' + z + ' %)', '⌘0', 'zoom-reset'], '-',
+    ['Einstellungen …', '⌘,', 'settings'], '-',
     ['Lesezeichen', '⌘⌥B', 'show-bookmarks'], ['Verlauf', '⌘Y', 'show-history'], ['Downloads', '⌘⌥L', 'show-downloads'], '-',
     [S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', '⇧⌘B', 'toggle-bar'],
   ];
@@ -258,8 +264,8 @@ async function openSugg(q) {
   if (token !== suggToken) return;
   const items = [{ kind: 'go', label: text, sub: /^[^\s]+\.[a-z]{2,}/i.test(text) || /:\/\//.test(text) ? 'Öffnen' : 'Im Web suchen', url: text }];
   const seen = new Set();
-  for (const b of S.bookmarks) if ((b.title + b.url).toLowerCase().includes(text.toLowerCase()) && !seen.has(b.url)) { seen.add(b.url); items.push({ kind: 'bm', label: b.title, sub: b.url, url: b.url }); }
-  for (const v of hist) if (!seen.has(v.url)) { seen.add(v.url); items.push({ kind: 'h', label: v.title || hostOf(v.url), sub: v.url, url: v.url }); }
+  for (const b of S.bookmarks) if ((b.title + b.url).toLowerCase().includes(text.toLowerCase()) && !seen.has(b.url)) { seen.add(b.url); items.push({ kind: 'bm', label: b.title, sub: shown(b.url), url: b.url }); }
+  for (const v of hist) if (!seen.has(v.url)) { seen.add(v.url); items.push({ kind: 'h', label: v.title || hostOf(v.url), sub: shown(v.url), url: v.url }); }
   S.sugg = items.slice(0, 7); S.suggSel = 0;
   const box = $('#sugg'), r = $('#urlbox').getBoundingClientRect();
   box.style.left = r.left + 'px'; box.style.top = r.bottom + 6 + 'px'; box.style.width = r.width + 'px';
@@ -276,7 +282,7 @@ url.addEventListener('input', () => openSugg(url.value));
 url.addEventListener('blur', () => { setTimeout(() => { closeSugg(); renderToolbar(); }, 120); });
 url.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter') { ev.preventDefault(); go(S.sugg[S.suggSel]?.url ?? url.value); }
-  else if (ev.key === 'Escape') { closeSugg(); url.value = cur()?.url || ''; url.blur(); }
+  else if (ev.key === 'Escape') { closeSugg(); url.value = shown(cur()?.url || ''); url.blur(); }
   else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && S.sugg.length) {
     ev.preventDefault(); S.suggSel = (S.suggSel + (ev.key === 'ArrowDown' ? 1 : -1) + S.sugg.length) % S.sugg.length;
     paintSugg();
@@ -334,6 +340,41 @@ function onDownload(e) {
   if (S.side && S.sideTab === 'downloads') renderSide();
 }
 
+/* ---------- Einstellungen ---------- */
+let settingsOpen = false;
+function closeSettings() {
+  if (!settingsOpen) return;
+  settingsOpen = false; $('#settings-ov').hidden = true; $('#settings-ov').innerHTML = '';
+  const t = cur(); if (t && t.native) api.show(t.id);
+}
+function settingsHTML(msg, kind) {
+  return `<div class="card" role="document"><header><b>Einstellungen</b><button class="ib sm" data-act="settings-close" aria-label="Schließen">${ICON.x}</button></header>
+    <div class="cbody"><h3>Suche · Brave API</h3>
+    <p class="muted">Die Adressleiste sucht über die Brave-Search-API und zeigt die Ergebnisse auf einer eigenen Seite. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
+    <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
+    <input id="keyIn" type="password" placeholder="${S.hasKey ? 'Neuen Schlüssel einfügen, um ihn zu ersetzen' : 'Brave-API-Schlüssel einfügen'}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Brave-API-Schlüssel">
+    <div class="row"><button class="btn pri" data-act="key-save">Speichern</button><button class="btn" data-act="key-test" ${S.hasKey ? '' : 'disabled'}>Verbindung testen</button><button class="btn" data-act="key-clear" ${S.hasKey ? '' : 'disabled'}>Entfernen</button></div>
+    <div id="keyMsg" class="kmsg ${kind || ''}">${esc(msg || '')}</div>
+    <p class="muted small">Der Schlüssel liegt in einer Datei im App-Ordner, die nur dein Benutzer lesen kann (Rechte 0600). Er wird nie angezeigt und nur an Brave gesendet.</p></div></div>`;
+}
+function openSettings(msg, kind) {
+  closeMenu(); closeSugg(); closeOverlay();
+  if (!settingsOpen) { settingsOpen = true; api.show(-1); }
+  const ov = $('#settings-ov'); ov.hidden = false; ov.innerHTML = settingsHTML(msg, kind);
+  setTimeout(() => $('#keyIn')?.focus(), 0);
+}
+function keyMsg(text, kind) { const m = $('#keyMsg'); if (m) { m.textContent = text; m.className = 'kmsg ' + (kind || ''); } }
+async function testKey() {
+  keyMsg('Teste …');
+  try { await api.keyTest(); keyMsg('Verbindung zu Brave funktioniert ✓', 'ok'); } catch (e) { keyMsg(String(e?.message || e), 'err'); }
+}
+async function saveKey() {
+  const i = $('#keyIn'); const v = i.value.trim(); if (!v) { keyMsg('Bitte zuerst einen Schlüssel einfügen.', 'err'); return; }
+  try { await api.keySet(v); } catch (e) { keyMsg(String(e?.message || e), 'err'); return; }
+  i.value = ''; S.hasKey = true; openSettings('Gespeichert. Teste …'); await testKey(); renderStart();
+}
+$('#settings-ov').addEventListener('mousedown', (ev) => { if (ev.target.id === 'settings-ov') closeSettings(); });
+
 /* ---------- Befehle (Menü, Tasten, Klicks) ---------- */
 function setZoom(f) { const t = cur(); if (!t?.native) return; t.zoom = Math.min(3, Math.max(0.3, Math.round(f * 100) / 100)); api.zoom(t.id, t.zoom); toast('Zoom ' + Math.round(t.zoom * 100) + ' %'); }
 async function toggleBookmark() {
@@ -363,6 +404,7 @@ async function runCmd(c) {
     case 'show-bookmarks': openSide('bookmarks'); break;
     case 'show-downloads': openSide('downloads'); break;
     case 'bookmark': toggleBookmark(); break;
+    case 'settings': openSettings(); break;
     case 'next-tab': stepTab(1); break;
     case 'prev-tab': stepTab(-1); break;
     default: if (/^tab-\d$/.test(c)) { const n = +c.slice(4); const x = n === 9 ? S.tabs[S.tabs.length - 1] : S.tabs[n - 1]; if (x) activate(x.id); }
@@ -394,6 +436,12 @@ document.addEventListener('click', async (ev) => {
     case 'find-next': doFind(true); break;
     case 'find-prev': doFind(false); break;
     case 'find-close': closeFind(); break;
+    case 'settings': openSettings(); break;
+    case 'settings-close': closeSettings(); break;
+    case 'open-brave': closeSettings(); newTab('https://brave.com/search/api/'); break;
+    case 'key-save': saveKey(); break;
+    case 'key-test': testKey(); break;
+    case 'key-clear': await api.keyClear(); S.hasKey = false; openSettings('Schlüssel entfernt.'); renderStart(); break;
   }
 });
 document.addEventListener('submit', (ev) => {
@@ -401,11 +449,11 @@ document.addEventListener('submit', (ev) => {
   ev.preventDefault(); const q = $('#startQ').value; if (q.trim()) navigate(cur(), q);
 });
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { closeMenu(); if (S.findOpen && ev.target.id !== 'findIn') closeFind(); } });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.id === 'keyIn') { ev.preventDefault(); saveKey(); } if (ev.key === 'Escape') { closeSettings(); closeMenu(); if (S.findOpen && ev.target.id !== 'findIn') closeFind(); } });
 
 /* ---------- Start ---------- */
 (async function init() {
-  [S.bookmarks, S.downloads] = await Promise.all([api.bookmarks(), api.downloads()]);
+  [S.bookmarks, S.downloads, searchBase, S.hasKey] = await Promise.all([api.bookmarks(), api.downloads(), api.searchBase(), api.keyStatus()]);
   S.downloads = (S.downloads || []).map((d, i) => ({ id: -i - 1, name: d.name, path: d.path, state: 'done', received: 0, total: 0 }));
   S.bookmarks = S.bookmarks || [];
   renderBar();

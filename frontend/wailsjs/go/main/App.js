@@ -38,6 +38,26 @@ export function OpenFile(arg1, arg2) {
   return window['go']['main']['App']['OpenFile'](arg1, arg2);
 }
 
+export function SearchBase() {
+  return window['go']['main']['App']['SearchBase']();
+}
+
+export function SearchKeyClear() {
+  return window['go']['main']['App']['SearchKeyClear']();
+}
+
+export function SearchKeySet(arg1) {
+  return window['go']['main']['App']['SearchKeySet'](arg1);
+}
+
+export function SearchKeyStatus() {
+  return window['go']['main']['App']['SearchKeyStatus']();
+}
+
+export function SearchKeyTest() {
+  return window['go']['main']['App']['SearchKeyTest']();
+}
+
 export function SessionLoad() {
   return window['go']['main']['App']['SessionLoad']();
 }

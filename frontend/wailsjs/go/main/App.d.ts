@@ -21,6 +21,16 @@ export function HistoryRemove(arg1:string):Promise<void>;
 
 export function OpenFile(arg1:string,arg2:boolean):Promise<void>;
 
+export function SearchBase():Promise<string>;
+
+export function SearchKeyClear():Promise<void>;
+
+export function SearchKeySet(arg1:string):Promise<void>;
+
+export function SearchKeyStatus():Promise<boolean>;
+
+export function SearchKeyTest():Promise<void>;
+
 export function SessionLoad():Promise<string>;
 
 export function SessionSave(arg1:string):Promise<void>;

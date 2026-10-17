@@ -2,10 +2,17 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
+	"browser-mac/internal/search"
+	"browser-mac/internal/secret"
 	"browser-mac/internal/spotify"
 	"browser-mac/internal/store"
 	"browser-mac/internal/web"
@@ -17,6 +24,30 @@ type App struct {
 	ctx context.Context
 	st  *store.Store
 	out chan [2]string // Ereignisse ans Frontend
+
+	secrets    *secret.Store
+	search     *search.Client
+	searchBase string
+}
+
+const (
+	keyFile    = "brave-api-key"
+	searchPort = 41873 // fester Wunschport, damit gespeicherte Such-URLs den Neustart überleben
+)
+
+// searchToken ist ein zufälliger Pfadbestandteil der lokalen Ergebnisseite. Webseiten kennen ihn nicht
+// und können den lokalen Server deshalb nicht dazu bringen, Anfragen mit deinem Schlüssel zu stellen.
+func searchToken(dir string) string {
+	p := filepath.Join(dir, "search-token")
+	if b, err := os.ReadFile(p); err == nil && len(strings.TrimSpace(string(b))) == 32 {
+		return strings.TrimSpace(string(b))
+	}
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	t := hex.EncodeToString(b)
+	_ = os.MkdirAll(dir, 0o700)
+	_ = os.WriteFile(p, []byte(t), 0o600)
+	return t
 }
 
 func NewApp() *App { return &App{} }
@@ -39,6 +70,16 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}()
 	web.SetEmitter(func(j string) { a.emit("web", j) })
+
+	// Eigene Suchmaschine (Brave-API); der Schlüssel wird bei jeder Anfrage frisch aus der geschützten Datei gelesen.
+	a.secrets = secret.New(filepath.Join(dir, "browser-mac"))
+	a.search = search.NewClient(func() (string, error) {
+		v, _, err := a.secrets.Get(keyFile)
+		return v, err
+	})
+	if a.searchBase, err = search.Start(a.search, searchToken(filepath.Join(dir, "browser-mac")), searchPort); err != nil {
+		println("Suchserver:", err.Error())
+	}
 }
 
 func (a *App) emit(name, data string) {
@@ -93,4 +134,32 @@ func (a *App) OpenFile(path string, reveal bool) error {
 func (a *App) SpotifyState() spotify.State { return spotify.Get() }
 func (a *App) SpotifyCommand(cmd string, arg float64) error {
 	return spotify.Command(cmd, arg)
+}
+
+/* Eigene Suche (Brave) – der Schlüssel geht nur hinein, nie wieder heraus */
+
+// SearchBase ist die URL der lokalen Ergebnisseite ohne Suchbegriff (endet auf "?q=").
+func (a *App) SearchBase() string { return a.searchBase }
+
+// SearchKeyStatus sagt nur, OB ein Schlüssel gespeichert ist.
+func (a *App) SearchKeyStatus() bool {
+	_, ok, _ := a.secrets.Get(keyFile)
+	return ok
+}
+
+func (a *App) SearchKeySet(key string) error {
+	key = strings.TrimSpace(key)
+	if key == "" || len(key) > 200 || strings.ContainsAny(key, " \t\r\n\x00") {
+		return errors.New("Das sieht nicht nach einem gültigen API-Schlüssel aus.")
+	}
+	return a.secrets.Set(keyFile, key)
+}
+
+func (a *App) SearchKeyClear() error { return a.secrets.Delete(keyFile) }
+
+// SearchKeyTest prüft den gespeicherten Schlüssel mit einer echten Anfrage an Brave.
+func (a *App) SearchKeyTest() error {
+	ctx, cancel := context.WithTimeout(a.ctx, 12*time.Second)
+	defer cancel()
+	return a.search.Test(ctx)
 }

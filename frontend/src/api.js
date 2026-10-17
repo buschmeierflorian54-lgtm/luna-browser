@@ -37,3 +37,10 @@ export const onCmd = (cb) => EventsOn("cmd", cb);                         // Men
 // Spotify
 export const spotifyState = () => App.SpotifyState();
 export const spotifyCommand = (cmd, arg) => App.SpotifyCommand(cmd, arg);
+
+// Eigene Suche (Brave); der Schlüssel wird nur gesendet, nie gelesen
+export const searchBase = () => App.SearchBase();
+export const keyStatus = () => App.SearchKeyStatus();
+export const keySet = (key) => App.SearchKeySet(key);
+export const keyClear = () => App.SearchKeyClear();
+export const keyTest = () => App.SearchKeyTest();

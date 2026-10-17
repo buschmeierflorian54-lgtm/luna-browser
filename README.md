@@ -22,6 +22,13 @@ Daten: `~/Library/Application Support/browser-mac/`.
 Widget auf der Startseite, Klick öffnet ein Vollbild-Overlay im Fenster (Klick irgendwohin, Esc oder X schließt).
 Beim ersten Zugriff fragt macOS nach Automation-Rechten für Spotify.
 
+## Eigene Suche (Brave)
+Die Adressleiste sucht über die Brave-Search-API; `internal/search` rendert die Ergebnisseite über einen lokalen
+Server (nur 127.0.0.1, zufälliger Token im Pfad, strenge CSP). Den Schlüssel trägst du unter ⌘, ein. Er liegt in
+`~/Library/Application Support/browser-mac/brave-api-key` (Ordner 0700, Datei 0600), nicht im Schlüsselbund (der
+fragt bei nicht signierten Apps nach jedem Neubau neu nach) und wird nie ans Frontend zurückgegeben.
+Das ist weniger geschützt als ein Schlüsselbund: Jeder Prozess unter deinem Benutzer kann die Datei lesen.
+
 ## Technische Notiz
 Ereignisse aus Go ans Frontend laufen über eine Warteschlange (`App.emit`), nie direkt vom Main-Thread:
 Wails' `ExecJS` gibt dort einen autoreleasten String frei und stürzt ab.
