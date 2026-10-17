@@ -42,6 +42,7 @@ func buildMenu(app *App) *menu.Menu {
 	view.AddText("Größer", keys.CmdOrCtrl("="), cmd("zoom-in"))
 	view.AddText("Kleiner", keys.CmdOrCtrl("-"), cmd("zoom-out"))
 	view.AddText("Tatsächliche Größe", keys.CmdOrCtrl("0"), cmd("zoom-reset"))
+	view.AddText("Dunkelmodus umschalten", keys.Combo("d", keys.CmdOrCtrlKey, keys.ShiftKey), cmd("toggle-theme"))
 	view.AddSeparator()
 	view.AddText("Seitenleiste ein/aus", keys.CmdOrCtrl("\\"), cmd("toggle-side"))
 	view.AddText("Lesezeichenleiste ein/aus", keys.Combo("b", keys.CmdOrCtrlKey, keys.ShiftKey), cmd("toggle-bar"))

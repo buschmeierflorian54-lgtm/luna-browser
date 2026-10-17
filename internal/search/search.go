@@ -1,6 +1,6 @@
-// Package search ist die eigene Suchmaschine des Browsers: Sie fragt die Brave-Search-API ab
-// und rendert die Ergebnisseite selbst. Die Seite wird von einem lokalen Server (nur 127.0.0.1)
-// ausgeliefert; der API-Schlüssel verlässt dieses Paket nie Richtung Oberfläche oder Seite.
+// Package search ist die eigene Suchmaschine des Browsers: Sie fragt die Brave-Search-API ab und liefert
+// bereinigte Daten an die Oberfläche, die die Ergebnisse selbst darstellt (als Teil des Browsers, nicht als
+// Webseite). Der API-Schlüssel verlässt dieses Paket nie.
 package search
 
 import (
@@ -11,7 +11,6 @@ import (
 	"html"
 	"html/template"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -25,40 +24,58 @@ const braveEndpoint = "https://api.search.brave.com/res/v1/web/search"
 var ErrNoKey = errors.New("Kein Brave-API-Schlüssel hinterlegt.")
 
 type Result struct {
-	Title   string
-	URL     string
-	Host    string
-	Path    string
-	Favicon string
-	Desc    template.HTML // bereinigt: nur <strong> bleibt erhalten
-	Extra   []template.HTML
-	Age     string
-	Thumb   string
+	Title   string          `json:"title"`
+	URL     string          `json:"url"`
+	Host    string          `json:"host"`
+	Path    string          `json:"path"`
+	Favicon string          `json:"favicon"`
+	Desc    template.HTML   `json:"desc"` // bereinigt: nur <strong> bleibt erhalten
+	Extra   []template.HTML `json:"extra"`
+	Age     string          `json:"age"`
+	Thumb   string          `json:"thumb"`
 }
 
 type Info struct {
-	Title, URL, Thumb, Host string
-	Desc                    template.HTML
-	Attrs                   [][2]string
+	Title string        `json:"title"`
+	URL   string        `json:"url"`
+	Thumb string        `json:"thumb"`
+	Host  string        `json:"host"`
+	Desc  template.HTML `json:"desc"`
+	Attrs [][2]string   `json:"attrs"`
 }
 
-type News struct{ Title, URL, Host, Age, Thumb, Favicon string }
-type Video struct{ Title, URL, Host, Age, Thumb, Duration string }
+type News struct {
+	Title   string `json:"title"`
+	URL     string `json:"url"`
+	Host    string `json:"host"`
+	Age     string `json:"age"`
+	Thumb   string `json:"thumb"`
+	Favicon string `json:"favicon"`
+}
+type Video struct {
+	Title    string `json:"title"`
+	URL      string `json:"url"`
+	Host     string `json:"host"`
+	Age      string `json:"age"`
+	Thumb    string `json:"thumb"`
+	Duration string `json:"duration"`
+}
 type FAQ struct {
-	Q, A string
-	URL  string
+	Q   string `json:"q"`
+	A   string `json:"a"`
+	URL string `json:"url"`
 }
 
 type Page struct {
-	Query   string
-	Altered string // von Brave korrigierte Schreibweise
-	Results []Result
-	Info    *Info
-	News    []News
-	Videos  []Video
-	FAQ     []FAQ
-	More    bool
-	Took    time.Duration
+	Query   string   `json:"query"`
+	Altered string   `json:"altered"` // von Brave korrigierte Schreibweise
+	Results []Result `json:"results"`
+	Info    *Info    `json:"info"`
+	News    []News   `json:"news"`
+	Videos  []Video  `json:"videos"`
+	FAQ     []FAQ    `json:"faq"`
+	More    bool     `json:"more"`
+	Millis  int64    `json:"millis"`
 }
 
 // Client fragt Brave ab. Key liefert den Schlüssel bei jeder Anfrage frisch (Schlüsselbund).
@@ -213,6 +230,15 @@ func (c *Client) Search(ctx context.Context, q string, page int) (*Page, error) 
 	req.Header.Set("X-Subscription-Token", key)
 	t0 := time.Now()
 	resp, err := c.HTTP.Do(req)
+	if err == nil && resp.StatusCode == 429 { // Free-Plan: 1 Anfrage/s – einmal kurz warten und erneut versuchen
+		resp.Body.Close()
+		select {
+		case <-time.After(1100 * time.Millisecond):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		resp, err = c.HTTP.Do(req.Clone(ctx))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("Brave ist nicht erreichbar: %w", errors.Unwrap(err))
 	}
@@ -230,7 +256,7 @@ func (c *Client) Search(ctx context.Context, q string, page int) (*Page, error) 
 	if err := json.Unmarshal(body, &br); err != nil {
 		return nil, errors.New("Unerwartete Antwort von Brave.")
 	}
-	p := &Page{Query: q, More: br.Query.More, Took: time.Since(t0)}
+	p := &Page{Query: q, More: br.Query.More, Millis: time.Since(t0).Milliseconds()}
 	if br.Query.Altered != "" && !strings.EqualFold(br.Query.Altered, q) {
 		p.Altered = plain(br.Query.Altered)
 	}
@@ -296,18 +322,3 @@ func (c *Client) Test(ctx context.Context) error {
 }
 
 /* ---------- Lokaler Server ---------- */
-
-// Start startet den lokalen Server (nur Loopback). Bevorzugt den Port pref, damit gespeicherte
-// Such-URLs (Verlauf, Sitzung) den Neustart überleben; ist er belegt, wird ein freier genommen.
-// Gibt die Basis-URL der Ergebnisseite zurück, z. B. http://127.0.0.1:41873/search/<token>?q=
-func Start(c *Client, token string, pref int) (string, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(pref))
-	if err != nil {
-		if ln, err = net.Listen("tcp", "127.0.0.1:0"); err != nil {
-			return "", err
-		}
-	}
-	srv := &http.Server{Handler: Handler(c, token), ReadHeaderTimeout: 5 * time.Second}
-	go srv.Serve(ln)
-	return "http://" + ln.Addr().String() + "/search/" + token + "?q=", nil
-}

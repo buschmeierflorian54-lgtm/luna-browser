@@ -12,5 +12,6 @@ void fmwFind(int id, const char *text, int forward);
 void fmwZoom(int id, double factor);
 void fmwSnapshot(int id, int req);
 void fmwFocusUI(void);
+void fmwSetAppearance(int mode); // 0 System, 1 Hell, 2 Dunkel
 
 #endif

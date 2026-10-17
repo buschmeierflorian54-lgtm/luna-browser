@@ -22,9 +22,16 @@ Daten: `~/Library/Application Support/browser-mac/`.
 Widget auf der Startseite, Klick öffnet ein Vollbild-Overlay im Fenster (Klick irgendwohin, Esc oder X schließt).
 Beim ersten Zugriff fragt macOS nach Automation-Rechten für Spotify.
 
+## Erscheinungsbild und Start
+Hell, Dunkel oder Automatisch (Einstellungen ⌘, oder ⇧⌘D). Das Theme besteht aus CSS-Variablen; zusätzlich setzt die App
+die System-Erscheinung (`NSApp.appearance`), damit auch Webseiten über `prefers-color-scheme` mitziehen.
+Beim Start zeigt ein animierter Startbildschirm das echte Hochfahren (Einstellungen, Lesezeichen, Spotify, Tabs); die
+aktive Seite lädt dabei schon im Hintergrund, native Ansichten bleiben bis zum Ende verborgen.
+
 ## Eigene Suche (Brave)
-Die Adressleiste sucht über die Brave-Search-API; `internal/search` rendert die Ergebnisseite über einen lokalen
-Server (nur 127.0.0.1, zufälliger Token im Pfad, strenge CSP). Den Schlüssel trägst du unter ⌘, ein. Er liegt in
+Die Adressleiste sucht über die Brave-Search-API; `internal/search` liefert bereinigte Daten, die Ergebnisse stellt die
+Oberfläche selbst dar (eingebaute Ansicht, keine Webseite, kein lokaler Server). Zurück/Vor laufen nahtlos zwischen
+Startseite, Suche und Webseiten. Den Schlüssel trägst du unter ⌘, ein. Er liegt in
 `~/Library/Application Support/browser-mac/brave-api-key` (Ordner 0700, Datei 0600), nicht im Schlüsselbund (der
 fragt bei nicht signierten Apps nach jedem Neubau neu nach) und wird nie ans Frontend zurückgegeben.
 Das ist weniger geschützt als ein Schlüsselbund: Jeder Prozess unter deinem Benutzer kann die Datei lesen.

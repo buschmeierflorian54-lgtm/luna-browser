@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"os"
 	"os/exec"
@@ -25,30 +23,13 @@ type App struct {
 	st  *store.Store
 	out chan [2]string // Ereignisse ans Frontend
 
-	secrets    *secret.Store
-	search     *search.Client
-	searchBase string
+	secrets *secret.Store
+	search  *search.Client
 }
 
 const (
-	keyFile    = "brave-api-key"
-	searchPort = 41873 // fester Wunschport, damit gespeicherte Such-URLs den Neustart überleben
+	keyFile = "brave-api-key"
 )
-
-// searchToken ist ein zufälliger Pfadbestandteil der lokalen Ergebnisseite. Webseiten kennen ihn nicht
-// und können den lokalen Server deshalb nicht dazu bringen, Anfragen mit deinem Schlüssel zu stellen.
-func searchToken(dir string) string {
-	p := filepath.Join(dir, "search-token")
-	if b, err := os.ReadFile(p); err == nil && len(strings.TrimSpace(string(b))) == 32 {
-		return strings.TrimSpace(string(b))
-	}
-	b := make([]byte, 16)
-	_, _ = rand.Read(b)
-	t := hex.EncodeToString(b)
-	_ = os.MkdirAll(dir, 0o700)
-	_ = os.WriteFile(p, []byte(t), 0o600)
-	return t
-}
 
 func NewApp() *App { return &App{} }
 
@@ -77,9 +58,6 @@ func (a *App) startup(ctx context.Context) {
 		v, _, err := a.secrets.Get(keyFile)
 		return v, err
 	})
-	if a.searchBase, err = search.Start(a.search, searchToken(filepath.Join(dir, "browser-mac")), searchPort); err != nil {
-		println("Suchserver:", err.Error())
-	}
 }
 
 func (a *App) emit(name, data string) {
@@ -101,6 +79,7 @@ func (a *App) WebShow(id int)                            { web.Show(id) }
 func (a *App) WebClose(id int)                           { web.Close(id) }
 func (a *App) WebFind(id int, text string, forward bool) { web.Find(id, text, forward) }
 func (a *App) WebZoom(id int, factor float64)            { web.Zoom(id, factor) }
+func (a *App) SetAppearance(mode string)                 { web.SetAppearance(mode) }
 func (a *App) WebFocusUI()                               { web.FocusUI() }
 func (a *App) WebSnapshot(id int) (string, error)        { return web.Snapshot(id) }
 
@@ -138,8 +117,12 @@ func (a *App) SpotifyCommand(cmd string, arg float64) error {
 
 /* Eigene Suche (Brave) – der Schlüssel geht nur hinein, nie wieder heraus */
 
-// SearchBase ist die URL der lokalen Ergebnisseite ohne Suchbegriff (endet auf "?q=").
-func (a *App) SearchBase() string { return a.searchBase }
+// Search liefert die Ergebnisse (bereinigt) für Suchbegriff q, Seite page (0-basiert).
+func (a *App) Search(q string, page int) (*search.Page, error) {
+	ctx, cancel := context.WithTimeout(a.ctx, 14*time.Second)
+	defer cancel()
+	return a.search.Search(ctx, q, page)
+}
 
 // SearchKeyStatus sagt nur, OB ein Schlüssel gespeichert ist.
 func (a *App) SearchKeyStatus() bool {

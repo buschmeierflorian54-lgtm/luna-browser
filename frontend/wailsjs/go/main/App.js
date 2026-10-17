@@ -38,8 +38,8 @@ export function OpenFile(arg1, arg2) {
   return window['go']['main']['App']['OpenFile'](arg1, arg2);
 }
 
-export function SearchBase() {
-  return window['go']['main']['App']['SearchBase']();
+export function Search(arg1, arg2) {
+  return window['go']['main']['App']['Search'](arg1, arg2);
 }
 
 export function SearchKeyClear() {
@@ -64,6 +64,10 @@ export function SessionLoad() {
 
 export function SessionSave(arg1) {
   return window['go']['main']['App']['SessionSave'](arg1);
+}
+
+export function SetAppearance(arg1) {
+  return window['go']['main']['App']['SetAppearance'](arg1);
 }
 
 export function SetBookmark(arg1, arg2, arg3) {

@@ -54,7 +54,7 @@ static NSString *errorHTML(NSError *e, NSURL *u) {
 		s = [s stringByReplacingOccurrencesOfString:@"<" withString:@"&lt;"];
 		return [s stringByReplacingOccurrencesOfString:@">" withString:@"&gt;"];
 	};
-	return [NSString stringWithFormat:@"<!doctype html><meta charset=utf-8><title>Seite nicht erreichbar</title><style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:#fbf2f7;color:#3a2433;font:14px -apple-system,system-ui,sans-serif;text-align:center}h1{margin:0;font-size:20px}p{margin:0;color:#6f5264;max-width:460px;line-height:1.5}a{margin-top:14px;padding:10px 18px;border-radius:12px;background:#3a2433;color:#fbeef6;text-decoration:none;font-weight:700}</style><h1>Seite kann nicht geöffnet werden</h1><p>%@</p><p style=\"font-size:12px\">%@</p><a href=\"%@\">Erneut versuchen</a>", esc(msg), esc(url), esc(url)];
+	return [NSString stringWithFormat:@"<!doctype html><meta charset=utf-8><title>Seite nicht erreichbar</title><style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:#fbf2f7;color:#3a2433;font:14px -apple-system,system-ui,sans-serif;text-align:center}h1{margin:0;font-size:20px}p{margin:0;color:#6f5264;max-width:460px;line-height:1.5}a{margin-top:14px;padding:10px 18px;border-radius:12px;background:#3a2433;color:#fbeef6;text-decoration:none;font-weight:700}@media (prefers-color-scheme:dark){body{background:#1c1119;color:#fbeef6}p{color:#b99dae}a{background:#fbeef6;color:#2a1621}}</style><h1>Seite kann nicht geöffnet werden</h1><p>%@</p><p style=\"font-size:12px\">%@</p><a href=\"%@\">Erneut versuchen</a>", esc(msg), esc(url), esc(url)];
 }
 
 @interface FMTab : NSObject <WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate>
@@ -323,5 +323,12 @@ void fmwFocusUI(void) {
 				if (!ours) { [w makeFirstResponder:v]; return; }
 			}
 		}
+	});
+}
+
+void fmwSetAppearance(int mode) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		NSApp.appearance = mode == 1 ? [NSAppearance appearanceNamed:NSAppearanceNameAqua]
+		                 : mode == 2 ? [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua] : nil;
 	});
 }

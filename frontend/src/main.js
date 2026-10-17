@@ -1,25 +1,29 @@
 import './style.css';
 import * as api from './api.js';
+import { searchHTML } from './searchview.js';
 import { initSpotify, setBanner, refresh as spRefresh, setHooks, closeOverlay } from './spotify.js';
 
 /* ---------- Helfer ---------- */
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-let searchBase = '';   // lokale Ergebnisseite der eigenen Suche (Brave), endet auf "?q="
-const isSearch = (u) => !!searchBase && !!u && u.startsWith(searchBase.split('?')[0]);
-const queryOf = (u) => { try { return new URL(u).searchParams.get('q') || ''; } catch { return ''; } };
-const hostOf = (u) => { if (isSearch(u)) return 'Suche'; try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
-const shown = (u) => (isSearch(u) ? queryOf(u) : u);   // in der Adressleiste steht der Suchbegriff, nicht die lokale URL
+const isSearchUrl = (u) => !!u && u.startsWith('search:');
+const hostOf = (u) => { if (isSearchUrl(u)) return 'Suche'; try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const shownUrl = (u) => (isSearchUrl(u) ? decodeURIComponent(u.slice(7)) : u || '');   // Suchen zeigen nur den Suchbegriff
 const initial = (t) => (t || '?').trim().charAt(0).toUpperCase() || '?';
 
-// Eingabe → URL: echte Adressen bleiben, "beispiel.de" bekommt https://, alles andere wird gesucht.
+// Eingabe → URL: echte Adressen bleiben, "beispiel.de" bekommt https://; alles andere ist eine Suche (null).
 function toURL(input) {
   const s = input.trim();
-  if (!s) return '';
+  if (!s) return null;
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s) || /^(about|data|file|mailto):/i.test(s)) return s;
   if (/^(localhost|(\d{1,3}\.){3}\d{1,3})(:\d+)?([/?#]|$)/i.test(s)) return 'http://' + s;
   if (!/\s/.test(s) && /^[^\s/]+\.[a-z]{2,}(:\d+)?([/?#]|$)/i.test(s)) return 'https://' + s;
-  return searchBase + encodeURIComponent(s);
+  return null;
+}
+function resolve(input) {
+  const s = input.trim(); if (!s) return null;
+  if (isSearchUrl(s)) return { q: decodeURIComponent(s.slice(7)) };
+  const u = toURL(s); return u ? { url: u } : { q: s };
 }
 
 const ICON = {
@@ -34,6 +38,22 @@ const ICON = {
   plus: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
 
+/* ---------- Erscheinungsbild (Hell/Dunkel/Automatisch) ---------- */
+const THEME_KEY = 'fm-theme';
+function themeMode() { try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch { return 'auto'; } }
+const prefersDark = () => matchMedia('(prefers-color-scheme: dark)').matches;
+const isDark = () => document.documentElement.dataset.theme === 'dark';
+function applyTheme(mode, persist) {
+  if (persist) { try { localStorage.setItem(THEME_KEY, mode); } catch { /* ohne Speicher: gilt nur jetzt */ } }
+  document.documentElement.dataset.theme = (mode === 'dark' || (mode === 'auto' && prefersDark())) ? 'dark' : 'light';
+  api.setAppearance(mode);   // nativ: Webseiten folgen über prefers-color-scheme, Systemelemente passen sich an
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themeMode() === 'auto') applyTheme('auto'); });
+
+/* ---------- Native Ansichten: während des Startbildschirms verborgen ---------- */
+let splashing = true, pendingShow = -1;
+function nativeShow(id) { if (splashing) { pendingShow = id; return; } api.show(id); }
+
 /* ---------- Zustand ---------- */
 const S = {
   hasKey: false, tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
@@ -41,7 +61,13 @@ const S = {
 };
 const tabById = (id) => S.tabs.find((t) => t.id === id);
 const cur = () => tabById(S.active);
-const mkTab = (id, url) => ({ id, url: url || '', title: '', icon: '', loading: false, progress: 0, back: false, fwd: false, native: false, lazy: false, error: false, zoom: 1 });
+// mode: 'start' (Startseite) | 'search' (eingebaute Suchansicht) | 'web' (nativer WKWebView)
+const mkTab = (id, url) => ({
+  id, url: url || '', title: '', icon: '', loading: false, progress: 0, back: false, fwd: false, native: false, lazy: false, error: false, zoom: 1,
+  mode: 'start', webUrl: '', webTitle: '',
+  q: '', page: 0, data: null, sErr: '', sLoading: false, sTok: 0, sel: 0, filter: 'all', sHist: [], sIdx: -1,
+  under: false, cameFromSearch: false, fwdWeb: false, fwdSearch: false,
+});
 
 function toast(msg) {
   const el = $('#toast'); el.textContent = msg; el.classList.add('show');
@@ -52,32 +78,99 @@ function toast(msg) {
 function newTab(url, opts = {}) {
   const t = mkTab(S.next++, '');
   S.tabs.push(t);
-  if (url) navigate(t, url);
+  if (url) visit(t, url);
   if (!opts.background) activate(t.id); else { renderTabs(); saveSession(); }
   return t;
 }
 function adoptPopup(id) {            // Tab, den eine Seite selbst geöffnet hat (window.open)
-  const t = mkTab(id, ''); t.native = true; S.tabs.push(t);
+  const t = mkTab(id, ''); t.native = true; t.mode = 'web'; S.tabs.push(t);
   activate(id);
 }
-function navigate(t, input) {
-  const url = toURL(input); if (!url) return;
+/* ---------- Navigation: Startseite · Suche · Web ---------- */
+function visit(t, input) {
+  const r = resolve(input); if (!r) return;
+  if (r.q !== undefined) openSearch(t, r.q, 0); else openWeb(t, r.url);
+}
+function openWeb(t, url) {
   if (t.id === S.active) $('#url').blur();
-  t.url = url; t.native = true; t.lazy = false; t.error = false; t.title = '';
+  if (t.mode === 'search') { t.cameFromSearch = true; if (t.native) { api.close(t.id); t.native = false; } }   // frische Verlaufskette: Zurück führt zur Suche
+  else if (t.mode === 'start') t.cameFromSearch = false;
+  t.sTok++; t.sLoading = false;
+  t.mode = 'web'; t.under = false; t.fwdWeb = false; t.fwdSearch = false;
+  t.url = t.webUrl = url; t.title = t.webTitle = ''; t.native = true; t.lazy = false; t.error = false; t.icon = '';
   api.load(t.id, url);
-  if (t.id === S.active) { api.show(t.id); renderAll(); }
+  if (t.id === S.active) { nativeShow(t.id); renderAll(); }
   saveSession();
+}
+function openSearch(t, q, page = 0, opts = {}) {
+  q = q.trim(); if (!q) return;
+  if (t.id === S.active) $('#url').blur();
+  if (t.mode === 'web' && t.native) t.under = true;           // Webseite bleibt (verborgen) darunter, Zurück kehrt zu ihr zurück
+  if (t.mode === 'start') t.under = false;
+  if (!opts.noPush) {
+    if (t.mode !== 'search') { t.sHist = []; t.sIdx = -1; }
+    t.sHist = t.sHist.slice(0, t.sIdx + 1); t.sHist.push({ q, page, data: null }); t.sIdx = t.sHist.length - 1;
+  }
+  t.mode = 'search'; t.lazy = false; t.fwdWeb = false; t.fwdSearch = false; t.error = false;
+  loadEntry(t, opts.force);
+  if (t.id === S.active) nativeShow(-1);
+  saveSession();
+}
+// zeigt den Eintrag sHist[sIdx]; Ergebnisse werden pro Eintrag gemerkt (Zurück/Vor kostet keine Anfrage)
+async function loadEntry(t, force) {
+  const e = t.sHist[t.sIdx]; if (!e) return;
+  t.q = e.q; t.page = e.page; t.url = 'search:' + encodeURIComponent(e.q); t.title = e.q + ' – Suche'; t.sel = 0; t.sErr = '';
+  const tok = ++t.sTok;
+  if (e.data && !force) { t.data = e.data; t.sLoading = false; t.loading = false; if (t.id === S.active) renderAll(); return; }
+  t.data = null;
+  if (!S.hasKey) { t.sErr = 'NOKEY'; t.sLoading = false; t.loading = false; if (t.id === S.active) renderAll(); return; }
+  t.sLoading = true; t.loading = true; t.progress = 0.45;
+  if (t.id === S.active) renderAll();
+  try {
+    const d = await api.search(e.q, e.page);
+    if (tok !== t.sTok) return;
+    e.data = t.data = d;
+    if (e.page === 0) api.historyAdd(t.url, t.title);
+  } catch (err) {
+    if (tok !== t.sTok) return;
+    t.sErr = String(err?.message || err);
+  }
+  t.sLoading = false; t.loading = false;
+  if (t.id === S.active) { renderAll(); $('#searchView').scrollTop = 0; }
+}
+const canBack = (t) => (t.mode === 'web' ? (t.back || t.cameFromSearch) : t.mode === 'search');
+const canFwd = (t) => (t.mode === 'web' ? (t.fwd || t.fwdSearch) : t.mode === 'search' ? (t.sIdx < t.sHist.length - 1 || t.fwdWeb) : t.fwdSearch);
+function showWeb(t) { t.mode = 'web'; t.url = t.webUrl; t.title = t.webTitle; t.sTok++; t.sLoading = false; t.loading = false; if (t.id === S.active) { nativeShow(t.id); renderAll(); } }
+function showSearchMode(t) { t.mode = 'search'; if (t.id === S.active) nativeShow(-1); loadEntry(t); }
+function goBack(t) {
+  if (t.mode === 'web') {
+    if (t.back) api.back(t.id);
+    else if (t.cameFromSearch) { t.fwdWeb = true; showSearchMode(t); }
+  } else if (t.mode === 'search') {
+    if (t.sIdx > 0) { t.sIdx--; loadEntry(t); }
+    else if (t.under) { t.fwdSearch = true; showWeb(t); }
+    else { t.fwdSearch = true; t.mode = 'start'; t.url = ''; t.title = ''; t.q = ''; t.data = null; t.sTok++; t.sLoading = false; t.loading = false; renderAll(); }
+  }
+}
+function goForward(t) {
+  if (t.mode === 'search') {
+    if (t.sIdx < t.sHist.length - 1) { t.sIdx++; loadEntry(t); }
+    else if (t.fwdWeb) { t.fwdWeb = false; showWeb(t); }
+  } else if (t.mode === 'web') {
+    if (t.fwd) api.forward(t.id);
+    else if (t.fwdSearch) { t.fwdSearch = false; showSearchMode(t); }
+  } else if (t.fwdSearch) { t.fwdSearch = false; showSearchMode(t); }
 }
 function activate(id) {
   closeOverlays();
   $('#url').blur();
   S.active = id;
   const t = cur();
-  if (t.lazy) { t.lazy = false; navigate(t, t.url); }
-  api.show(t.native ? t.id : -1);
+  if (t.lazy) { t.lazy = false; visit(t, t.url); }
+  nativeShow(t.mode === 'web' && t.native ? t.id : -1);
   if (t.native) api.zoom(t.id, t.zoom);
   renderAll();
-  if (!t.url) setTimeout(() => $('#url').focus(), 0);
+  if (t.mode === 'start') setTimeout(() => $('#url').focus(), 0);
   saveSession();
 }
 function closeTab(id) {
@@ -99,7 +192,7 @@ let sessT;
 function saveSession() {
   clearTimeout(sessT);
   sessT = setTimeout(() => {
-    const tabs = S.tabs.filter((t) => t.url && !t.error).map((t) => ({ url: t.url, title: t.title }));
+    const tabs = S.tabs.filter((t) => t.url && !t.error).map((t) => ({ url: t.mode === 'web' ? t.webUrl || t.url : t.url, title: t.title }));
     const act = Math.max(0, S.tabs.filter((t) => t.url && !t.error).findIndex((t) => t.id === S.active));
     api.sessionSave(JSON.stringify({ tabs, active: act }));
   }, 700);
@@ -123,18 +216,20 @@ api.onWeb((e) => {
   switch (e.t) {
     case 'state':
       if (!t) return;
-      t.loading = e.loading; t.progress = e.progress; t.back = e.back; t.fwd = e.fwd;
-      if (e.url && !(t.error && e.url === t.url)) t.url = e.url;
-      if (e.title) t.title = e.title;
+      t.back = e.back; t.fwd = e.fwd;
+      if (e.url && !(t.error && e.url === t.webUrl)) t.webUrl = e.url;
+      if (e.title) t.webTitle = e.title;
+      if (t.mode !== 'web') return;          // verborgene Webseite unter der Suche: nur merken
+      t.loading = e.loading; t.progress = e.progress; t.url = t.webUrl; t.title = t.webTitle;
       renderTabs(); if (t.id === S.active) { renderToolbar(); saveSession(); }
       break;
     case 'loaded':
       if (!t) return;
       t.error = !!e.error;
-      if (!e.error && e.url) { api.historyAdd(e.url, e.title || ''); }
+      if (!e.error && e.url && t.mode === 'web') { api.historyAdd(e.url, e.title || ''); }
       break;
-    case 'favicon': if (t) { t.icon = e.icon; renderTabs(); } break;
-    case 'error': if (t) { t.error = true; t.url = e.url || t.url; renderToolbar(); } break;
+    case 'favicon': if (t && t.mode === 'web') { t.icon = e.icon; renderTabs(); } break;
+    case 'error': if (t && t.mode === 'web') { t.error = true; t.url = t.webUrl = e.url || t.url; renderToolbar(); } break;
     case 'popup': adoptPopup(e.tab); break;
     case 'newtab': newTab(e.url, { background: true }); break;
     case 'close': closeTab(e.tab); break;
@@ -147,7 +242,7 @@ api.onWeb((e) => {
 function renderTabs() {
   $('#tabs').innerHTML = S.tabs.map((t) => {
     const label = t.title || (t.url ? hostOf(t.url) : 'Neuer Tab');
-    const ico = t.loading ? '<span class="spin"></span>' : t.icon ? `<img class="fav" src="${esc(t.icon)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fav',innerHTML:window.__globe}))">` : `<span class="fav">${ICON.globe}</span>`;
+    const ico = t.loading ? '<span class="spin"></span>' : t.mode === 'search' ? `<span class="fav">${ICON.search}</span>` : t.icon ? `<img class="fav" src="${esc(t.icon)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fav',innerHTML:window.__globe}))">` : `<span class="fav">${ICON.globe}</span>`;
     return `<div class="tab ${t.id === S.active ? 'act' : ''}" title="${esc(label)}">${ico}<button class="tlab" role="tab" aria-selected="${t.id === S.active}" data-act="tab" data-id="${t.id}">${esc(label)}</button>${S.tabs.length > 1 ? `<button class="tx" data-act="close" data-id="${t.id}" aria-label="Tab schließen">${ICON.x}</button>` : ''}</div>`;
   }).join('') + `<button class="ib" id="newtab" data-act="new-tab" aria-label="Neuer Tab">${ICON.plus}</button>`;
   $('#body').style.borderRadius = '0';
@@ -156,16 +251,16 @@ window.__globe = ICON.globe;
 function isBookmarked(url) { return S.bookmarks.some((b) => b.url === url); }
 function renderToolbar() {
   const t = cur(); if (!t) return;
-  $('#bBack').classList.toggle('off', !t.native || !t.back);
-  $('#bFwd').classList.toggle('off', !t.native || !t.fwd);
+  $('#bBack').classList.toggle('off', !canBack(t));
+  $('#bFwd').classList.toggle('off', !canFwd(t));
   $('#bReload').innerHTML = t.loading ? ICON.stop : ICON.reload;
-  $('#bReload').classList.toggle('off', !t.native);
+  $('#bReload').classList.toggle('off', t.mode === 'start');
   const input = $('#url');
-  if (document.activeElement !== input) input.value = shown(t.url || '');
-  $('#lock').innerHTML = isSearch(t.url) ? ICON.search : t.url.startsWith('https://') ? ICON.lock : '';
+  if (document.activeElement !== input) input.value = shownUrl(t.mode === 'start' ? '' : t.url);
+  $('#lock').innerHTML = t.mode === 'search' ? ICON.search : t.url.startsWith('https://') ? ICON.lock : '';
   const bm = !!t.url && isBookmarked(t.url);
   $('#bStar').innerHTML = bm ? ICON.starOn : ICON.star;
-  $('#bStar').classList.toggle('off', !t.native);
+  $('#bStar').classList.toggle('off', t.mode === 'start');
   $('#bSide').classList.toggle('on', S.side);
   const p = $('#progress div');
   p.style.opacity = t.loading ? 1 : 0; p.style.width = (t.loading ? Math.max(8, t.progress * 100) : 100) + '%';
@@ -187,7 +282,7 @@ function startHTML() {
 }
 async function renderStart() {
   const t = cur(), el = $('#start');
-  const show = t && !t.native && !t.lazy;
+  const show = t && t.mode === 'start' && !t.lazy;
   el.hidden = !show;
   if (!show) { setBanner(null); return; }
   el.innerHTML = startHTML();
@@ -196,7 +291,16 @@ async function renderStart() {
   const box = $('#recent'); if (!box) return;
   box.innerHTML = '<h3>Zuletzt besucht</h3>' + (h.length ? h.map((v) => `<button class="hrow" data-act="open-url" data-url="${esc(v.url)}"><b>${esc(v.title || hostOf(v.url))}</b><i>${esc(v.url)}</i></button>`).join('') : '<div class="hint">Noch nichts besucht.</div>');
 }
-function renderAll() { renderTabs(); renderToolbar(); renderBar(); renderStart(); renderSide(); updateFrame(); }
+function renderSearchView() {
+  const t = cur(), el = $('#searchView');
+  const show = !!t && t.mode === 'search';
+  el.hidden = !show;
+  if (!show) return;
+  const top = el.scrollTop;
+  el.innerHTML = searchHTML(t, isBookmarked);
+  el.scrollTop = t.sLoading ? 0 : top;
+}
+function renderAll() { renderTabs(); renderToolbar(); renderBar(); renderStart(); renderSearchView(); renderSide(); updateFrame(); }
 
 /* ---------- Seitenbereich ↔ native Ansicht ---------- */
 let frameT;
@@ -216,18 +320,18 @@ async function cover(on) {
   if (on) {
     S.cover++;
     if (S.cover !== 1) return;
-    const t = cur(); if (!t || !t.native) return;
+    const t = cur(); if (!t || !t.native || t.mode !== 'web') return;
     let shot = '';
     try { shot = await api.snapshot(t.id); } catch { /* ohne Foto: Seite wird leer */ }
     if (S.cover < 1) return;
     const img = $('#pageShot');
     if (shot) { img.src = shot; img.hidden = false; }
-    api.show(-1);
+    nativeShow(-1);
   } else {
     S.cover = Math.max(0, S.cover - 1);
     if (S.cover) return;
     $('#pageShot').hidden = true;
-    const t = cur(); if (t && t.native) api.show(t.id);
+    const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id);
   }
 }
 function closeOverlays() { closeMenu(); closeSugg(); closeOverlay(); closeSettings(); }
@@ -241,7 +345,7 @@ function openMenu() {
   const items = [
     ['Neuer Tab', '⌘T', 'new-tab'], ['Auf der Seite suchen', '⌘F', 'find'], '-',
     ['Vergrößern', '⌘+', 'zoom-in'], ['Verkleinern', '⌘−', 'zoom-out'], ['Tatsächliche Größe (' + z + ' %)', '⌘0', 'zoom-reset'], '-',
-    ['Einstellungen …', '⌘,', 'settings'], '-',
+    ['Einstellungen …', '⌘,', 'settings'], [isDark() ? 'Heller Modus' : 'Dunkelmodus', '⇧⌘D', 'toggle-theme'], '-',
     ['Lesezeichen', '⌘⌥B', 'show-bookmarks'], ['Verlauf', '⌘Y', 'show-history'], ['Downloads', '⌘⌥L', 'show-downloads'], '-',
     [S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', '⇧⌘B', 'toggle-bar'],
   ];
@@ -262,10 +366,10 @@ async function openSugg(q) {
   if (!text) { closeSugg(); return; }
   const [hist] = await Promise.all([api.history(text, 6)]);
   if (token !== suggToken) return;
-  const items = [{ kind: 'go', label: text, sub: /^[^\s]+\.[a-z]{2,}/i.test(text) || /:\/\//.test(text) ? 'Öffnen' : 'Im Web suchen', url: text }];
+  const items = [{ kind: 'go', label: text, sub: /^[^\s]+\.[a-z]{2,}/i.test(text) || /:\/\//.test(text) ? 'Öffnen' : 'Mit Brave suchen', url: text }];
   const seen = new Set();
-  for (const b of S.bookmarks) if ((b.title + b.url).toLowerCase().includes(text.toLowerCase()) && !seen.has(b.url)) { seen.add(b.url); items.push({ kind: 'bm', label: b.title, sub: shown(b.url), url: b.url }); }
-  for (const v of hist) if (!seen.has(v.url)) { seen.add(v.url); items.push({ kind: 'h', label: v.title || hostOf(v.url), sub: shown(v.url), url: v.url }); }
+  for (const b of S.bookmarks) if ((b.title + b.url).toLowerCase().includes(text.toLowerCase()) && !seen.has(b.url)) { seen.add(b.url); items.push({ kind: 'bm', label: b.title, sub: shownUrl(b.url), url: b.url }); }
+  for (const v of hist) if (!seen.has(v.url)) { seen.add(v.url); items.push({ kind: 'h', label: v.title || hostOf(v.url), sub: shownUrl(v.url), url: v.url }); }
   S.sugg = items.slice(0, 7); S.suggSel = 0;
   const box = $('#sugg'), r = $('#urlbox').getBoundingClientRect();
   box.style.left = r.left + 'px'; box.style.top = r.bottom + 6 + 'px'; box.style.width = r.width + 'px';
@@ -275,14 +379,14 @@ async function openSugg(q) {
 function paintSugg() {
   $('#sugg').innerHTML = S.sugg.map((s, i) => `<button class="sg ${i === S.suggSel ? 'sel' : ''}" data-i="${i}"><span>${esc(s.label)}</span><i>${esc(s.sub)}</i></button>`).join('');
 }
-$('#sugg').addEventListener('mousedown', (ev) => { ev.preventDefault(); const b = ev.target.closest('.sg'); if (b) go(S.sugg[+b.dataset.i].url); });
-function go(text) { closeSugg(); url.blur(); const t = cur(); navigate(t, text); }
+$('#sugg').addEventListener('mousedown', (ev) => { ev.preventDefault(); const b = ev.target.closest('.sg'); if (b) commitAddress(S.sugg[+b.dataset.i].url); });
+function commitAddress(text) { closeSugg(); url.blur(); visit(cur(), text); }
 url.addEventListener('focus', () => url.select());
 url.addEventListener('input', () => openSugg(url.value));
 url.addEventListener('blur', () => { setTimeout(() => { closeSugg(); renderToolbar(); }, 120); });
 url.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter') { ev.preventDefault(); go(S.sugg[S.suggSel]?.url ?? url.value); }
-  else if (ev.key === 'Escape') { closeSugg(); url.value = shown(cur()?.url || ''); url.blur(); }
+  if (ev.key === 'Enter') { ev.preventDefault(); commitAddress(S.sugg[S.suggSel]?.url ?? url.value); }
+  else if (ev.key === 'Escape') { closeSugg(); url.value = shownUrl(cur()?.mode === 'start' ? '' : cur()?.url); url.blur(); }
   else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && S.sugg.length) {
     ev.preventDefault(); S.suggSel = (S.suggSel + (ev.key === 'ArrowDown' ? 1 : -1) + S.sugg.length) % S.sugg.length;
     paintSugg();
@@ -291,7 +395,8 @@ url.addEventListener('keydown', (ev) => {
 
 /* ---------- Suche auf der Seite ---------- */
 const findIn = $('#findIn');
-function openFind() { S.findOpen = true; $('#findbar').hidden = false; updateFrame(); findIn.focus(); findIn.select(); }
+function openFind() { if (cur()?.mode !== 'web') { url.focus(); url.select(); toast('Neue Suche: einfach in die Adressleiste tippen'); return; }
+  S.findOpen = true; $('#findbar').hidden = false; updateFrame(); findIn.focus(); findIn.select(); }
 function closeFind() { S.findOpen = false; $('#findbar').hidden = true; $('#findStat').textContent = ''; const t = cur(); if (t?.native) api.find(t.id, '', true); updateFrame(); }
 function doFind(fwd) { const t = cur(); if (t?.native && findIn.value) api.find(t.id, findIn.value, fwd); }
 findIn.addEventListener('input', () => { $('#findStat').textContent = ''; doFind(true); });
@@ -345,12 +450,14 @@ let settingsOpen = false;
 function closeSettings() {
   if (!settingsOpen) return;
   settingsOpen = false; $('#settings-ov').hidden = true; $('#settings-ov').innerHTML = '';
-  const t = cur(); if (t && t.native) api.show(t.id);
+  const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id);
 }
 function settingsHTML(msg, kind) {
   return `<div class="card" role="document"><header><b>Einstellungen</b><button class="ib sm" data-act="settings-close" aria-label="Schließen">${ICON.x}</button></header>
-    <div class="cbody"><h3>Suche · Brave API</h3>
-    <p class="muted">Die Adressleiste sucht über die Brave-Search-API und zeigt die Ergebnisse auf einer eigenen Seite. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
+    <div class="cbody"><h3>Darstellung</h3>
+    <div class="stabs seg3" role="group" aria-label="Erscheinungsbild">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<button class="${themeMode() === k ? 'on' : ''}" data-act="theme" data-m="${k}">${l}</button>`).join('')}</div>
+    <h3>Suche · Brave API</h3>
+    <p class="muted">Die Adressleiste sucht über die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
     <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
     <input id="keyIn" type="password" placeholder="${S.hasKey ? 'Neuen Schlüssel einfügen, um ihn zu ersetzen' : 'Brave-API-Schlüssel einfügen'}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Brave-API-Schlüssel">
     <div class="row"><button class="btn pri" data-act="key-save">Speichern</button><button class="btn" data-act="key-test" ${S.hasKey ? '' : 'disabled'}>Verbindung testen</button><button class="btn" data-act="key-clear" ${S.hasKey ? '' : 'disabled'}>Entfernen</button></div>
@@ -359,7 +466,7 @@ function settingsHTML(msg, kind) {
 }
 function openSettings(msg, kind) {
   closeMenu(); closeSugg(); closeOverlay();
-  if (!settingsOpen) { settingsOpen = true; api.show(-1); }
+  if (!settingsOpen) { settingsOpen = true; nativeShow(-1); }
   const ov = $('#settings-ov'); ov.hidden = false; ov.innerHTML = settingsHTML(msg, kind);
   setTimeout(() => $('#keyIn')?.focus(), 0);
 }
@@ -371,16 +478,16 @@ async function testKey() {
 async function saveKey() {
   const i = $('#keyIn'); const v = i.value.trim(); if (!v) { keyMsg('Bitte zuerst einen Schlüssel einfügen.', 'err'); return; }
   try { await api.keySet(v); } catch (e) { keyMsg(String(e?.message || e), 'err'); return; }
-  i.value = ''; S.hasKey = true; openSettings('Gespeichert. Teste …'); await testKey(); renderStart();
+  i.value = ''; S.hasKey = true; openSettings('Gespeichert. Teste …'); await testKey(); renderStart(); { const ct = cur(); if (ct?.mode === 'search' && ct.sErr) loadEntry(ct, true); }
 }
 $('#settings-ov').addEventListener('mousedown', (ev) => { if (ev.target.id === 'settings-ov') closeSettings(); });
 
 /* ---------- Befehle (Menü, Tasten, Klicks) ---------- */
-function setZoom(f) { const t = cur(); if (!t?.native) return; t.zoom = Math.min(3, Math.max(0.3, Math.round(f * 100) / 100)); api.zoom(t.id, t.zoom); toast('Zoom ' + Math.round(t.zoom * 100) + ' %'); }
+function setZoom(f) { const t = cur(); if (!t?.native || t.mode !== 'web') return; t.zoom = Math.min(3, Math.max(0.3, Math.round(f * 100) / 100)); api.zoom(t.id, t.zoom); toast('Zoom ' + Math.round(t.zoom * 100) + ' %'); }
 async function toggleBookmark() {
-  const t = cur(); if (!t?.native || !t.url) return;
+  const t = cur(); if (!t || t.mode === 'start' || !t.url) return;
   const on = !isBookmarked(t.url);
-  S.bookmarks = await api.setBookmark(t.url, t.title || hostOf(t.url), on);
+  S.bookmarks = await api.setBookmark(t.url, t.mode === 'search' ? t.q + ' – Suche' : (t.title || hostOf(t.url)), on);
   toast(on ? 'Lesezeichen hinzugefügt' : 'Lesezeichen entfernt');
   renderToolbar(); renderBar(); renderSide();
 }
@@ -391,10 +498,13 @@ async function runCmd(c) {
     case 'close-tab': closeTab(S.active); break;
     case 'focus-url': await api.focusUI(); url.focus(); url.select(); break;
     case 'find': await api.focusUI(); openFind(); break;
-    case 'reload': if (t?.native) (t.loading ? api.stop : api.reload)(t.id); break;
-    case 'stop': if (t?.native) api.stop(t.id); break;
-    case 'back': if (t?.native) api.back(t.id); break;
-    case 'forward': if (t?.native) api.forward(t.id); break;
+    case 'reload':
+      if (t?.mode === 'web' && t.native) (t.loading ? api.stop : api.reload)(t.id);
+      else if (t?.mode === 'search') { if (t.loading) { t.sTok++; t.loading = false; t.sLoading = false; renderAll(); } else loadEntry(t, true); }
+      break;
+    case 'stop': if (t?.mode === 'web' && t.native) api.stop(t.id); break;
+    case 'back': if (t) goBack(t); break;
+    case 'forward': if (t) goForward(t); break;
     case 'zoom-in': setZoom((t?.zoom || 1) + 0.1); break;
     case 'zoom-out': setZoom((t?.zoom || 1) - 0.1); break;
     case 'zoom-reset': setZoom(1); break;
@@ -405,6 +515,7 @@ async function runCmd(c) {
     case 'show-downloads': openSide('downloads'); break;
     case 'bookmark': toggleBookmark(); break;
     case 'settings': openSettings(); break;
+    case 'toggle-theme': applyTheme(isDark() ? 'light' : 'dark', true); break;
     case 'next-tab': stepTab(1); break;
     case 'prev-tab': stepTab(-1); break;
     default: if (/^tab-\d$/.test(c)) { const n = +c.slice(4); const x = n === 9 ? S.tabs[S.tabs.length - 1] : S.tabs[n - 1]; if (x) activate(x.id); }
@@ -425,7 +536,17 @@ document.addEventListener('click', async (ev) => {
     case 'star': toggleBookmark(); break;
     case 'menu': openMenu(); break;
     case 'toggle-side': runCmd('toggle-side'); break;
-    case 'open-url': (ev.metaKey ? newTab(d.url, { background: true }) : navigate(t, d.url)); break;
+    case 'open-url': (ev.metaKey ? newTab(d.url, { background: true }) : visit(t, d.url)); break;
+    case 'sr-open': ev.preventDefault(); if (ev.metaKey) { newTab(d.url, { background: true }); toast('In neuem Tab geöffnet'); } else openWeb(t, d.url); break;
+    case 'sr-tab': newTab(d.url, { background: true }); toast('In neuem Tab geöffnet'); break;
+    case 'sr-bm': {
+      const on = !isBookmarked(d.url); S.bookmarks = await api.setBookmark(d.url, d.title, on);
+      toast(on ? 'Lesezeichen hinzugefügt' : 'Lesezeichen entfernt'); renderBar(); renderSearchView(); renderSide(); break;
+    }
+    case 'sv-page': openSearch(t, t.q, +d.p); break;
+    case 'sv-filter': t.filter = d.k; renderSearchView(); break;
+    case 'sv-alt': openSearch(t, d.q, 0); break;
+    case 'sv-retry': loadEntry(t, true); break;
     case 'side-tab': S.sideTab = d.k; renderSide(); break;
     case 'rm-bm': S.bookmarks = await api.setBookmark(d.url, '', false); renderToolbar(); renderBar(); renderSide(); break;
     case 'rm-hist': await api.historyRemove(d.url); renderSide(); break;
@@ -436,6 +557,7 @@ document.addEventListener('click', async (ev) => {
     case 'find-next': doFind(true); break;
     case 'find-prev': doFind(false); break;
     case 'find-close': closeFind(); break;
+    case 'theme': applyTheme(d.m, true); openSettings(); break;
     case 'settings': openSettings(); break;
     case 'settings-close': closeSettings(); break;
     case 'open-brave': closeSettings(); newTab('https://brave.com/search/api/'); break;
@@ -446,20 +568,64 @@ document.addEventListener('click', async (ev) => {
 });
 document.addEventListener('submit', (ev) => {
   if (ev.target.id !== 'startForm') return;
-  ev.preventDefault(); const q = $('#startQ').value; if (q.trim()) navigate(cur(), q);
+  ev.preventDefault(); const q = $('#startQ').value; if (q.trim()) visit(cur(), q);
 });
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.id === 'keyIn') { ev.preventDefault(); saveKey(); } if (ev.key === 'Escape') { closeSettings(); closeMenu(); if (S.findOpen && ev.target.id !== 'findIn') closeFind(); } });
+document.addEventListener('keydown', (ev) => {
+  const t = cur();
+  if (t?.mode === 'search' && t.data && !settingsOpen && !['INPUT', 'TEXTAREA'].includes(ev.target.tagName) && !ev.altKey) {
+    const n = (t.data.results || []).length;
+    if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && n && t.filter === 'all') {
+      ev.preventDefault(); t.sel = Math.max(0, Math.min(n - 1, t.sel + (ev.key === 'ArrowDown' ? 1 : -1)));
+      document.querySelectorAll('.sr').forEach((el) => el.classList.toggle('sel', +el.dataset.i === t.sel));
+      document.querySelector('.sr.sel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else if (ev.key === 'Enter' && n && t.filter === 'all' && !ev.metaKey) { ev.preventDefault(); const r = t.data.results[t.sel]; if (r) openWeb(t, r.url); }
+    else if (ev.key === 'Enter' && ev.metaKey && n) { ev.preventDefault(); const r = t.data.results[t.sel]; if (r) { newTab(r.url, { background: true }); toast('In neuem Tab geöffnet'); } }
+    else if (ev.key === '/') { ev.preventDefault(); url.focus(); url.select(); }
+  }
+  if (ev.key === 'Enter' && ev.target.id === 'keyIn') { ev.preventDefault(); saveKey(); } if (ev.key === 'Escape') { closeSettings(); closeMenu(); if (S.findOpen && ev.target.id !== 'findIn') closeFind(); } });
+
+/* ---------- Startbildschirm ---------- */
+const splash = $('#splash');
+let splashT0 = performance.now(), lastStatus = '';
+function splashStep(label, frac) {
+  const s = $('#spStatus'), bar = $('#spBar');
+  if (bar) bar.style.width = Math.round(frac * 100) + '%';
+  if (s && label !== lastStatus) { lastStatus = label; s.classList.remove('sw'); void s.offsetWidth; s.textContent = label; s.classList.add('sw'); }
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitLoaded(t, maxMs) {     // die aktive Seite lädt schon im Hintergrund; kurz warten, damit sie beim Öffnen fertig ist
+  const end = performance.now() + maxMs;
+  while (t && t.mode === 'web' && t.loading && performance.now() < end) await wait(80);
+}
+async function dismissSplash() {
+  if (!splashing) return;
+  const rest = Math.max(0, 1900 - (performance.now() - splashT0));   // Animation soll ausspielen können
+  if (rest) await wait(rest);
+  splashing = false; nativeShow(pendingShow);
+  splash.classList.add('out');
+  setTimeout(() => splash.classList.add('gone'), 760);
+  if (cur()?.mode === 'start') setTimeout(() => $('#url').focus(), 50);
+}
 
 /* ---------- Start ---------- */
+setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie hängen bleiben
 (async function init() {
-  [S.bookmarks, S.downloads, searchBase, S.hasKey] = await Promise.all([api.bookmarks(), api.downloads(), api.searchBase(), api.keyStatus()]);
-  S.downloads = (S.downloads || []).map((d, i) => ({ id: -i - 1, name: d.name, path: d.path, state: 'done', received: 0, total: 0 }));
-  S.bookmarks = S.bookmarks || [];
-  renderBar();
-  // Spotify-Overlay deckt das Fenster ab: native Seiten dafür kurz ausblenden.
-  setHooks({ open() { api.show(-1); }, close() { const t = cur(); if (t && t.native) api.show(t.id); } });
-  initSpotify();
-  await restoreSession();
-  updateFrame();
+  applyTheme(themeMode());
+  // Jeder Schritt zeigt seine Meldung mindestens 320 ms, damit man das Hochfahren sieht – die echte Arbeit läuft währenddessen.
+  const step = (label, frac, work) => { splashStep(label, frac); return Promise.all([work ? work() : null, wait(320)]).then((r) => r[0]); };
+  try {
+    S.hasKey = await step('Einstellungen laden …', 0.14, () => api.keyStatus());
+    [S.bookmarks, S.downloads] = await step('Lesezeichen & Verlauf …', 0.36, () => Promise.all([api.bookmarks(), api.downloads()]));
+    S.downloads = (S.downloads || []).map((d, i) => ({ id: -i - 1, name: d.name, path: d.path, state: 'done', received: 0, total: 0 }));
+    S.bookmarks = S.bookmarks || [];
+    renderBar();
+    // Spotify-Overlay deckt das Fenster ab: native Seiten dafür kurz ausblenden.
+    setHooks({ open() { nativeShow(-1); }, close() { const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id); } });
+    await step('Spotify verbinden …', 0.58, () => initSpotify());
+    await step('Tabs wiederherstellen …', 0.8, async () => { await restoreSession(); updateFrame(); });
+    await step('Seite wird geladen …', 0.94, () => waitLoaded(cur(), 2600));
+    splashStep('Bereit', 1);
+  } catch (e) { console.error(e); }
+  await dismissSplash();
 })();

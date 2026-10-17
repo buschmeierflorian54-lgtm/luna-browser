@@ -14,6 +14,7 @@ export const close = (id) => App.WebClose(id);
 export const find = (id, text, forward) => App.WebFind(id, text, forward);
 export const zoom = (id, f) => App.WebZoom(id, f);
 export const focusUI = () => App.WebFocusUI();
+export const setAppearance = (mode) => App.SetAppearance(mode);
 export const snapshot = (id) => App.WebSnapshot(id);
 
 // Lesezeichen, Verlauf, Downloads, Sitzung
@@ -39,7 +40,7 @@ export const spotifyState = () => App.SpotifyState();
 export const spotifyCommand = (cmd, arg) => App.SpotifyCommand(cmd, arg);
 
 // Eigene Suche (Brave); der Schlüssel wird nur gesendet, nie gelesen
-export const searchBase = () => App.SearchBase();
+export const search = (q, page) => App.Search(q, page);
 export const keyStatus = () => App.SearchKeyStatus();
 export const keySet = (key) => App.SearchKeySet(key);
 export const keyClear = () => App.SearchKeyClear();

@@ -169,7 +169,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) poll
 export function setHooks(h) { Object.assign(hooks, h); }
 export function refresh() { M.sig.banner = ''; render(); }
 export function closeOverlay() { closeOv(); }
-export function initSpotify() { render(); poll(); setInterval(tick, 500); }
+export function initSpotify() { render(); setInterval(tick, 500); return poll(); }   // wartet auf die erste Abfrage
 // path: Ordner, in dem das Banner erscheinen soll (oder null)
 export function setBanner(path, label) {
   if (M.banner === path && M.bannerLabel === (label || '')) return;

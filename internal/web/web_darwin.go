@@ -61,6 +61,18 @@ func Close(id int)                { C.fmwClose(C.int(id)) }
 func Zoom(id int, f float64)      { C.fmwZoom(C.int(id), C.double(f)) }
 func FocusUI()                    { C.fmwFocusUI() }
 
+// SetAppearance: "light", "dark" oder sonst System. Webseiten folgen über prefers-color-scheme.
+func SetAppearance(mode string) {
+	m := 0
+	switch mode {
+	case "light":
+		m = 1
+	case "dark":
+		m = 2
+	}
+	C.fmwSetAppearance(C.int(m))
+}
+
 func Find(id int, text string, forward bool) {
 	c := C.CString(text)
 	defer C.free(unsafe.Pointer(c))
