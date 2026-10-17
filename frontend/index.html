@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="app">
+  <div id="titlebar"><div id="tabs" role="tablist" aria-label="Offene Tabs"></div></div>
+  <div id="body">
+    <div id="main">
+      <div id="panel">
+        <div id="toolbar">
+          <button class="ib" id="bBack" data-act="back" aria-label="Zurück"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+          <button class="ib" id="bFwd" data-act="forward" aria-label="Vor"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+          <button class="ib" id="bReload" data-act="reload" aria-label="Neu laden"></button>
+          <div id="urlbox">
+            <span id="lock"></span>
+            <input id="url" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Suchen oder Adresse eingeben" aria-label="Adresse">
+            <button class="ib sm" id="bStar" data-act="star" aria-label="Lesezeichen"></button>
+          </div>
+          <div id="spChip"></div>
+          <button class="ib" id="bSide" data-act="toggle-side" aria-label="Seitenleiste"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg></button>
+          <button class="ib" id="bMenu" data-act="menu" aria-label="Menü"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+        </div>
+        <div id="progress"><div></div></div>
+        <div id="bmbar" hidden></div>
+        <div id="findbar" hidden>
+          <input id="findIn" type="text" placeholder="Auf der Seite suchen" spellcheck="false" aria-label="Auf der Seite suchen">
+          <span id="findStat"></span>
+          <button class="ib sm" data-act="find-prev" aria-label="Vorheriger Treffer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button class="ib sm" data-act="find-next" aria-label="Nächster Treffer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+          <button class="btn" data-act="find-close">Fertig</button>
+        </div>
+        <div id="page">
+          <div id="start"></div>
+          <img id="pageShot" alt="" hidden>
+        </div>
+      </div>
+    </div>
+    <aside id="side" hidden aria-label="Seitenleiste"></aside>
+  </div>
+</div>
+<div id="spotify-ov" hidden role="dialog" aria-label="Spotify"></div>
+<div id="sugg" hidden></div>
+<div id="menu"></div>
+<div id="toast" role="status"></div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
