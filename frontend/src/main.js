@@ -1,6 +1,7 @@
 import './style.css';
 import * as api from './api.js';
 import { searchHTML } from './searchview.js';
+import logoUrl from './assets/logo.png';
 import { initSpotify, setBanner, refresh as spRefresh, setHooks, closeOverlay } from './spotify.js';
 
 /* ---------- Helfer ---------- */
@@ -271,25 +272,90 @@ function renderBar() {
   bar.innerHTML = S.bookmarks.slice(0, 14).map((b) => `<button class="chip" data-act="open-url" data-url="${esc(b.url)}" title="${esc(b.title)}"><i class="dot">${esc(initial(b.title))}</i><span>${esc(b.title)}</span></button>`).join('');
   updateFrame();
 }
+/* ---------- Startseite ---------- */
+const GREET = () => { const h = new Date().getHours(); return h < 5 ? 'Gute Nacht' : h < 11 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend'; };
+const TIPS = ['Wetter in Berlin', 'Rezept Pasta Carbonara', 'swift concurrency Tutorial', 'brave.com öffnen', 'Fußball Ergebnisse heute', 'Zugverbindung nach Hamburg'];
+const QUICK = [
+  ['show-bookmarks', 'Lesezeichen', '<path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/>'],
+  ['show-history', 'Verlauf', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'],
+  ['show-downloads', 'Downloads', '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'],
+  ['toggle-theme', 'Erscheinungsbild', '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>'],
+  ['settings', 'Einstellungen', '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2.2-1.3L14 3h-4l-.4 2.4a7 7 0 0 0-2.2 1.3l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2.2 1.3L10 21h4l.4-2.4a7 7 0 0 0 2.2-1.3l2.3.9 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/>'],
+];
 function startHTML() {
-  const bms = S.bookmarks.slice(0, 12);
-  return `<div class="hero">Neuer Tab</div>
-  <form id="startForm" style="width:100%;display:flex;justify-content:center"><input class="sbox" id="startQ" type="text" placeholder="Im Web suchen oder Adresse eingeben" spellcheck="false" autocomplete="off"></form>
-  ${S.hasKey ? '' : '<div class="sec"><div class="keyhint"><b>Eigene Suche einrichten</b><span>Hinterlege deinen Brave-API-Schlüssel, dann sucht die Adressleiste über Brave.</span><button class="btn pri" data-act="settings">Einstellungen öffnen</button></div></div>'}
-  <section id="widget-banner" hidden></section>
-  ${bms.length ? `<div class="sec"><h3>Lesezeichen</h3><div class="tiles">${bms.map((b) => `<button class="tile" data-act="open-url" data-url="${esc(b.url)}"><div class="big">${esc(initial(b.title))}</div><span>${esc(b.title)}</span></button>`).join('')}</div></div>` : ''}
-  <div class="sec" id="recent"><h3>Zuletzt besucht</h3><div class="hint">Lade …</div></div>`;
+  const bms = S.bookmarks.slice(0, 10);
+  const d = new Date();
+  const date = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+  const delay = (i) => `style="--d:${120 + i * 55}ms"`;
+  return `<div class="st-bg"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+  <div class="st-scroll"><div class="st-wrap">
+    <header class="st-hero">
+      <div class="st-logo-w"><img class="st-logo" src="${logoUrl}" alt="" draggable="false"><span class="st-halo"></span></div>
+      <div class="st-clock" id="stClock" aria-label="Uhrzeit"></div>
+      <h1 class="st-greet">${GREET()}</h1>
+      <p class="st-date">${esc(date)}</p>
+    </header>
+    <form id="startForm" class="st-search" autocomplete="off">
+      <svg class="st-si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="startQ" type="text" placeholder="Im Web suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
+      <kbd>⌘L</kbd><span class="st-glow"></span>
+    </form>
+    <div class="st-status">${S.hasKey ? '<span class="pill ok"><i></i>Suche bereit · Brave</span>' : '<button class="pill warn" data-act="settings"><i></i>Eigene Suche einrichten – Brave-Schlüssel hinterlegen</button>'}</div>
+    <div class="st-quick">${QUICK.map((q, i) => `<button class="qa" data-act="cmd" data-cmd="${q[0]}" ${delay(i + 3)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${q[2]}</svg>${q[1]}</button>`).join('')}</div>
+    <section id="widget-banner" hidden></section>
+    ${bms.length ? `<section class="st-sec"><h3>Lesezeichen</h3><div class="st-tiles">${bms.map((b, i) => `<button class="st-card tile" data-act="open-url" data-url="${esc(b.url)}" title="${esc(b.title)}" ${delay(i + 6)}><span class="st-glare"></span><div class="big" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</div><span class="tt">${esc(b.title)}</span><span class="th">${esc(hostOf(b.url))}</span></button>`).join('')}</div></section>` : ''}
+    <section class="st-sec" id="recent"><h3>Zuletzt besucht</h3><div class="st-recent"><div class="hint">Lade …</div></div></section>
+  </div></div>`;
 }
+const hueOf = (s) => { let h = 0; for (const c of s || '') h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+
+/* Bewegung: Parallax (Maus), 3D-Neigung des Logos, Lichtreflex auf Karten, laufende Uhr, tippender Platzhalter */
+let startTimers = [];
+function startMotion(el) {
+  startTimers.forEach(clearInterval); startTimers = [];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clock = $('#stClock');
+  const tick = () => { const n = new Date(), sep = n.getSeconds() % 2 ? ' ' : ':'; if (clock) clock.innerHTML = `${String(n.getHours()).padStart(2, '0')}<b>${sep}</b>${String(n.getMinutes()).padStart(2, '0')}`; };
+  tick(); startTimers.push(setInterval(tick, 1000));
+  if (reduce) return;
+  // Parallax + Neigung
+  const wrap = el.querySelector('.st-wrap'); let raf = 0, mx = 0, my = 0;
+  el.addEventListener('pointermove', (e) => {
+    const r = el.getBoundingClientRect(); mx = ((e.clientX - r.left) / r.width - 0.5) * 2; my = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; el.style.setProperty('--mx', mx.toFixed(3)); el.style.setProperty('--my', my.toFixed(3)); });
+    const c = e.target.closest?.('.st-card');
+    if (c) { const cr = c.getBoundingClientRect(), x = e.clientX - cr.left, y = e.clientY - cr.top; c.style.setProperty('--px', x + 'px'); c.style.setProperty('--py', y + 'px'); c.style.setProperty('--ry', ((x / cr.width - 0.5) * 10).toFixed(2) + 'deg'); c.style.setProperty('--rx', ((0.5 - y / cr.height) * 10).toFixed(2) + 'deg'); }
+  });
+  el.addEventListener('pointerleave', () => { el.style.setProperty('--mx', 0); el.style.setProperty('--my', 0); });
+  el.addEventListener('pointerout', (e) => { const c = e.target.closest?.('.st-card'); if (c && !c.contains(e.relatedTarget)) { c.style.setProperty('--rx', '0deg'); c.style.setProperty('--ry', '0deg'); } });
+  // tippender Platzhalter
+  const q = $('#startQ'); let ti = 0, ci = 0, dir = 1, hold = 0;
+  startTimers.push(setInterval(() => {
+    if (!q || document.activeElement === q || q.value) { if (q && !q.value) q.placeholder = 'Im Web suchen oder Adresse eingeben'; return; }
+    if (hold > 0) { hold--; return; }
+    const w = TIPS[ti]; ci += dir;
+    q.placeholder = w.slice(0, Math.max(0, ci)) + (ci < w.length || dir < 0 ? '▍' : '');
+    if (ci >= w.length + 1 && dir > 0) { dir = -1; hold = 14; }
+    if (ci <= 0 && dir < 0) { dir = 1; ti = (ti + 1) % TIPS.length; hold = 4; }
+  }, 85));
+}
+let startSig = '';
 async function renderStart() {
   const t = cur(), el = $('#start');
   const show = t && t.mode === 'start' && !t.lazy;
+  const wasHidden = el.hidden;
   el.hidden = !show;
-  if (!show) { setBanner(null); return; }
+  if (!show) { setBanner(null); startSig = ''; startTimers.forEach(clearInterval); startTimers = []; return; }
+  const sig = [S.hasKey, S.bookmarks.map((b) => b.url).join('|')].join('#');
+  if (!wasHidden && sig === startSig) return;      // nichts geändert: Einblend-Animation nicht neu starten
+  startSig = sig;
   el.innerHTML = startHTML();
+  el.style.setProperty('--mx', 0); el.style.setProperty('--my', 0);
+  startMotion(el);
   setBanner('start', 'Spotify'); spRefresh();
   const h = await api.history('', 8);
-  const box = $('#recent'); if (!box) return;
-  box.innerHTML = '<h3>Zuletzt besucht</h3>' + (h.length ? h.map((v) => `<button class="hrow" data-act="open-url" data-url="${esc(v.url)}"><b>${esc(v.title || hostOf(v.url))}</b><i>${esc(v.url)}</i></button>`).join('') : '<div class="hint">Noch nichts besucht.</div>');
+  const box = $('#recent .st-recent'); if (!box) return;
+  box.innerHTML = h.length ? h.map((v, i) => `<button class="st-card rc" data-act="open-url" data-url="${esc(v.url)}" style="--d:${420 + i * 50}ms"><span class="st-glare"></span><span class="rl" style="--h:${hueOf(hostOf(v.url))}">${esc(initial(v.title || hostOf(v.url)))}</span><span class="rt"><b>${esc(v.title || hostOf(v.url))}</b><i>${esc(hostOf(v.url))}</i></span></button>`).join('') : '<div class="hint">Noch nichts besucht – leg einfach los.</div>';
 }
 function renderSearchView() {
   const t = cur(), el = $('#searchView');
@@ -557,6 +623,7 @@ document.addEventListener('click', async (ev) => {
     case 'find-next': doFind(true); break;
     case 'find-prev': doFind(false); break;
     case 'find-close': closeFind(); break;
+    case 'cmd': runCmd(d.cmd); break;
     case 'theme': applyTheme(d.m, true); openSettings(); break;
     case 'settings': openSettings(); break;
     case 'settings-close': closeSettings(); break;
