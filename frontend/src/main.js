@@ -95,7 +95,7 @@ function visit(t, input) {
 function openWeb(t, url) {
   if (t.id === S.active) $('#url').blur();
   if (t.mode === 'search') { t.cameFromSearch = true; if (t.native) { api.close(t.id); t.native = false; } }   // frische Verlaufskette: Zurück führt zur Suche
-  else if (t.mode === 'start') t.cameFromSearch = false;
+  else if (t.mode === 'start' || t.mode === 'settings') t.cameFromSearch = false;
   t.sTok++; t.sLoading = false;
   t.mode = 'web'; t.under = false; t.fwdWeb = false; t.fwdSearch = false;
   t.url = t.webUrl = url; t.title = t.webTitle = ''; t.native = true; t.lazy = false; t.error = false; t.icon = '';
@@ -107,7 +107,7 @@ function openSearch(t, q, page = 0, opts = {}) {
   q = q.trim(); if (!q) return;
   if (t.id === S.active) $('#url').blur();
   if (t.mode === 'web' && t.native) t.under = true;           // Webseite bleibt (verborgen) darunter, Zurück kehrt zu ihr zurück
-  if (t.mode === 'start') t.under = false;
+  if (t.mode === 'start' || t.mode === 'settings') t.under = false;
   if (!opts.noPush) {
     if (t.mode !== 'search') { t.sHist = []; t.sIdx = -1; }
     t.sHist = t.sHist.slice(0, t.sIdx + 1); t.sHist.push({ q, page, data: null }); t.sIdx = t.sHist.length - 1;
@@ -139,7 +139,7 @@ async function loadEntry(t, force) {
   t.sLoading = false; t.loading = false;
   if (t.id === S.active) { renderAll(); $('#searchView').scrollTop = 0; }
 }
-const canBack = (t) => (t.mode === 'web' ? (t.back || t.cameFromSearch) : t.mode === 'search');
+const canBack = (t) => (t.mode === 'web' ? (t.back || t.cameFromSearch) : t.mode === 'search');   // start/settings: nichts davor
 const canFwd = (t) => (t.mode === 'web' ? (t.fwd || t.fwdSearch) : t.mode === 'search' ? (t.sIdx < t.sHist.length - 1 || t.fwdWeb) : t.fwdSearch);
 function showWeb(t) { t.mode = 'web'; t.url = t.webUrl; t.title = t.webTitle; t.sTok++; t.sLoading = false; t.loading = false; if (t.id === S.active) { nativeShow(t.id); renderAll(); } }
 function showSearchMode(t) { t.mode = 'search'; if (t.id === S.active) nativeShow(-1); loadEntry(t); }
@@ -194,8 +194,8 @@ function saveSession() {
   clearTimeout(sessT);
   if (!S.restore) { api.sessionSave(''); return; }          // Merken ist aus: nichts behalten
   sessT = setTimeout(() => {
-    const tabs = S.tabs.filter((t) => t.url && !t.error).map((t) => ({ url: t.mode === 'web' ? t.webUrl || t.url : t.url, title: t.title }));
-    const act = Math.max(0, S.tabs.filter((t) => t.url && !t.error).findIndex((t) => t.id === S.active));
+    const tabs = S.tabs.filter((t) => t.url && !t.error && t.mode !== 'settings').map((t) => ({ url: t.mode === 'web' ? t.webUrl || t.url : t.url, title: t.title }));
+    const act = Math.max(0, S.tabs.filter((t) => t.url && !t.error && t.mode !== 'settings').findIndex((t) => t.id === S.active));
     api.sessionSave(JSON.stringify({ tabs, active: act }));
   }, 700);
 }
@@ -245,7 +245,7 @@ api.onWeb((e) => {
 function renderTabs() {
   $('#tabs').innerHTML = S.tabs.map((t) => {
     const label = t.title || (t.url ? hostOf(t.url) : 'Neuer Tab');
-    const ico = t.loading ? '<span class="spin"></span>' : t.mode === 'search' ? `<span class="fav">${ICON.search}</span>` : t.icon ? `<img class="fav" src="${esc(t.icon)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fav',innerHTML:window.__globe}))">` : `<span class="fav">${ICON.globe}</span>`;
+    const ico = t.loading ? '<span class="spin"></span>' : t.mode === 'search' ? `<span class="fav">${ICON.search}</span>` : t.mode === 'settings' ? `<span class="fav">${GEAR}</span>` : t.icon ? `<img class="fav" src="${esc(t.icon)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fav',innerHTML:window.__globe}))">` : `<span class="fav">${ICON.globe}</span>`;
     return `<div class="tab ${t.id === S.active ? 'act' : ''}" title="${esc(label)}">${ico}<button class="tlab" role="tab" aria-selected="${t.id === S.active}" data-act="tab" data-id="${t.id}">${esc(label)}</button>${S.tabs.length > 1 ? `<button class="tx" data-act="close" data-id="${t.id}" aria-label="Tab schließen">${ICON.x}</button>` : ''}</div>`;
   }).join('') + `<button class="ib" id="newtab" data-act="new-tab" aria-label="Neuer Tab">${ICON.plus}</button>`;
   $('#body').style.borderRadius = '0';
@@ -257,13 +257,13 @@ function renderToolbar() {
   $('#bBack').classList.toggle('off', !canBack(t));
   $('#bFwd').classList.toggle('off', !canFwd(t));
   $('#bReload').innerHTML = t.loading ? ICON.stop : ICON.reload;
-  $('#bReload').classList.toggle('off', t.mode === 'start');
+  $('#bReload').classList.toggle('off', t.mode === 'start' || t.mode === 'settings');
   const input = $('#url');
-  if (document.activeElement !== input) input.value = shownUrl(t.mode === 'start' ? '' : t.url);
-  $('#lock').innerHTML = t.mode === 'search' ? ICON.search : t.url.startsWith('https://') ? ICON.lock : '';
+  if (document.activeElement !== input) input.value = t.mode === 'settings' ? 'Einstellungen' : shownUrl(t.mode === 'start' ? '' : t.url);
+  $('#lock').innerHTML = t.mode === 'settings' ? GEAR : t.mode === 'search' ? ICON.search : t.url.startsWith('https://') ? ICON.lock : '';
   const bm = !!t.url && isBookmarked(t.url);
   $('#bStar').innerHTML = bm ? ICON.starOn : ICON.star;
-  $('#bStar').classList.toggle('off', t.mode === 'start');
+  $('#bStar').classList.toggle('off', t.mode === 'start' || t.mode === 'settings');
   $('#bSide').classList.toggle('on', S.side);
   const p = $('#progress div');
   p.style.opacity = t.loading ? 1 : 0; p.style.width = (t.loading ? Math.max(8, t.progress * 100) : 100) + '%';
@@ -406,7 +406,7 @@ function renderSearchView() {
   el.innerHTML = searchHTML(t, isBookmarked);
   el.scrollTop = t.sLoading ? 0 : top;
 }
-function renderAll() { renderTabs(); renderToolbar(); renderBar(); renderStart(); renderSearchView(); renderSide(); updateFrame(); }
+function renderAll() { renderTabs(); renderToolbar(); renderBar(); renderStart(); renderSearchView(); renderSettingsView(); renderSide(); updateFrame(); }
 
 /* ---------- Seitenbereich ↔ native Ansicht ---------- */
 let frameT;
@@ -440,7 +440,7 @@ async function cover(on) {
     const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id);
   }
 }
-function closeOverlays() { closeMenu(); closeSugg(); closeOverlay(); closeSettings(); }
+function closeOverlays() { closeMenu(); closeSugg(); closeOverlay(); }
 
 /* ---------- Menü ---------- */
 let menuOpen = false;
@@ -551,50 +551,71 @@ function onDownload(e) {
   if (S.side && S.sideTab === 'downloads') renderSide();
 }
 
-/* ---------- Einstellungen ---------- */
-let settingsOpen = false;
-function closeSettings() {
-  if (!settingsOpen) return;
-  settingsOpen = false; $('#settings-ov').hidden = true; $('#settings-ov').innerHTML = '';
-  const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id);
+/* ---------- Einstellungen: eigene Seite in eigenem Tab ---------- */
+let setMsg = { text: '', kind: '' };
+const GEAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2.2-1.3L14 3h-4l-.4 2.4a7 7 0 0 0-2.2 1.3l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2.2 1.3L10 21h4l.4-2.4a7 7 0 0 0 2.2-1.3l2.3.9 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>';
+const SET_SECTIONS = [['look', 'Darstellung'], ['start', 'Start'], ['search', 'Suche'], ['data', 'Daten']];
+function settingsPageHTML() {
+  const th = themeMode();
+  return `<div class="sp">
+    <nav class="sp-nav" aria-label="Einstellungen"><h1>Einstellungen</h1>${SET_SECTIONS.map(([id, l], i) => `<button class="${i === 0 ? 'on' : ''}" data-act="set-nav" data-s="${id}">${l}</button>`).join('')}</nav>
+    <div class="sp-main">
+      <section id="set-look" class="sp-card"><h2>Darstellung</h2>
+        <p class="muted">Hell, Dunkel oder passend zum System. Webseiten folgen dem Erscheinungsbild.</p>
+        <div class="themes">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<button class="theme ${th === k ? 'on' : ''}" data-act="theme" data-m="${k}"><span class="tp tp-${k}"><i></i><i></i><i></i></span><b>${l}</b></button>`).join('')}</div>
+      </section>
+      <section id="set-start" class="sp-card"><h2>Start</h2>
+        <div class="swrow"><div><b>Zuletzt geöffnete Seiten merken</b><span>${S.restore ? 'Beim nächsten Start öffnen sich die Tabs von zuletzt.' : 'Aus: Der Browser startet immer mit der Startseite.'}</span></div>
+          <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
+      </section>
+      <section id="set-search" class="sp-card"><h2>Suche · Brave API</h2>
+        <p class="muted">Die Adressleiste sucht über die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
+        <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
+        <input id="keyIn" type="password" placeholder="${S.hasKey ? 'Neuen Schlüssel einfügen, um ihn zu ersetzen' : 'Brave-API-Schlüssel einfügen'}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Brave-API-Schlüssel">
+        <div class="row"><button class="btn pri" data-act="key-save">Speichern</button><button class="btn" data-act="key-test" ${S.hasKey ? '' : 'disabled'}>Verbindung testen</button><button class="btn" data-act="key-clear" ${S.hasKey ? '' : 'disabled'}>Entfernen</button></div>
+        <div id="keyMsg" class="kmsg ${setMsg.kind}">${esc(setMsg.text)}</div>
+        <p class="muted small">Der Schlüssel liegt in einer Datei im App-Ordner, die nur dein Benutzer lesen kann (Rechte 0600). Er wird nie angezeigt und nur an Brave gesendet.</p>
+      </section>
+      <section id="set-data" class="sp-card"><h2>Daten</h2>
+        <div class="swrow"><div><b>Verlauf</b><span>Besuchte Seiten und Suchen auf diesem Gerät.</span></div><button class="btn" data-act="clear-history">Löschen</button></div>
+        <div class="swrow"><div><b>Download-Liste</b><span>Entfernt nur die Liste, nicht die Dateien.</span></div><button class="btn" data-act="clear-dl">Leeren</button></div>
+      </section>
+    </div></div>`;
 }
-function settingsHTML(msg, kind) {
-  return `<div class="card" role="document"><header><b>Einstellungen</b><button class="ib sm" data-act="settings-close" aria-label="Schließen">${ICON.x}</button></header>
-    <div class="cbody"><h3>Darstellung</h3>
-    <div class="stabs seg3" role="group" aria-label="Erscheinungsbild">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<button class="${themeMode() === k ? 'on' : ''}" data-act="theme" data-m="${k}">${l}</button>`).join('')}</div>
-    <h3>Start</h3>
-    <div class="swrow"><div><b>Zuletzt geöffnete Seiten merken</b><span>${S.restore ? 'Beim nächsten Start öffnen sich die Tabs von zuletzt.' : 'Aus: Der Browser startet immer mit der Startseite.'}</span></div>
-      <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
-    <h3>Suche · Brave API</h3>
-    <p class="muted">Die Adressleiste sucht über die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
-    <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
-    <input id="keyIn" type="password" placeholder="${S.hasKey ? 'Neuen Schlüssel einfügen, um ihn zu ersetzen' : 'Brave-API-Schlüssel einfügen'}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Brave-API-Schlüssel">
-    <div class="row"><button class="btn pri" data-act="key-save">Speichern</button><button class="btn" data-act="key-test" ${S.hasKey ? '' : 'disabled'}>Verbindung testen</button><button class="btn" data-act="key-clear" ${S.hasKey ? '' : 'disabled'}>Entfernen</button></div>
-    <div id="keyMsg" class="kmsg ${kind || ''}">${esc(msg || '')}</div>
-    <p class="muted small">Der Schlüssel liegt in einer Datei im App-Ordner, die nur dein Benutzer lesen kann (Rechte 0600). Er wird nie angezeigt und nur an Brave gesendet.</p></div></div>`;
+function renderSettingsView() {
+  const t = cur(), el = $('#settingsView');
+  const show = !!t && t.mode === 'settings';
+  el.hidden = !show;
+  if (!show) return;
+  const top = el.scrollTop, typed = $('#keyIn')?.value || '';
+  el.innerHTML = settingsPageHTML();
+  el.scrollTop = top; if (typed) $('#keyIn').value = typed;
 }
+// Öffnet die Einstellungen in einem eigenen Tab (vorhandener Tab wird wiederverwendet).
 function openSettings(msg, kind) {
-  closeMenu(); closeSugg(); closeOverlay();
-  if (!settingsOpen) { settingsOpen = true; nativeShow(-1); }
-  const ov = $('#settings-ov'); ov.hidden = false; ov.innerHTML = settingsHTML(msg, kind);
-  setTimeout(() => $('#keyIn')?.focus(), 0);
+  if (msg !== undefined) setMsg = { text: msg, kind: kind || '' };
+  let t = S.tabs.find((x) => x.mode === 'settings');
+  if (!t) {
+    t = mkTab(S.next++, 'settings:'); t.mode = 'settings'; t.title = 'Einstellungen'; S.tabs.push(t);
+  }
+  if (S.active !== t.id) activate(t.id); else renderAll();
 }
-function keyMsg(text, kind) { const m = $('#keyMsg'); if (m) { m.textContent = text; m.className = 'kmsg ' + (kind || ''); } }
+function keyMsg(text, kind) { setMsg = { text, kind: kind || '' }; const m = $('#keyMsg'); if (m) { m.textContent = text; m.className = 'kmsg ' + (kind || ''); } }
 async function testKey() {
   keyMsg('Teste …');
   try { await api.keyTest(); keyMsg('Verbindung zu Brave funktioniert ✓', 'ok'); } catch (e) { keyMsg(String(e?.message || e), 'err'); }
 }
 async function saveKey() {
-  const i = $('#keyIn'); const v = i.value.trim(); if (!v) { keyMsg('Bitte zuerst einen Schlüssel einfügen.', 'err'); return; }
+  const i = $('#keyIn'); const v = i ? i.value.trim() : ''; if (!v) { keyMsg('Bitte zuerst einen Schlüssel einfügen.', 'err'); return; }
   try { await api.keySet(v); } catch (e) { keyMsg(String(e?.message || e), 'err'); return; }
-  i.value = ''; S.hasKey = true; openSettings('Gespeichert. Teste …'); await testKey(); renderStart(); { const ct = cur(); if (ct?.mode === 'search' && ct.sErr) loadEntry(ct, true); }
+  i.value = ''; S.hasKey = true; setMsg = { text: 'Gespeichert. Teste …', kind: '' }; renderSettingsView(); await testKey(); startSig = ''; renderStart();
+  for (const x of S.tabs) if (x.mode === 'search' && x.sErr) loadEntry(x, true);
 }
-$('#settings-ov').addEventListener('mousedown', (ev) => { if (ev.target.id === 'settings-ov') closeSettings(); });
 
 /* ---------- Befehle (Menü, Tasten, Klicks) ---------- */
 function setZoom(f) { const t = cur(); if (!t?.native || t.mode !== 'web') return; t.zoom = Math.min(3, Math.max(0.3, Math.round(f * 100) / 100)); api.zoom(t.id, t.zoom); toast('Zoom ' + Math.round(t.zoom * 100) + ' %'); }
 async function toggleBookmark() {
-  const t = cur(); if (!t || t.mode === 'start' || !t.url) return;
+  const t = cur(); if (!t || t.mode === 'start' || t.mode === 'settings' || !t.url) return;
   const on = !isBookmarked(t.url);
   S.bookmarks = await api.setBookmark(t.url, t.mode === 'search' ? t.q + ' – Suche' : (t.title || hostOf(t.url)), on);
   toast(on ? 'Lesezeichen hinzugefügt' : 'Lesezeichen entfernt');
@@ -659,8 +680,8 @@ document.addEventListener('click', async (ev) => {
     case 'side-tab': S.sideTab = d.k; renderSide(); break;
     case 'rm-bm': S.bookmarks = await api.setBookmark(d.url, '', false); renderToolbar(); renderBar(); renderSide(); break;
     case 'rm-hist': await api.historyRemove(d.url); renderSide(); break;
-    case 'clear-history': await api.historyClear(); renderSide(); toast('Verlauf gelöscht'); break;
-    case 'clear-dl': S.downloads = []; await api.downloadsClear(); renderSide(); break;
+    case 'clear-history': await api.historyClear(); renderSide(); startSig = ''; renderStart(); toast('Verlauf gelöscht'); break;
+    case 'clear-dl': S.downloads = []; await api.downloadsClear(); renderSide(); toast('Download-Liste geleert'); break;
     case 'dl-open': api.openFile(d.path, false); break;
     case 'dl-reveal': api.openFile(d.path, true); break;
     case 'find-next': doFind(true); break;
@@ -671,15 +692,15 @@ document.addEventListener('click', async (ev) => {
       S.restore = !S.restore;
       try { await api.setPref('restoreSession', S.restore); } catch (e) { S.restore = !S.restore; toast('Konnte nicht gespeichert werden'); }
       if (S.restore) { saveSession(); } else { clearTimeout(sessT); api.sessionSave(''); }
-      openSettings(); break;
+      renderSettingsView(); break;
     }
-    case 'theme': applyTheme(d.m, true); openSettings(); break;
+    case 'theme': applyTheme(d.m, true); renderSettingsView(); renderTabs(); break;
     case 'settings': openSettings(); break;
-    case 'settings-close': closeSettings(); break;
-    case 'open-brave': closeSettings(); newTab('https://brave.com/search/api/'); break;
+    case 'set-nav': { document.getElementById('set-' + d.s)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.querySelectorAll('.sp-nav button').forEach((b) => b.classList.toggle('on', b === a)); break; }
+    case 'open-brave': newTab('https://brave.com/search/api/'); break;
     case 'key-save': saveKey(); break;
     case 'key-test': testKey(); break;
-    case 'key-clear': await api.keyClear(); S.hasKey = false; openSettings('Schlüssel entfernt.'); renderStart(); break;
+    case 'key-clear': await api.keyClear(); S.hasKey = false; setMsg = { text: 'Schlüssel entfernt.', kind: '' }; renderSettingsView(); startSig = ''; renderStart(); break;
   }
 });
 document.addEventListener('submit', (ev) => {
@@ -689,7 +710,7 @@ document.addEventListener('submit', (ev) => {
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
 document.addEventListener('keydown', (ev) => {
   const t = cur();
-  if (t?.mode === 'search' && t.data && !settingsOpen && !['INPUT', 'TEXTAREA'].includes(ev.target.tagName) && !ev.altKey) {
+  if (t?.mode === 'search' && t.data && !['INPUT', 'TEXTAREA'].includes(ev.target.tagName) && !ev.altKey) {
     const n = (t.data.results || []).length;
     if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && n && t.filter === 'all') {
       ev.preventDefault(); t.sel = Math.max(0, Math.min(n - 1, t.sel + (ev.key === 'ArrowDown' ? 1 : -1)));
@@ -699,7 +720,7 @@ document.addEventListener('keydown', (ev) => {
     else if (ev.key === 'Enter' && ev.metaKey && n) { ev.preventDefault(); const r = t.data.results[t.sel]; if (r) { newTab(r.url, { background: true }); toast('In neuem Tab geöffnet'); } }
     else if (ev.key === '/') { ev.preventDefault(); url.focus(); url.select(); }
   }
-  if (ev.key === 'Enter' && ev.target.id === 'keyIn') { ev.preventDefault(); saveKey(); } if (ev.key === 'Escape') { closeSettings(); closeMenu(); if (S.findOpen && ev.target.id !== 'findIn') closeFind(); } });
+  if (ev.key === 'Enter' && ev.target.id === 'keyIn') { ev.preventDefault(); saveKey(); } if (ev.key === 'Escape') { closeMenu(); if (S.findOpen && ev.target.id !== 'findIn') closeFind(); } });
 
 /* ---------- Startbildschirm ---------- */
 const splash = $('#splash');

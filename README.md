@@ -23,7 +23,7 @@ Widget auf der Startseite, Klick öffnet ein Vollbild-Overlay im Fenster (Klick 
 Beim ersten Zugriff fragt macOS nach Automation-Rechten für Spotify.
 
 ## Start und Sitzung
-Standard: Der Browser startet immer mit der Startseite. In den Einstellungen (⌘,) lässt sich „Zuletzt geöffnete Seiten merken“
+Standard: Der Browser startet immer mit der Startseite. In den Einstellungen (⌘,; eigene Seite in eigenem Tab) lässt sich „Zuletzt geöffnete Seiten merken“
 einschalten; dann stellt er beim nächsten Start die Tabs von zuletzt wieder her. Ist es aus, wird nichts gespeichert
 (eine alte Sitzung wird gelöscht). Der Schalter liegt in `prefs.json` im App-Ordner.
 
