@@ -28,6 +28,8 @@ export function OpenFile(arg1:string,arg2:boolean):Promise<void>;
 
 export function Prefs():Promise<Record<string, boolean>>;
 
+export function Screenshot(arg1:number):Promise<string>;
+
 export function Search(arg1:string,arg2:number):Promise<search.Page>;
 
 export function SearchKeyClear():Promise<void>;

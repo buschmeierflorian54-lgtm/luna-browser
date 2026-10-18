@@ -1,6 +1,7 @@
 import './style.css';
 import './gesture-core.js';
 import * as api from './api.js';
+import { IS_NATIVE } from './api.js';
 import { searchHTML } from './searchview.js';
 import logoUrl from './assets/logo.png';
 import { initSpotify, setBanner, refresh as spRefresh, setHooks, closeOverlay } from './spotify.js';
@@ -239,7 +240,10 @@ api.onWeb((e) => {
     case 'close': closeTab(e.tab); break;
     case 'find': $('#findStat').textContent = e.found ? '' : 'Nicht gefunden'; break;
     case 'dl': onDownload(e); break;
-    case 'gesture': if (t && t.id === S.active && S.gesture && t.mode === 'web') toggleNotes(); break;
+    case 'gesture':
+      if (!IS_NATIVE || !t || t.id !== S.active || !S.gesture || t.mode !== 'web') break;   // nur das App-Fenster reagiert (nicht der Entwicklungs-Browserzugang)
+      if (e.kind === 's') takeShot(); else toggleNotes();
+      break;
   }
 });
 
@@ -457,7 +461,7 @@ function openMenu() {
     ['Neuer Tab', '⌘T', 'new-tab'], ['Auf der Seite suchen', '⌘F', 'find'], '-',
     ['Vergrößern', '⌘+', 'zoom-in'], ['Verkleinern', '⌘−', 'zoom-out'], ['Tatsächliche Größe (' + z + ' %)', '⌘0', 'zoom-reset'], '-',
     ['Einstellungen …', '⌘,', 'settings'], [isDark() ? 'Heller Modus' : 'Dunkelmodus', '⇧⌘D', 'toggle-theme'], '-',
-    ['Notizzettel', '⌥⌘N', 'toggle-notes'], ['Lesezeichen', '⌘⌥B', 'show-bookmarks'], ['Verlauf', '⌘Y', 'show-history'], ['Downloads', '⌘⌥L', 'show-downloads'], '-',
+    ['Notizzettel', '⌥⌘N', 'toggle-notes'], ['Screenshot kopieren', '⌥⌘S', 'screenshot'], ['Lesezeichen', '⌘⌥B', 'show-bookmarks'], ['Verlauf', '⌘Y', 'show-history'], ['Downloads', '⌘⌥L', 'show-downloads'], '-',
     [S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', '⇧⌘B', 'toggle-bar'],
   ];
   const m = $('#menu'), r = $('#bMenu').getBoundingClientRect();
@@ -609,8 +613,57 @@ function toggleNotes() {
   if (S.side && S.sideTab === 'notes') { S.side = false; renderToolbar(); renderSide(); return; }
   openSide('notes'); setTimeout(() => $('#noteText')?.focus(), 120);
 }
-// Die Geste für Seiten ohne native Ansicht (Startseite, Suche, Einstellungen); Webseiten melden sie über ein eingeschleustes Skript.
-window.__fmCircle({ target: $('#page'), enabled: () => S.gesture, onCircle: () => { if (cur()?.mode !== 'web') toggleNotes(); } });
+// Die Gesten für Seiten ohne native Ansicht (Startseite, Suche, Einstellungen); Webseiten melden sie über ein eingeschleustes Skript.
+window.__fmCircle({ target: $('#page'), enabled: () => S.gesture,
+  onCircle: () => { if (cur()?.mode !== 'web') toggleNotes(); },
+  onS: () => { if (cur()?.mode !== 'web') takeShot(); } });
+
+/* ---------- Screenshot (S-Geste): Zwischenablage + Kamera-Sound + Animation ---------- */
+let shotBusy = false;
+async function takeShot() {
+  if (shotBusy) return;
+  shotBusy = true;
+  const t = cur(), web = !!t && t.mode === 'web' && t.native;
+  try {
+    const b64 = await api.screenshot(web ? t.id : -1);       // kopiert in die Zwischenablage und spielt den Ton (Go)
+    await shotAnimation('data:image/jpeg;base64,' + b64, web);
+  } catch (e) { toast('Screenshot nicht möglich'); }
+  shotBusy = false;
+}
+// Blitz über dem Seitenbereich, dann schrumpft das Bild als Vorschau in die Ecke (wie bei macOS) und verschwindet wieder.
+async function shotAnimation(src, web) {
+  const page = $('#page').getBoundingClientRect(), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const t = cur(), covered = web && S.cover === 0;
+  const pg = $('#pageShot');
+  if (covered) { pg.src = src; pg.hidden = false; nativeShow(-1); }    // native Seite verbergen, das Foto steht an ihrer Stelle
+  let layer = $('#shotLayer');
+  if (!layer) { layer = document.createElement('div'); layer.id = 'shotLayer'; document.body.appendChild(layer); }
+  layer.innerHTML = '';
+  const place = (el, r) => { el.style.left = r.left + 'px'; el.style.top = r.top + 'px'; el.style.width = r.width + 'px'; el.style.height = r.height + 'px'; };
+  const flash = document.createElement('div'); flash.className = 'shot-flash'; place(flash, page);
+  const img = document.createElement('img'); img.className = 'shot-img'; img.src = src; img.alt = ''; place(img, page);
+  const tw = Math.min(300, page.width * 0.34), th = tw * page.height / page.width;
+  const target = { left: page.right - tw - 26, top: page.bottom - th - 52, width: tw, height: th };
+  const label = document.createElement('div'); label.className = 'shot-label'; label.textContent = 'In Zwischenablage kopiert';
+  label.style.left = target.left + 'px'; label.style.top = (target.top + th + 10) + 'px'; label.style.width = tw + 'px';
+  layer.append(img, flash, label);
+  if (!reduce) {
+    flash.animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: 320, easing: 'ease-out', fill: 'forwards' });
+    await img.animate([{ transform: 'scale(1)' }, { transform: 'scale(.985)', offset: 0.35 }, { transform: 'scale(1)' }], { duration: 260 }).finished.catch(() => {});
+    await img.animate([
+      { left: page.left + 'px', top: page.top + 'px', width: page.width + 'px', height: page.height + 'px', borderRadius: '12px', boxShadow: '0 0 0 rgba(0,0,0,0)' },
+      { left: target.left + 'px', top: target.top + 'px', width: tw + 'px', height: th + 'px', borderRadius: '16px', boxShadow: '0 18px 44px rgba(0,0,0,.45)' },
+    ], { duration: 620, easing: 'cubic-bezier(.2,.9,.25,1)', fill: 'forwards' }).finished.catch(() => {});
+    label.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, fill: 'forwards' });
+    await new Promise((r) => setTimeout(r, 1500));
+    await Promise.all([
+      img.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(40px) scale(.94)' }], { duration: 380, easing: 'ease-in', fill: 'forwards' }).finished,
+      label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).finished,
+    ]).catch(() => {});
+  } else { place(img, target); toast('In Zwischenablage kopiert'); await new Promise((r) => setTimeout(r, 1200)); }
+  layer.innerHTML = '';
+  if (covered) { pg.hidden = true; const c = cur(); if (c && c.native && c.mode === 'web') { updateFrame(); nativeShow(c.id); } }
+}
 
 /* ---------- Downloads ---------- */
 function onDownload(e) {
@@ -650,8 +703,8 @@ function settingsPageHTML() {
           <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
       </section>
       <section id="set-input" class="sp-card"><h2>Bedienung</h2>
-        <div class="swrow"><div><b>Mausgeste: Kreis öffnet den Notizzettel</b><span>${S.gesture ? 'Halte die linke Maustaste gedrückt und zeichne einen Kreis – auf jeder Seite.' : 'Aus: Der Notizzettel öffnet sich nur über das Menü (⌥⌘N).'}</span></div>
-          <button class="switch ${S.gesture ? 'on' : ''}" role="switch" aria-checked="${S.gesture}" aria-label="Mausgeste Kreis" data-act="pref-gesture"><i></i></button></div>
+        <div class="swrow"><div><b>Mausgesten</b><span>${S.gesture ? 'Linke Maustaste halten und zeichnen – ○ Kreis: Notizzettel ein/aus · S: Screenshot in die Zwischenablage.' : 'Aus: Notizzettel (⌥⌘N) und Screenshot (⌥⌘S) gibt es weiter über das Menü.'}</span></div>
+          <button class="switch ${S.gesture ? 'on' : ''}" role="switch" aria-checked="${S.gesture}" aria-label="Mausgesten" data-act="pref-gesture"><i></i></button></div>
       </section>
       <section id="set-search" class="sp-card"><h2>Suche · Brave API</h2>
         <p class="muted">Die Adressleiste sucht über die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
@@ -795,6 +848,7 @@ async function runCmd(c) {
     case 'show-downloads': openSide('downloads'); break;
     case 'bookmark': toggleBookmark(); break;
     case 'toggle-notes': toggleNotes(); break;
+    case 'screenshot': takeShot(); break;
     case 'settings': openSettings(); break;
     case 'toggle-theme': applyTheme(isDark() ? 'light' : 'dark', true); break;
     case 'next-tab': stepTab(1); break;

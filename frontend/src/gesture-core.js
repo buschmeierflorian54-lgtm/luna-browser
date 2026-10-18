@@ -7,6 +7,7 @@
   window.__fmCircle = function (opts) {
     var target = opts.target || window;
     var onCircle = opts.onCircle || function () {};
+    var onS = opts.onS || function () {};
     var enabled = opts.enabled || function () { return window.__fmGesture !== false; };
     var ACCENT = '#d27cb0';
 
@@ -87,9 +88,65 @@
       return { dir: sweep > 0 ? 'cw' : 'ccw', x: cx, y: cy, r: mean };
     }
 
+    /* ---------- S-Erkennung (Vorlagenvergleich, ähnlich dem $1-Erkenner) ---------- */
+    function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+    function resample(p, n) {
+      var L = 0, i; for (i = 1; i < p.length; i++) L += dist(p[i - 1], p[i]);
+      if (L < 1) return null;
+      var step = L / (n - 1), acc = 0, out = [{ x: p[0].x, y: p[0].y }], q = p.slice();
+      for (i = 1; i < q.length; i++) {
+        var d = dist(q[i - 1], q[i]);
+        if (acc + d >= step) {
+          var t = (step - acc) / d, m = { x: q[i - 1].x + t * (q[i].x - q[i - 1].x), y: q[i - 1].y + t * (q[i].y - q[i - 1].y) };
+          out.push(m); q.splice(i, 0, m); acc = 0;
+        } else acc += d;
+      }
+      while (out.length < n) out.push({ x: q[q.length - 1].x, y: q[q.length - 1].y });
+      return out.slice(0, n);
+    }
+    function normalize(p) {                         // Bounding-Box auf 0..1 (je Achse), damit nur die Form zählt
+      var minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9, i;
+      for (i = 0; i < p.length; i++) { minx = Math.min(minx, p[i].x); maxx = Math.max(maxx, p[i].x); miny = Math.min(miny, p[i].y); maxy = Math.max(maxy, p[i].y); }
+      var w = maxx - minx || 1, h = maxy - miny || 1;
+      return p.map(function (q) { return { x: (q.x - minx) / w, y: (q.y - miny) / h }; });
+    }
+    var N = 48, TPL = (function () {                // ein "S": oberer Bogen gegen den Uhrzeigersinn, unterer im Uhrzeigersinn
+      var pts = [], i, a;
+      for (i = 0; i <= 40; i++) { a = (-30 - 240 * i / 40) * Math.PI / 180; pts.push({ x: Math.cos(a) * 0.5, y: -0.5 + Math.sin(a) * 0.5 }); }
+      for (i = 1; i <= 40; i++) { a = (-90 + 240 * i / 40) * Math.PI / 180; pts.push({ x: Math.cos(a) * 0.5, y: 0.5 + Math.sin(a) * 0.5 }); }
+      return normalize(resample(pts, N));
+    })();
+    var TPL_REV = TPL.slice().reverse();
+    function meanDist(a, b) { var s = 0, i; for (i = 0; i < a.length; i++) s += dist(a[i], b[i]); return s / a.length; }
+    function analyzeS(path) {
+      var now = path[path.length - 1].t, i0 = 0;
+      while (i0 < path.length - 1 && now - path[i0].t > 4000) i0++;
+      var p = path.slice(i0);
+      if (p.length < 18) return null;
+      var minx = 1e9, miny = 1e9, maxx = -1e9, maxy = -1e9, i;
+      for (i = 0; i < p.length; i++) { minx = Math.min(minx, p[i].x); maxx = Math.max(maxx, p[i].x); miny = Math.min(miny, p[i].y); maxy = Math.max(maxy, p[i].y); }
+      var w = maxx - minx, h = maxy - miny;
+      if (h < 70 || w < 28 || h / w < 0.8 || h / w > 4) return null;   // groß genug und etwa so hoch wie breit oder höher
+      var rs = resample(p, N); if (!rs) return null;
+      var n = normalize(rs), d = Math.min(meanDist(n, TPL), meanDist(n, TPL_REV));   // von oben nach unten oder umgekehrt gezeichnet
+      return d <= S_MAX ? { d: d } : null;
+    }
+    var S_MAX = (opts.sThreshold || 0.2);
+
     /* ---------- Ereignisse ---------- */
     function end() {
       var had = pts && pts.length > 1;
+      if (pts && !fired && pts.length >= 18 && enabled()) {            // beim Loslassen: war es ein S?
+        var s = analyzeS(pts);
+        if (s) {
+          fired = true;
+          try { var sel = window.getSelection && window.getSelection(); if (sel) sel.removeAllRanges(); } catch (x) { /* egal */ }
+          var mx = 0, my = 0; for (var k = 0; k < pts.length; k++) { mx += pts[k].x; my += pts[k].y; }
+          if (canvas) fadeOut({ x: mx / pts.length, y: my / pts.length, r: 40 });
+          try { onS({ x: mx / pts.length, y: my / pts.length }); } catch (x) { /* nie die Seite stören */ }
+          pts = null; swallow = Date.now() + 450; fired = false; return true;
+        }
+      }
       if (!fired && canvas) fadeOut(null);
       pts = null;
       if (fired) { swallow = Date.now() + 450; }

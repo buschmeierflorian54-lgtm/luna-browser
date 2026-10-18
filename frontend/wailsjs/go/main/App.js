@@ -50,6 +50,10 @@ export function Prefs() {
   return window['go']['main']['App']['Prefs']();
 }
 
+export function Screenshot(arg1) {
+  return window['go']['main']['App']['Screenshot'](arg1);
+}
+
 export function Search(arg1, arg2) {
   return window['go']['main']['App']['Search'](arg1, arg2);
 }

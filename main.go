@@ -15,6 +15,11 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// Kamera-Sound für den Screenshot (S-Geste).
+//
+//go:embed assets/shutter.mp3
+var shutterSound []byte
+
 // Kern der Mausgeste: dieselbe Datei läuft in der Oberfläche und – von hier eingeschleust – in jeder Webseite.
 //
 //go:embed frontend/src/gesture-core.js
@@ -59,6 +64,7 @@ func buildMenu(app *App) *menu.Menu {
 	hist.AddText("Verlauf anzeigen", keys.CmdOrCtrl("y"), cmd("show-history"))
 	hist.AddText("Downloads anzeigen", keys.Combo("l", keys.CmdOrCtrlKey, keys.OptionOrAltKey), cmd("show-downloads"))
 
+	view.AddText("Screenshot der Seite kopieren", keys.Combo("s", keys.CmdOrCtrlKey, keys.OptionOrAltKey), cmd("screenshot"))
 	view.AddText("Notizzettel ein/aus", keys.Combo("n", keys.CmdOrCtrlKey, keys.OptionOrAltKey), cmd("toggle-notes"))
 
 	bm := m.AddSubmenu("Lesezeichen")

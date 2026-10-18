@@ -85,7 +85,14 @@ func (a *App) WebFind(id int, text string, forward bool) { web.Find(id, text, fo
 func (a *App) WebZoom(id int, factor float64)            { web.Zoom(id, factor) }
 
 // SetGesture schaltet die Mausgeste (Kreis) in allen Seiten ein oder aus.
-func (a *App) SetGesture(on bool)                 { web.ConfigureGesture("", on) }
+func (a *App) SetGesture(on bool) { web.ConfigureGesture("", on) }
+
+// Screenshot kopiert die Seite in die Zwischenablage, spielt den Kamera-Sound und liefert eine Vorschau (Base64-JPEG).
+// tab < 0: der Seitenbereich der Oberfläche (Startseite, Suche, Einstellungen).
+func (a *App) Screenshot(tab int) (string, error) {
+	web.PlaySound(shutterSound)
+	return web.Screenshot(tab)
+}
 func (a *App) SetAppearance(mode string)          { web.SetAppearance(mode) }
 func (a *App) WebFocusUI()                        { web.FocusUI() }
 func (a *App) WebSnapshot(id int) (string, error) { return web.Snapshot(id) }
@@ -167,5 +174,5 @@ func hasPref(p map[string]bool, k string) bool { _, ok := p[k]; return ok }
 
 // pageGestureScript: gemeinsamer Kern + Anbindung an die App (Nachricht an window.webkit.messageHandlers.fmGesture).
 func pageGestureScript() string {
-	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onCircle:function(i){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'circle',dir:i.dir});}catch(e){}}});\n})();"
+	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onCircle:function(i){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'circle',dir:i.dir});}catch(e){}},onS:function(){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'s'});}catch(e){}}});\n})();"
 }

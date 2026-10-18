@@ -375,3 +375,54 @@ void fmwConfigureGesture(const char *src, int on) {
 			[t.view evaluateJavaScript:[NSString stringWithFormat:@"window.__fmGesture=%d", on] completionHandler:nil];
 	});
 }
+
+// Kamera-Sound (NSSound aus eingebetteten Bytes; unabhängig von der Webview-Autoplay-Regel)
+static NSSound *gSound;
+void fmwPlaySound(const void *bytes, int len) {
+	NSData *d = [NSData dataWithBytes:bytes length:len];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		gSound = [[NSSound alloc] initWithData:d];
+		[gSound stop];
+		[gSound play];
+	});
+}
+
+// Screenshot der Seite in die Zwischenablage (PNG + TIFF). id >= 0: native Seite; id < 0: der Seitenbereich der Oberfläche.
+// Antwort (JPEG als Base64 für die Animation) kommt über goSnapshotDone; leer = Fehler.
+void fmwScreenshot(int id, int req) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		WKWebView *view = nil;
+		WKSnapshotConfiguration *cfg = [WKSnapshotConfiguration new];
+		FMTab *t = id >= 0 ? gTabs[@(id)] : nil;
+		CGFloat wpt = 0;
+		if (t) { view = t.view; wpt = view.bounds.size.width; }
+		else {
+			for (NSView *v in fmWindow().contentView.subviews) {
+				if (![v isKindOfClass:[WKWebView class]]) continue;
+				BOOL ours = NO;
+				for (FMTab *x in gTabs.allValues) if (x.view == v) ours = YES;
+				if (!ours) { view = (WKWebView *)v; break; }
+			}
+			cfg.rect = NSMakeRect(gRect.origin.x, gRect.origin.y, gRect.size.width, gRect.size.height);
+			wpt = gRect.size.width;
+		}
+		if (!view || wpt < 1) { goSnapshotDone(req, (char *)""); return; }
+		CGFloat scale = view.window.backingScaleFactor ?: 2;
+		cfg.snapshotWidth = @(wpt * scale);          // scharf auf Retina-Displays
+		[view takeSnapshotWithConfiguration:cfg completionHandler:^(NSImage *img, NSError *e) {
+			if (!img) { goSnapshotDone(req, (char *)""); return; }
+			NSData *tiff = [img TIFFRepresentation];
+			NSBitmapImageRep *rep = [NSBitmapImageRep imageRepWithData:tiff];
+			NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+			NSPasteboard *pb = [NSPasteboard generalPasteboard];
+			[pb clearContents];
+			[pb declareTypes:@[NSPasteboardTypePNG, NSPasteboardTypeTIFF] owner:nil];
+			if (png) [pb setData:png forType:NSPasteboardTypePNG];
+			[pb setData:tiff forType:NSPasteboardTypeTIFF];
+			NSData *jpg = [rep representationUsingType:NSBitmapImageFileTypeJPEG properties:@{NSImageCompressionFactor: @0.85}];
+			char *c = strdup([[jpg base64EncodedStringWithOptions:0] UTF8String]);
+			goSnapshotDone(req, c);
+			free(c);
+		}];
+	});
+}

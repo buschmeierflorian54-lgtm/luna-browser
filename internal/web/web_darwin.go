@@ -83,8 +83,8 @@ func Find(id int, text string, forward bool) {
 	C.fmwFind(C.int(id), c, C.int(f))
 }
 
-// Snapshot liefert ein JPEG der Seite als data-URL (damit die Oberfläche kurz über der Seite zeichnen kann).
-func Snapshot(id int) (string, error) {
+// snapshotVia startet eine asynchrone Native-Anfrage und wartet auf das Bild (Base64-JPEG).
+func snapshotVia(start func(req C.int)) (string, error) {
 	snapMu.Lock()
 	snapID++
 	req := snapID
@@ -92,16 +92,39 @@ func Snapshot(id int) (string, error) {
 	snaps[req] = ch
 	snapMu.Unlock()
 	defer func() { snapMu.Lock(); delete(snaps, req); snapMu.Unlock() }()
-	C.fmwSnapshot(C.int(id), C.int(req))
+	start(C.int(req))
 	select {
 	case b := <-ch:
 		if b == "" {
 			return "", errors.New("kein Bild")
 		}
-		return "data:image/jpeg;base64," + b, nil
-	case <-time.After(4 * time.Second):
+		return b, nil
+	case <-time.After(5 * time.Second):
 		return "", errors.New("Zeitüberschreitung")
 	}
+}
+
+// Snapshot liefert ein JPEG der Seite als data-URL (damit die Oberfläche kurz über der Seite zeichnen kann).
+func Snapshot(id int) (string, error) {
+	b, err := snapshotVia(func(req C.int) { C.fmwSnapshot(C.int(id), req) })
+	if err != nil {
+		return "", err
+	}
+	return "data:image/jpeg;base64," + b, nil
+}
+
+// Screenshot legt die Seite (id >= 0) oder den Seitenbereich der Oberfläche (id < 0) in die Zwischenablage
+// und liefert eine Vorschau als Base64-JPEG.
+func Screenshot(id int) (string, error) {
+	return snapshotVia(func(req C.int) { C.fmwScreenshot(C.int(id), req) })
+}
+
+// PlaySound spielt eingebettete Audiodaten (z. B. mp3) ab.
+func PlaySound(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+	C.fmwPlaySound(unsafe.Pointer(&data[0]), C.int(len(data)))
 }
 
 // ConfigureGesture schleust das Mausgesten-Skript in jede Seite ein (src leer = nur Ein/Aus ändern).

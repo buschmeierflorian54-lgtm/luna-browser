@@ -26,7 +26,10 @@ Beim ersten Zugriff fragt macOS nach Automation-Rechten für Spotify.
 Linke Maustaste halten und einen Kreis zeichnen: öffnet das Seitenpanel „Notizen“ mit einem Notizzettel für die aktuelle
 Seite (Schlüssel = Adresse ohne #Anker; Suchen: Suchbegriff). Ein zweiter Kreis schließt das Panel wieder. Auf Webseiten
 läuft die Erkennung in einem eingeschleusten Skript (`frontend/src/gesture-core.js`, per `WKUserScript` in jede Seite,
-Nachricht über `fmGesture`), in der eigenen Oberfläche direkt. Ein/Aus in den Einstellungen (Bedienung); Notizen liegen
+Nachricht über `fmGesture`), in der eigenen Oberfläche direkt. **S zeichnen** (Maustaste halten, Buchstabe S, loslassen) macht einen Screenshot der Seite (Webseite bzw. Seitenbereich der
+Oberfläche) in die Zwischenablage, spielt den Kamera-Sound (`assets/shutter.mp3`, per `NSSound`) und zeigt Blitz und
+fliegende Vorschau. Ohne Berechtigung: Der Screenshot nutzt `WKWebView.takeSnapshot`, braucht also keine Bildschirmaufnahme-Rechte
+(Ränder der App, z. B. Titelleiste, sind nicht enthalten). Ein/Aus in den Einstellungen (Bedienung); Notizen liegen
 in `notes.json`. Menü: Darstellung → Notizzettel ein/aus (⌥⌘N).
 
 ## Lesezeichen

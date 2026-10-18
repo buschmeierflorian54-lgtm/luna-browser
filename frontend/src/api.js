@@ -6,6 +6,7 @@ import { EventsOn } from '../wailsjs/runtime/runtime.js';
 // Der Entwicklungs-Zugang im normalen Browser (http://localhost:34115) teilt sich die nativen Tab-Ansichten mit dem
 // App-Fenster. Damit er dessen Seiten nicht verschiebt oder umschaltet, sendet er native Befehle nur mit ?native=1.
 const NATIVE_OK = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.external) || new URLSearchParams(location.search).has('native');
+export const IS_NATIVE = NATIVE_OK;
 const nat = (fn, fallback) => (...a) => (NATIVE_OK ? fn(...a) : Promise.resolve(fallback));
 export const load = nat((id, url) => App.WebLoad(id, url));
 export const back = nat((id) => App.WebBack(id));
@@ -20,6 +21,8 @@ export const zoom = nat((id, f) => App.WebZoom(id, f));
 export const focusUI = nat(() => App.WebFocusUI());
 export const setGesture = nat((on) => App.SetGesture(on));
 export const setAppearance = nat((mode) => App.SetAppearance(mode));
+// Screenshot ist bewusst nicht gesperrt: Er ändert nichts an den Ansichten (aber: kopiert in die Zwischenablage und spielt den Ton)
+export const screenshot = (id) => App.Screenshot(id);
 export const snapshot = nat((id) => App.WebSnapshot(id), '');
 
 // Lesezeichen, Verlauf, Downloads, Sitzung
