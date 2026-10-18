@@ -27,6 +27,8 @@ export const historyClear = () => App.HistoryClear();
 export const downloads = () => App.Downloads();
 export const downloadAdd = (name, path) => App.DownloadAdd(name, path);
 export const downloadsClear = () => App.DownloadsClear();
+export const prefs = () => App.Prefs();
+export const setPref = (key, v) => App.SetPref(key, v);
 export const sessionSave = (js) => App.SessionSave(js);
 export const sessionLoad = () => App.SessionLoad();
 export const openFile = (path, reveal) => App.OpenFile(path, reveal);

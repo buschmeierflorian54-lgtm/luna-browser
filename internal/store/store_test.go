@@ -30,4 +30,14 @@ func TestStore(t *testing.T) {
 	if len(s2.History("", 10)) != 2 || len(s2.Bookmarks()) != 1 {
 		t.Fatal("nicht persistent")
 	}
+	// Einstellungen
+	if s2.Prefs()["restoreSession"] {
+		t.Fatal("Standard muss aus sein: der Browser startet mit der Startseite")
+	}
+	s2.SetPref("restoreSession", true)
+	s2.SetPref("unbekannt", true)
+	s3, _ := New(s.dir)
+	if !s3.Prefs()["restoreSession"] || s3.Prefs()["unbekannt"] {
+		t.Fatalf("Prefs: %v", s3.Prefs())
+	}
 }

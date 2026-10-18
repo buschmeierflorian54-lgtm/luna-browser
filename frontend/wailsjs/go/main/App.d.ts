@@ -22,6 +22,8 @@ export function HistoryRemove(arg1:string):Promise<void>;
 
 export function OpenFile(arg1:string,arg2:boolean):Promise<void>;
 
+export function Prefs():Promise<Record<string, boolean>>;
+
 export function Search(arg1:string,arg2:number):Promise<search.Page>;
 
 export function SearchKeyClear():Promise<void>;
@@ -39,6 +41,8 @@ export function SessionSave(arg1:string):Promise<void>;
 export function SetAppearance(arg1:string):Promise<void>;
 
 export function SetBookmark(arg1:string,arg2:string,arg3:boolean):Promise<Array<store.Bookmark>>;
+
+export function SetPref(arg1:string,arg2:boolean):Promise<Record<string, boolean>>;
 
 export function SpotifyCommand(arg1:string,arg2:number):Promise<void>;
 

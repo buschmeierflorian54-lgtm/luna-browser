@@ -96,6 +96,8 @@ func (a *App) HistoryClear()                                 { a.st.HistoryClear
 func (a *App) Downloads() []store.Download                   { return a.st.Downloads() }
 func (a *App) DownloadAdd(name, path string)                 { a.st.DownloadAdd(name, path) }
 func (a *App) DownloadsClear()                               { a.st.DownloadsClear() }
+func (a *App) Prefs() map[string]bool                        { return a.st.Prefs() }
+func (a *App) SetPref(key string, v bool) map[string]bool    { return a.st.SetPref(key, v) }
 func (a *App) SessionSave(js string)                         { a.st.SessionSave(js) }
 func (a *App) SessionLoad() string                           { return a.st.SessionLoad() }
 

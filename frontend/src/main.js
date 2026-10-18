@@ -57,7 +57,7 @@ function nativeShow(id) { if (splashing) { pendingShow = id; return; } api.show(
 
 /* ---------- Zustand ---------- */
 const S = {
-  hasKey: false, tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
+  hasKey: false, restore: false, tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
   side: false, sideTab: 'bookmarks', bar: true, cover: 0, sugg: [], suggSel: -1, findOpen: false,
 };
 const tabById = (id) => S.tabs.find((t) => t.id === id);
@@ -192,6 +192,7 @@ function stepTab(d) {
 let sessT;
 function saveSession() {
   clearTimeout(sessT);
+  if (!S.restore) { api.sessionSave(''); return; }          // Merken ist aus: nichts behalten
   sessT = setTimeout(() => {
     const tabs = S.tabs.filter((t) => t.url && !t.error).map((t) => ({ url: t.mode === 'web' ? t.webUrl || t.url : t.url, title: t.title }));
     const act = Math.max(0, S.tabs.filter((t) => t.url && !t.error).findIndex((t) => t.id === S.active));
@@ -199,6 +200,7 @@ function saveSession() {
   }, 700);
 }
 async function restoreSession() {
+  if (!S.restore) { newTab(); return; }                      // Standard: Der Browser startet mit der Startseite
   try {
     const s = JSON.parse(await api.sessionLoad() || 'null');
     if (s && s.tabs && s.tabs.length) {
@@ -560,6 +562,9 @@ function settingsHTML(msg, kind) {
   return `<div class="card" role="document"><header><b>Einstellungen</b><button class="ib sm" data-act="settings-close" aria-label="Schließen">${ICON.x}</button></header>
     <div class="cbody"><h3>Darstellung</h3>
     <div class="stabs seg3" role="group" aria-label="Erscheinungsbild">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<button class="${themeMode() === k ? 'on' : ''}" data-act="theme" data-m="${k}">${l}</button>`).join('')}</div>
+    <h3>Start</h3>
+    <div class="swrow"><div><b>Zuletzt geöffnete Seiten merken</b><span>${S.restore ? 'Beim nächsten Start öffnen sich die Tabs von zuletzt.' : 'Aus: Der Browser startet immer mit der Startseite.'}</span></div>
+      <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
     <h3>Suche · Brave API</h3>
     <p class="muted">Die Adressleiste sucht über die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
     <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
@@ -662,6 +667,12 @@ document.addEventListener('click', async (ev) => {
     case 'find-prev': doFind(false); break;
     case 'find-close': closeFind(); break;
     case 'cmd': runCmd(d.cmd); break;
+    case 'pref-restore': {
+      S.restore = !S.restore;
+      try { await api.setPref('restoreSession', S.restore); } catch (e) { S.restore = !S.restore; toast('Konnte nicht gespeichert werden'); }
+      if (S.restore) { saveSession(); } else { clearTimeout(sessT); api.sessionSave(''); }
+      openSettings(); break;
+    }
     case 'theme': applyTheme(d.m, true); openSettings(); break;
     case 'settings': openSettings(); break;
     case 'settings-close': closeSettings(); break;
@@ -720,7 +731,7 @@ setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie
   // Jeder Schritt zeigt seine Meldung mindestens 320 ms, damit man das Hochfahren sieht – die echte Arbeit läuft währenddessen.
   const step = (label, frac, work) => { splashStep(label, frac); return Promise.all([work ? work() : null, wait(320)]).then((r) => r[0]); };
   try {
-    S.hasKey = await step('Einstellungen laden …', 0.14, () => api.keyStatus());
+    [S.hasKey, S.restore] = await step('Einstellungen laden …', 0.14, async () => [await api.keyStatus(), !!(await api.prefs()).restoreSession]);
     [S.bookmarks, S.downloads] = await step('Lesezeichen & Verlauf …', 0.36, () => Promise.all([api.bookmarks(), api.downloads()]));
     S.downloads = (S.downloads || []).map((d, i) => ({ id: -i - 1, name: d.name, path: d.path, state: 'done', received: 0, total: 0 }));
     S.bookmarks = S.bookmarks || [];
@@ -728,7 +739,7 @@ setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie
     // Spotify-Overlay deckt das Fenster ab: native Seiten dafür kurz ausblenden.
     setHooks({ open() { nativeShow(-1); }, close() { const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id); } });
     await step('Spotify verbinden …', 0.58, () => initSpotify());
-    await step('Tabs wiederherstellen …', 0.8, async () => { await restoreSession(); updateFrame(); });
+    await step(S.restore ? 'Tabs wiederherstellen …' : 'Startseite vorbereiten …', 0.8, async () => { await restoreSession(); updateFrame(); });
     await step('Seite wird geladen …', 0.94, () => waitLoaded(cur(), 2600));
     splashStep('Bereit', 1);
   } catch (e) { console.error(e); }

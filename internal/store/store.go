@@ -37,6 +37,7 @@ type Store struct {
 	bookmarks []Bookmark
 	history   []Visit
 	downloads []Download
+	prefs     map[string]bool
 }
 
 const maxHistory = 5000
@@ -45,10 +46,14 @@ func New(dir string) (*Store, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
-	s := &Store{dir: dir, bookmarks: []Bookmark{}, history: []Visit{}, downloads: []Download{}}
+	s := &Store{dir: dir, bookmarks: []Bookmark{}, history: []Visit{}, downloads: []Download{}, prefs: map[string]bool{}}
 	s.read("bookmarks.json", &s.bookmarks)
 	s.read("history.json", &s.history)
 	s.read("downloads.json", &s.downloads)
+	s.read("prefs.json", &s.prefs)
+	if s.prefs == nil {
+		s.prefs = map[string]bool{}
+	}
 	return s, nil
 }
 
@@ -204,4 +209,30 @@ func (s *Store) SessionLoad() string {
 		return ""
 	}
 	return string(b)
+}
+
+/* Einstellungen (Ein/Aus-Schalter) */
+
+// PrefKeys sind die erlaubten Schlüssel; unbekannte werden abgelehnt.
+var PrefKeys = map[string]bool{"restoreSession": true}
+
+func (s *Store) Prefs() map[string]bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[string]bool, len(s.prefs))
+	for k, v := range s.prefs {
+		out[k] = v
+	}
+	return out
+}
+
+// SetPref setzt einen Schalter und gibt alle Einstellungen zurück.
+func (s *Store) SetPref(key string, v bool) map[string]bool {
+	if PrefKeys[key] {
+		s.mu.Lock()
+		s.prefs[key] = v
+		s.write("prefs.json", s.prefs)
+		s.mu.Unlock()
+	}
+	return s.Prefs()
 }

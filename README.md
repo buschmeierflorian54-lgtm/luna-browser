@@ -22,6 +22,11 @@ Daten: `~/Library/Application Support/browser-mac/`.
 Widget auf der Startseite, Klick öffnet ein Vollbild-Overlay im Fenster (Klick irgendwohin, Esc oder X schließt).
 Beim ersten Zugriff fragt macOS nach Automation-Rechten für Spotify.
 
+## Start und Sitzung
+Standard: Der Browser startet immer mit der Startseite. In den Einstellungen (⌘,) lässt sich „Zuletzt geöffnete Seiten merken“
+einschalten; dann stellt er beim nächsten Start die Tabs von zuletzt wieder her. Ist es aus, wird nichts gespeichert
+(eine alte Sitzung wird gelöscht). Der Schalter liegt in `prefs.json` im App-Ordner.
+
 ## Erscheinungsbild und Start
 Hell, Dunkel oder Automatisch (Einstellungen ⌘, oder ⇧⌘D). Das Theme besteht aus CSS-Variablen; zusätzlich setzt die App
 die System-Erscheinung (`NSApp.appearance`), damit auch Webseiten über `prefers-color-scheme` mitziehen.
