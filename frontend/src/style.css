@@ -416,11 +416,11 @@ input{font-family:inherit}
 #spChip.morph .spChip{opacity:0;transition:none}
 /* Startzustand = Chip (dunkel, 12px Ecken); .show macht daraus die Milchglas-Karte. Größe/Ecken setzt das Skript, damit sie weich wachsen. */
 .spPop{position:fixed;z-index:68;overflow:hidden;color:#fbeef6;box-sizing:border-box;
-  background:#3a2433;-webkit-backdrop-filter:blur(40px) saturate(1.9);backdrop-filter:blur(40px) saturate(1.9);
+  background:#3a2433;-webkit-backdrop-filter:blur(30px) saturate(1.6) brightness(.72);backdrop-filter:blur(30px) saturate(1.6) brightness(.72);
   border:1px solid rgba(255,255,255,.0);box-shadow:0 0 0 rgba(0,0,0,0);
   transition:width .46s cubic-bezier(.2,.95,.25,1.04),height .46s cubic-bezier(.2,.95,.25,1.04),border-radius .46s cubic-bezier(.2,.95,.25,1),background-color .4s,border-color .4s,box-shadow .46s}
 .spPop[hidden]{display:none}
-.spPop.show{background:rgba(34,20,30,.76);border-color:rgba(255,255,255,.16);box-shadow:0 28px 70px rgba(0,0,0,.5),0 2px 10px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.14)}
+.spPop.show{background:rgba(30,18,26,.5);border-color:rgba(255,255,255,.16);box-shadow:0 28px 70px rgba(0,0,0,.5),0 2px 10px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.14)}
 .spPop .pc{position:relative;width:336px;padding:16px;opacity:0;transform:translateY(-6px);transition:opacity .16s ease,transform .2s ease}
 .spPop.show .pc{opacity:1;transform:none;transition:opacity .3s ease .16s,transform .42s cubic-bezier(.2,.9,.3,1) .16s}
 .spPop>.pBg{opacity:0;transition:opacity .4s}.spPop.show>.pBg{opacity:.5;transition:opacity .5s .1s}
@@ -453,3 +453,6 @@ input{font-family:inherit}
 .spPop input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:0;height:0;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);transition:width .12s,height .12s}
 .spPop:hover input[type=range]::-webkit-slider-thumb{width:13px;height:13px}
 @media (prefers-reduced-motion:reduce){.spPop,.spPop .pc,.spPop>.pBg{transition:none}}
+
+/* Der Chip-Platzhalter in der Leiste wächst synchron zur Karte; die Adressleiste weicht flexibel aus. */
+#spChip{flex-shrink:0;transition:width .46s cubic-bezier(.2,.95,.25,1.04)}
