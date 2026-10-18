@@ -395,3 +395,17 @@ input{font-family:inherit}
 .tp-dark{background:#1c1119}.tp-dark i{background:#43293a}.tp-dark i:nth-child(1){background:#d889b8}
 .tp-auto{background:linear-gradient(115deg,#fbf2f7 50%,#1c1119 50%)}.tp-auto i{background:#a24d84}.tp-auto i:nth-child(2){background:#d889b8}
 @media (max-width:760px){.sp{grid-template-columns:1fr}.sp-nav{position:static;flex-direction:row;flex-wrap:wrap}.sp-nav h1{width:100%}}
+
+/* Spotify-Banner: ein-/ausklappbar */
+#widget-banner .bh{display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px}
+#widget-banner .bhT{display:flex;align-items:center;gap:8px;min-width:0;border:0;background:transparent;padding:4px 8px 4px 4px;border-radius:10px;font:800 11px Manrope,sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);max-width:100%}
+#widget-banner .bhT:hover{background:var(--hover);color:var(--ink)}
+#widget-banner .bhT .chev{flex-shrink:0;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+#widget-banner .collapsed .bhT .chev{transform:rotate(-90deg)}
+#widget-banner .bhMini{font-style:normal;font-weight:700;letter-spacing:0;text-transform:none;font-size:12px;color:var(--mute2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0;opacity:0;transition:max-width .35s,opacity .3s}
+#widget-banner .collapsed .bhMini{max-width:46vw;opacity:1;margin-left:2px}
+#widget-banner .bhHint{font-size:11px;font-weight:700;color:var(--mute)}
+.spCollapse{display:grid;grid-template-rows:1fr;opacity:1;transition:grid-template-rows .38s cubic-bezier(.2,.8,.2,1),opacity .3s}
+.spCI{min-height:0;overflow:hidden}
+.collapsed .spCollapse{grid-template-rows:0fr;opacity:0}
+@media (prefers-reduced-motion:reduce){.spCollapse,#widget-banner .chev,#widget-banner .bhMini{transition:none}}

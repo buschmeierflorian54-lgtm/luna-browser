@@ -8,7 +8,7 @@ const mmss = (n) => { n = Math.max(0, Math.floor(n)); return Math.floor(n / 60) 
 
 const M = {
   st: { status: 'off', duration: 0, position: 0, volume: 0 }, at: Date.now(),
-  ov: false, banner: null, bannerLabel: '', hidden: {}, sig: { side: '', banner: '', ov: '' },
+  ov: false, collapsed: (() => { try { return localStorage.getItem('fm-sp-collapsed') === '1'; } catch { return false; } })(), banner: null, bannerLabel: '', hidden: {}, sig: { side: '', banner: '', ov: '' },
   seeking: false, volDrag: false, pollTimer: null,
 };
 const playing = () => M.st.status === 'playing';
@@ -51,13 +51,14 @@ function sideHTML() {
 }
 function bannerHTML() {
   const s = M.st;
-  return `<div class="banner"><div class="bh"><span>${esc(M.bannerLabel)}</span><button data-sp-act="hide-banner">Ausblenden</button></div>
-  <div class="spBan" data-sp-act="open-ov" role="button" tabindex="0" aria-label="Spotify öffnen">${art(96, 14, 28)}
+  const mini = active() ? `${s.title} · ${s.artist}` : statusText();
+  return `<div class="banner ${M.collapsed ? 'collapsed' : ''}"><div class="bh"><button class="bhT" data-sp-act="toggle-banner" aria-expanded="${!M.collapsed}" aria-label="Spotify ein- oder ausklappen"><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span>${esc(M.bannerLabel)}</span><em class="bhMini">${esc(mini)}</em></button><span class="bhHint">${M.collapsed ? 'Ausklappen' : 'Einklappen'}</span></div>
+  <div class="spCollapse"><div class="spCI"><div class="spBan" data-sp-act="open-ov" role="button" tabindex="0" aria-label="Spotify öffnen">${art(96, 14, 28)}
     <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;justify-content:space-between;gap:12px"><div style="min-width:0"><div class="spS">${esc(statusText())}</div><div class="spB1">${esc(active() ? s.title : 'Spotify')}</div><div class="spS" style="font-size:13px;font-weight:600">${esc(active() ? s.artist : (s.message || ''))}</div></div><span class="spTag">Spotify</span></div>
       <div style="display:flex;align-items:center;gap:10px;font-size:11px;font-weight:700;color:#d9bccd"><span data-sp="pos" style="width:32px"></span><div class="spBar" style="flex:1;height:4px;margin:0"><div data-sp="pct"></div></div><span data-sp="dur" style="width:32px;text-align:right"></span></div></div>
     ${active() ? `<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><button class="spBtn" data-sp-act="prev" aria-label="Vorheriger Titel">${I.prev(16)}</button>${toggleBtn(18, 'spPlay')}<button class="spBtn" data-sp-act="next" aria-label="Nächster Titel">${I.next(16)}</button></div>` : ''}
-  </div></div>`;
+  </div></div></div></div>`;
 }
 function ovHTML() {
   const s = M.st;
@@ -88,7 +89,7 @@ function render() {
   const sig = sigOf() + '|' + (playing() ? 1 : 0);
   const side = $('#spChip');
   if (side && M.sig.side !== sig) { side.innerHTML = sideHTML(); M.sig.side = sig; }
-  const ban = $('#widget-banner'), showBan = !!M.banner && !M.hidden[M.banner];
+  const ban = $('#widget-banner'), showBan = !!M.banner;
   if (ban) {            // existiert nur, solange die Startseite sichtbar ist
     ban.hidden = !showBan;
     const bsig = showBan ? sig + '|' + M.bannerLabel : '';
@@ -143,7 +144,13 @@ document.addEventListener('click', (ev) => {
     case 'shuffle': cmd('shuffle'); break;
     case 'repeat': cmd('repeat'); break;
     case 'open-app': cmd('open'); setTimeout(poll, 1500); break;
-    case 'hide-banner': if (M.banner) { M.hidden[M.banner] = true; render(); } break;
+    case 'toggle-banner': {
+      M.collapsed = !M.collapsed;
+      try { localStorage.setItem('fm-sp-collapsed', M.collapsed ? '1' : '0'); } catch { /* nur für diese Sitzung */ }
+      const b = document.querySelector('#widget-banner .banner');      // direkt umschalten, damit der Übergang animiert
+      if (b) { b.classList.toggle('collapsed', M.collapsed); b.querySelector('.bhT')?.setAttribute('aria-expanded', String(!M.collapsed)); const h = b.querySelector('.bhHint'); if (h) h.textContent = M.collapsed ? 'Ausklappen' : 'Einklappen'; }
+      break;
+    }
   }
 }, true);
 document.addEventListener('keydown', (ev) => {
