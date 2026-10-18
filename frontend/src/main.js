@@ -488,7 +488,22 @@ function paintSugg() {
 $('#sugg').addEventListener('mousedown', (ev) => { ev.preventDefault(); const b = ev.target.closest('.sg'); if (b) commitAddress(S.sugg[+b.dataset.i].url); });
 function commitAddress(text) { closeSugg(); url.blur(); visit(cur(), text); }
 url.addEventListener('focus', () => url.select());
-url.addEventListener('input', () => openSugg(url.value));
+// Direkt-Seiten: Wer genau "google" oder "youtube" tippt, landet nach einer kurzen Tipp-Pause sofort dort – ohne Enter.
+// (Kurze Pause, damit "google maps" weiter getippt werden kann; nur beim Tippen/Einfügen, nicht beim Löschen.)
+const QUICK_SITES = { google: 'https://www.google.com', youtube: 'https://www.youtube.com' };
+let quickT = 0;
+function armQuickSite(input, ev) {
+  clearTimeout(quickT);
+  if (ev && ev.inputType && !ev.inputType.startsWith('insert')) return;
+  const key = input.value.trim().toLowerCase();
+  const target = QUICK_SITES[key];
+  if (!target) return;
+  quickT = setTimeout(() => {
+    if (input.value.trim().toLowerCase() !== key) return;
+    closeSugg(); input.blur(); visit(cur(), target);
+  }, 350);
+}
+url.addEventListener('input', (ev) => { openSugg(url.value); armQuickSite(url, ev); });
 url.addEventListener('blur', () => { setTimeout(() => { closeSugg(); renderToolbar(); }, 120); });
 url.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter') { ev.preventDefault(); commitAddress(S.sugg[S.suggSel]?.url ?? url.value); }
@@ -707,6 +722,7 @@ document.addEventListener('submit', (ev) => {
   if (ev.target.id !== 'startForm') return;
   ev.preventDefault(); const q = $('#startQ').value; if (q.trim()) visit(cur(), q);
 });
+document.addEventListener('input', (ev) => { if (ev.target.id === 'startQ') armQuickSite(ev.target, ev); });
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
 document.addEventListener('keydown', (ev) => {
   const t = cur();
