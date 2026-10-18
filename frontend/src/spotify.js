@@ -61,15 +61,15 @@ function bannerHTML() {
   </div></div></div></div>`;
 }
 /* ---------- Mini-Player (Popover beim Überfahren des Chips) ---------- */
-const P = { open: false, covered: false, timer: 0, sig: '' };
+const P = { open: false, covered: false, timer: 0, settle: 0, sig: '' };
 const EXPAND = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
 function popHTML() {
   const s = M.st, bg = s.artwork ? `<div class="pBg" style="background-image:url('${esc(s.artwork)}')"></div>` : '';
   if (!active()) {
     const off = s.status === 'off', stop = s.status === 'stopped';
-    return `${bg}<div class="pMsg"><div class="pT">${esc(statusText())}</div><div class="pA">${esc(s.message || (off ? 'Starte Spotify, um hier Titel zu steuern.' : stop ? 'Wähle in Spotify einen Titel aus.' : ''))}</div>${off || stop ? `<button class="pBtn" data-sp-act="${off ? 'open-app' : 'toggle'}">${off ? 'Spotify starten' : 'Wiedergabe starten'}</button>` : ''}</div>`;
+    return `${bg}<div class="pc"><div class="pMsg"><div class="pT">${esc(statusText())}</div><div class="pA">${esc(s.message || (off ? 'Starte Spotify, um hier Titel zu steuern.' : stop ? 'Wähle in Spotify einen Titel aus.' : ''))}</div>${off || stop ? `<button class="pBtn" data-sp-act="${off ? 'open-app' : 'toggle'}">${off ? 'Spotify starten' : 'Wiedergabe starten'}</button>` : ''}</div></div>`;
   }
-  return `${bg}
+  return `${bg}<div class="pc">
   <div class="pTop"><button class="pArt" data-sp-act="open-ov" aria-label="Vollbild öffnen" title="Vollbild">${art(66, 12, 22)}<span class="pExp">${EXPAND}</span></button>
     <div class="pInfo"><div class="pT">${esc(s.title)}</div><div class="pA">${esc(s.artist)}</div><div class="pAl">${esc(s.album)}</div></div></div>
   <div class="pSeek"><span data-sp="pos"></span><input type="range" min="0" max="${s.duration}" step="1" value="0" data-sp="seek" aria-label="Position"><span data-sp="dur"></span></div>
@@ -77,31 +77,50 @@ function popHTML() {
     <button class="pIc big" data-sp-act="prev" aria-label="Zurück">${I.prev(20)}</button>${toggleBtn(24, 'pPlay')}
     <button class="pIc big" data-sp-act="next" aria-label="Weiter">${I.next(20)}</button>
     <button class="pIc ${s.repeat ? 'on' : ''}" data-sp-act="repeat" aria-label="Wiederholen" aria-pressed="${s.repeat}">${I.repeat}</button></div>
-  <div class="pVol">${I.vol}<input type="range" min="0" max="100" step="1" value="${s.volume}" data-sp="vol" aria-label="Lautstärke"></div>`;
+  <div class="pVol">${I.vol}<input type="range" min="0" max="100" step="1" value="${s.volume}" data-sp="vol" aria-label="Lautstärke"></div></div>`;
 }
-function placePop() {
-  const chip = $('#spChip'), el = $('#spPop'); if (!chip || !el) return;
-  const r = chip.getBoundingClientRect();
-  el.style.top = Math.round(r.bottom + 8) + 'px';
-  el.style.right = Math.max(10, Math.round(innerWidth - r.right)) + 'px';
+const POP_W = 336;
+function chipRect() { const r = $('#spChip').getBoundingClientRect(); return { top: Math.round(r.top), right: Math.max(10, Math.round(innerWidth - r.right)), w: Math.round(r.width), h: Math.round(r.height) }; }
+function placePop() {              // bei Größenänderung: oben bündig mit dem Chip
+  const el = $('#spPop'); if (!el || !P.open) return;
+  const c = chipRect(); el.style.top = c.top + 'px'; el.style.right = c.right + 'px';
 }
+// Der Chip "wandert auf": Die Karte startet exakt auf dem Chip und dehnt sich nach unten und links aus (wie eine Insel).
 async function openPop() {
   if (P.open || M.ov) return;
   P.open = true;
   await hooks.popOpen();                       // nativ gerenderte Seite verbergen (Foto der Seite bleibt stehen)
   if (!P.open) { hooks.popClose(); return; }   // inzwischen wieder zu
   P.covered = true;
-  const el = $('#spPop'); el.innerHTML = popHTML(); P.sig = sigOf() + (playing() ? 1 : 0);
-  placePop(); el.hidden = false; void el.offsetWidth; el.classList.add('show'); tick();
+  const el = $('#spPop'), chip = $('#spChip'), c = chipRect();
+  clearTimeout(P.settle);
+  el.hidden = false; el.classList.remove('show');
+  el.innerHTML = popHTML(); P.sig = sigOf() + (playing() ? 1 : 0);
+  // Zielhöhe messen
+  el.style.transition = 'none'; el.style.top = c.top + 'px'; el.style.right = c.right + 'px'; el.style.width = POP_W + 'px'; el.style.height = 'auto';
+  const H = el.offsetHeight;
+  // Startzustand = Chip
+  el.style.width = c.w + 'px'; el.style.height = c.h + 'px'; el.style.borderRadius = '12px';
+  void el.offsetWidth; el.style.transition = '';
+  chip.classList.add('morph');
+  el.classList.add('show'); el.style.width = POP_W + 'px'; el.style.height = H + 'px'; el.style.borderRadius = '22px';
+  P.settle = setTimeout(() => { if (P.open) el.style.height = 'auto'; }, 520);   // danach darf der Inhalt die Höhe bestimmen
+  tick();
 }
 function closePop(immediate) {
-  clearTimeout(P.timer);
+  clearTimeout(P.timer); clearTimeout(P.settle);
   if (!P.open) return;
   P.open = false;
-  const el = $('#spPop'); el.classList.remove('show');
-  const done = () => { if (!P.open) { el.hidden = true; el.innerHTML = ''; } };
-  if (immediate) done(); else setTimeout(done, 260);
-  if (P.covered) { P.covered = false; setTimeout(() => { if (!P.open) hooks.popClose(); }, immediate ? 0 : 200); }
+  const el = $('#spPop'), chip = $('#spChip');
+  const done = () => { if (!P.open) { el.hidden = true; el.innerHTML = ''; chip.classList.remove('morph'); } };
+  if (immediate) { el.classList.remove('show'); done(); }
+  else {
+    const c = chipRect();
+    el.style.height = el.offsetHeight + 'px'; void el.offsetWidth;     // feste Höhe, damit sie zurückschrumpfen kann
+    el.classList.remove('show'); el.style.width = c.w + 'px'; el.style.height = c.h + 'px'; el.style.borderRadius = '12px';
+    setTimeout(done, 440);
+  }
+  if (P.covered) { P.covered = false; setTimeout(() => { if (!P.open) hooks.popClose(); }, immediate ? 0 : 380); }
 }
 const popLater = (fn, ms) => { clearTimeout(P.timer); P.timer = setTimeout(fn, ms); };
 function wirePop() {
