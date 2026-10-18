@@ -410,49 +410,57 @@ input{font-family:inherit}
 .collapsed .spCollapse{grid-template-rows:0fr;opacity:0}
 @media (prefers-reduced-motion:reduce){.spCollapse,#widget-banner .chev,#widget-banner .bhMini{transition:none}}
 
-/* ---------- Mini-Player (Popover am Spotify-Chip) ---------- */
+/* ---------- Mini-Player: Teil der oberen Leiste (verschmilzt mit ihr) ---------- */
 .spChip{transition:transform .18s,box-shadow .18s,background .18s,opacity .15s}
 .spChip:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(58,36,51,.28)}
 #spChip.morph .spChip{opacity:0;transition:none}
-/* Startzustand = Chip (dunkel, 12px Ecken); .show macht daraus die Milchglas-Karte. Größe/Ecken setzt das Skript, damit sie weich wachsen. */
-.spPop{position:fixed;z-index:68;overflow:hidden;color:#fbeef6;box-sizing:border-box;
-  background:#3a2433;-webkit-backdrop-filter:blur(30px) saturate(1.6) brightness(.72);backdrop-filter:blur(30px) saturate(1.6) brightness(.72);
-  border:1px solid rgba(255,255,255,.0);box-shadow:0 0 0 rgba(0,0,0,0);
-  transition:width .46s cubic-bezier(.2,.95,.25,1.04),height .46s cubic-bezier(.2,.95,.25,1.04),border-radius .46s cubic-bezier(.2,.95,.25,1),background-color .4s,border-color .4s,box-shadow .46s}
+/* Die Karte hat die Farbe der Leiste (Theme), ohne eigenen Rand oben: oben bündig mit dem Panel, nach unten "hängend".
+   Startzustand = Chip (dunkel, 12px Ecken); .show macht daraus die Verlängerung der Leiste mit der verwischten Seite dahinter. */
+.spPop{--E:cubic-bezier(.2,.95,.25,1.04);--tint:color-mix(in srgb,var(--panel) 76%,transparent);position:fixed;z-index:68;box-sizing:border-box;color:var(--ink);
+  transition:width .46s var(--E),height .46s var(--E),top .46s var(--E)}
 .spPop[hidden]{display:none}
-.spPop.show{background:rgba(30,18,26,.5);border-color:rgba(255,255,255,.16);box-shadow:0 28px 70px rgba(0,0,0,.5),0 2px 10px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.14)}
+.spPop .pBody{position:relative;height:100%;overflow:hidden;box-sizing:border-box;background:#3a2433;border:1px solid transparent;border-radius:12px;
+  -webkit-backdrop-filter:blur(30px) saturate(1.5);backdrop-filter:blur(30px) saturate(1.5);
+  transition:border-radius .46s var(--E),background-color .4s,border-color .4s,box-shadow .46s}
+.spPop.show .pBody{background:var(--tint);border-radius:0 0 22px 22px;box-shadow:0 20px 36px -18px rgba(58,36,51,.34)}
+/* Randlinie erst ab der Kante zur Seite (J): im Bereich der Leiste verschmilzt die Karte lückenlos */
+.spPop .pBody:after{content:"";position:absolute;left:-1px;right:-1px;bottom:-1px;top:var(--J,56px);border:1px solid var(--line);border-top:0;border-radius:0 0 22px 22px;opacity:0;pointer-events:none;transition:opacity .2s}
+.spPop.show .pBody:after{opacity:1;transition:opacity .3s .3s}
+/* Hohlkehlen: weicher Anschluss an die Leiste, wo die Karte unter der Leiste sichtbar wird */
+.spPop .pFl,.spPop .pFr{position:absolute;top:var(--J,56px);width:16px;height:16px;opacity:0;pointer-events:none;transition:opacity .12s}
+.spPop .pFl{left:-16px;background:radial-gradient(circle at 0 100%,transparent 15.5px,var(--tint) 16px)}
+.spPop .pFr{right:-16px;background:radial-gradient(circle at 100% 100%,transparent 15.5px,var(--tint) 16px)}
+.spPop.show .pFl,.spPop.show .pFr{opacity:1;transition:opacity .25s .34s}
 .spPop .pc{position:relative;width:336px;padding:16px;opacity:0;transform:translateY(-6px);transition:opacity .16s ease,transform .2s ease}
 .spPop.show .pc{opacity:1;transform:none;transition:opacity .3s ease .16s,transform .42s cubic-bezier(.2,.9,.3,1) .16s}
-.spPop>.pBg{opacity:0;transition:opacity .4s}.spPop.show>.pBg{opacity:.5;transition:opacity .5s .1s}
-.pBg{position:absolute!important;inset:-30px;background-size:cover;background-position:center;filter:blur(36px) saturate(1.5);pointer-events:none;transform:scale(1.2)}
 .pTop{display:flex;gap:14px;align-items:center}
-.pArt{position:relative;flex-shrink:0;width:66px;height:66px;border:0;padding:0;border-radius:12px;background:transparent;box-shadow:0 10px 24px rgba(0,0,0,.45);overflow:hidden;transition:transform .2s}
+.pArt{position:relative;flex-shrink:0;width:66px;height:66px;border:0;padding:0;border-radius:12px;background:transparent;box-shadow:0 8px 20px rgba(58,36,51,.3);overflow:hidden;transition:transform .2s}
 .pArt:hover{transform:scale(1.05)}
-.pArt .spArt{background:#4d3044}
+.pArt .spArt{background:var(--hover);color:var(--ink)}
 .pExp{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.42);color:#fff;opacity:0;transition:opacity .15s}
 .pArt:hover .pExp{opacity:1}
 .pInfo{min-width:0;flex:1}
 .pT{font-size:15px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pA{font-size:12.5px;font-weight:700;color:#f2d3e6;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pAl{font-size:11.5px;font-weight:600;color:#c9a9bc;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pSeek{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:11px;font-weight:700;color:#d9bccd;font-variant-numeric:tabular-nums}
+.pA{font-size:12.5px;font-weight:700;color:var(--ink2);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pAl{font-size:11.5px;font-weight:600;color:var(--mute);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pSeek{display:flex;align-items:center;gap:9px;margin-top:16px;font-size:11px;font-weight:700;color:var(--mute2);font-variant-numeric:tabular-nums}
 .pSeek span{width:32px}.pSeek span:last-child{text-align:right}
 .pSeek input{flex:1}
 .pCtl{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:0 4px}
-.pIc{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:#e8cddc;display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,color .15s,transform .15s}
-.pIc:hover{background:rgba(255,255,255,.14);color:#fff}.pIc:active{transform:scale(.9)}
-.pIc.on{color:#f2b8d8;background:rgba(242,184,216,.18)}
-.pIc.big{color:#fbeef6}
-.pPlay{width:52px;height:52px;border:0;border-radius:50%;background:#fbeef6;color:#3a2433;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 8px 20px rgba(0,0,0,.35);transition:transform .15s}
+.pIc{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:var(--mute2);display:flex;align-items:center;justify-content:center;padding:0;transition:background .15s,color .15s,transform .15s}
+.pIc:hover{background:var(--hover);color:var(--ink)}.pIc:active{transform:scale(.9)}
+.pIc.on{color:var(--acc);background:color-mix(in srgb,var(--acc) 16%,transparent)}
+.pIc.big{color:var(--ink)}
+.pPlay{width:52px;height:52px;border:0;border-radius:50%;background:var(--pri);color:var(--pri-fg);display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 8px 18px rgba(58,36,51,.28);transition:transform .15s}
 .pPlay:hover{transform:scale(1.07)}.pPlay:active{transform:scale(.94)}
-.pVol{display:flex;align-items:center;gap:10px;margin-top:12px;color:#d9bccd}
+.pVol{display:flex;align-items:center;gap:10px;margin-top:12px;color:var(--mute2)}
 .pVol input{flex:1}
 .pMsg{padding:6px 2px 2px;text-align:left}
-.pBtn{margin-top:12px;height:36px;padding:0 16px;border:0;border-radius:12px;background:#fbeef6;color:#3a2433;font:800 13px Manrope,sans-serif}
-.spPop input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;outline:none;background:linear-gradient(90deg,#fbeef6 var(--p,0%),rgba(255,255,255,.24) var(--p,0%))}
-.spPop input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:0;height:0;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.5);transition:width .12s,height .12s}
+.pBtn{margin-top:12px;height:36px;padding:0 16px;border:0;border-radius:12px;background:var(--pri);color:var(--pri-fg);font:800 13px Manrope,sans-serif}
+.spPop input[type=range]{-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;outline:none;background:linear-gradient(90deg,var(--ink) var(--p,0%),var(--line3) var(--p,0%))}
+.spPop input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:0;height:0;border-radius:50%;background:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.4);transition:width .12s,height .12s}
 .spPop:hover input[type=range]::-webkit-slider-thumb{width:13px;height:13px}
-@media (prefers-reduced-motion:reduce){.spPop,.spPop .pc,.spPop>.pBg{transition:none}}
+@media (prefers-reduced-motion:reduce){.spPop,.spPop .pc,.spPop .pBody,.spPop .pFl,.spPop .pFr{transition:none}}
 
 /* Der Chip-Platzhalter in der Leiste wächst synchron zur Karte; die Adressleiste weicht flexibel aus. */
 #spChip{flex-shrink:0;transition:width .46s cubic-bezier(.2,.95,.25,1.04)}

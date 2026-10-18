@@ -61,7 +61,7 @@ function bannerHTML() {
   </div></div></div></div>`;
 }
 /* ---------- Mini-Player (Popover beim Überfahren des Chips) ---------- */
-const P = { open: false, covered: false, timer: 0, settle: 0, sig: '', chipW: 0 };
+const P = { open: false, covered: false, timer: 0, settle: 0, sig: '', chipW: 0, chipTop: 0, chipH: 0 };
 const EXPAND = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
 function popHTML() {
   const s = M.st, bg = '';   // Hintergrund = die verwischte aktuelle Seite (backdrop-filter), kein Cover-Bild
@@ -81,31 +81,38 @@ function popHTML() {
 }
 const POP_W = 336;
 function chipRect() { const r = $('#spChip').getBoundingClientRect(); return { top: Math.round(r.top), right: Math.max(10, Math.round(innerWidth - r.right)), w: Math.round(r.width), h: Math.round(r.height) }; }
-function placePop() {              // bei Größenänderung: oben bündig mit dem Chip
-  const el = $('#spPop'); if (!el || !P.open) return;
-  const c = chipRect(); el.style.top = c.top + 'px'; el.style.right = c.right + 'px';
+// Zielgeometrie: oben bündig mit der Kante des Panels (verschmilzt mit der Leiste), rechts bündig mit dem Chip.
+function popTarget() {
+  const pan = $('#panel').getBoundingClientRect(), pg = $('#page').getBoundingClientRect();
+  const top = Math.round(pan.top) + 1;
+  return { top, junction: Math.max(24, Math.round(pg.top) - top) };   // ab hier ist die Kante gegenüber der Seite sichtbar
 }
-// Der Chip "wandert auf": Die Karte startet exakt auf dem Chip und dehnt sich nach unten und links aus (wie eine Insel).
+function placePop() {              // bei Größenänderung des Fensters
+  const el = $('#spPop'); if (!el || !P.open) return;
+  const c = chipRect(), t = popTarget(); el.style.right = c.right + 'px'; el.style.top = t.top + 'px'; el.style.setProperty('--J', t.junction + 'px');
+}
+// Die Leiste "wächst": Der Chip-Platzhalter wird breiter (Adressleiste weicht), der Player hängt als Teil der Leiste nach unten heraus.
 async function openPop() {
   if (P.open || M.ov) return;
   P.open = true;
   await hooks.popOpen();                       // nativ gerenderte Seite verbergen (Foto der Seite bleibt stehen)
   if (!P.open) { hooks.popClose(); return; }   // inzwischen wieder zu
   P.covered = true;
-  const el = $('#spPop'), chip = $('#spChip'), c = chipRect();
+  const el = $('#spPop'), body = el.querySelector('.pBody'), chip = $('#spChip'), c = chipRect(), t = popTarget();
   clearTimeout(P.settle);
   el.hidden = false; el.classList.remove('show');
-  el.innerHTML = popHTML(); P.sig = sigOf() + (playing() ? 1 : 0);
+  body.innerHTML = popHTML(); P.sig = sigOf() + (playing() ? 1 : 0);
+  el.style.setProperty('--J', t.junction + 'px');
   // Zielhöhe messen
-  el.style.transition = 'none'; el.style.top = c.top + 'px'; el.style.right = c.right + 'px'; el.style.width = POP_W + 'px'; el.style.height = 'auto';
+  el.style.transition = 'none'; el.style.right = c.right + 'px'; el.style.top = t.top + 'px'; el.style.width = POP_W + 'px'; el.style.height = 'auto';
   const H = el.offsetHeight;
-  // Der Chip in der Leiste wächst mit (Breite): die Adressleiste (flex:1) wird dadurch schmaler und macht Platz
-  P.chipW = c.w; chip.style.flex = 'none'; chip.style.width = c.w + 'px'; void chip.offsetWidth;
+  P.chipW = c.w; P.chipTop = c.top; P.chipH = c.h;
+  chip.style.flex = 'none'; chip.style.width = c.w + 'px'; void chip.offsetWidth;
   // Startzustand = Chip
-  el.style.width = c.w + 'px'; el.style.height = c.h + 'px'; el.style.borderRadius = '12px';
+  el.style.top = c.top + 'px'; el.style.width = c.w + 'px'; el.style.height = c.h + 'px';
   void el.offsetWidth; el.style.transition = '';
   chip.classList.add('morph'); chip.style.width = POP_W + 'px';
-  el.classList.add('show'); el.style.width = POP_W + 'px'; el.style.height = H + 'px'; el.style.borderRadius = '22px';
+  el.classList.add('show'); el.style.top = t.top + 'px'; el.style.width = POP_W + 'px'; el.style.height = H + 'px';
   P.settle = setTimeout(() => { if (P.open) el.style.height = 'auto'; }, 520);   // danach darf der Inhalt die Höhe bestimmen
   tick();
 }
@@ -114,12 +121,11 @@ function closePop(immediate) {
   if (!P.open) return;
   P.open = false;
   const el = $('#spPop'), chip = $('#spChip');
-  const done = () => { if (!P.open) { el.hidden = true; el.innerHTML = ''; chip.classList.remove('morph'); chip.style.width = ''; chip.style.flex = ''; } };
+  const done = () => { if (!P.open) { el.hidden = true; el.querySelector('.pBody').innerHTML = ''; chip.classList.remove('morph'); chip.style.width = ''; chip.style.flex = ''; } };
   if (immediate) { el.classList.remove('show'); done(); }
   else {
-    const c = chipRect();
     el.style.height = el.offsetHeight + 'px'; void el.offsetWidth;     // feste Höhe, damit sie zurückschrumpfen kann
-    el.classList.remove('show'); el.style.width = P.chipW + 'px'; el.style.height = c.h + 'px'; el.style.borderRadius = '12px';
+    el.classList.remove('show'); el.style.top = P.chipTop + 'px'; el.style.width = P.chipW + 'px'; el.style.height = P.chipH + 'px';
     chip.style.width = P.chipW + 'px';
     setTimeout(done, 470);
   }
@@ -176,7 +182,7 @@ function render() {
   ov.hidden = !M.ov;
   if (M.ov && M.sig.ov !== sig) { ov.innerHTML = ovHTML(); M.sig.ov = sig; }
   if (!M.ov) M.sig.ov = '';
-  if (P.open && P.covered) { const ps = sigOf() + (playing() ? 1 : 0); if (P.sig !== ps) { P.sig = ps; $('#spPop').innerHTML = popHTML(); } }
+  if (P.open && P.covered) { const ps = sigOf() + (playing() ? 1 : 0); if (P.sig !== ps) { P.sig = ps; $('#spPop .pBody').innerHTML = popHTML(); } }
   tick();
 }
 function tick() {
