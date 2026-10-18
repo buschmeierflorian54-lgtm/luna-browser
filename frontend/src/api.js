@@ -3,19 +3,23 @@ import * as App from '../wailsjs/go/main/App.js';
 import { EventsOn } from '../wailsjs/runtime/runtime.js';
 
 // Tabs (native WKWebViews)
-export const load = (id, url) => App.WebLoad(id, url);
-export const back = (id) => App.WebBack(id);
-export const forward = (id) => App.WebForward(id);
-export const reload = (id) => App.WebReload(id);
-export const stop = (id) => App.WebStop(id);
-export const setFrame = (x, y, w, h) => App.WebSetFrame(x, y, w, h);
-export const show = (id) => App.WebShow(id);
-export const close = (id) => App.WebClose(id);
-export const find = (id, text, forward) => App.WebFind(id, text, forward);
-export const zoom = (id, f) => App.WebZoom(id, f);
-export const focusUI = () => App.WebFocusUI();
-export const setAppearance = (mode) => App.SetAppearance(mode);
-export const snapshot = (id) => App.WebSnapshot(id);
+// Der Entwicklungs-Zugang im normalen Browser (http://localhost:34115) teilt sich die nativen Tab-Ansichten mit dem
+// App-Fenster. Damit er dessen Seiten nicht verschiebt oder umschaltet, sendet er native Befehle nur mit ?native=1.
+const NATIVE_OK = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.external) || new URLSearchParams(location.search).has('native');
+const nat = (fn, fallback) => (...a) => (NATIVE_OK ? fn(...a) : Promise.resolve(fallback));
+export const load = nat((id, url) => App.WebLoad(id, url));
+export const back = nat((id) => App.WebBack(id));
+export const forward = nat((id) => App.WebForward(id));
+export const reload = nat((id) => App.WebReload(id));
+export const stop = nat((id) => App.WebStop(id));
+export const setFrame = nat((x, y, w, h) => App.WebSetFrame(x, y, w, h));
+export const show = nat((id) => App.WebShow(id));
+export const close = nat((id) => App.WebClose(id));
+export const find = nat((id, text, forward) => App.WebFind(id, text, forward));
+export const zoom = nat((id, f) => App.WebZoom(id, f));
+export const focusUI = nat(() => App.WebFocusUI());
+export const setAppearance = nat((mode) => App.SetAppearance(mode));
+export const snapshot = nat((id) => App.WebSnapshot(id), '');
 
 // Lesezeichen, Verlauf, Downloads, Sitzung
 export const bookmarks = () => App.Bookmarks();

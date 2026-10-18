@@ -420,6 +420,8 @@ function updateFrame() {
 }
 new ResizeObserver(updateFrame).observe($('#page'));
 window.addEventListener('resize', updateFrame);
+window.addEventListener('focus', updateFrame);   // Selbstheilung: stimmt die Position der Seite nicht, wird sie beim Zurückkehren ins Fenster korrigiert
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateFrame(); });
 
 // Overlays (Menü, Vorschläge) müssen über der Seite liegen, native Ansichten liegen aber über der Oberfläche.
 // Lösung: kurz ein Foto der Seite zeigen und die native Ansicht verbergen.
@@ -438,7 +440,7 @@ async function cover(on) {
     S.cover = Math.max(0, S.cover - 1);
     if (S.cover) return;
     $('#pageShot').hidden = true;
-    const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id);
+    const t = cur(); if (t && t.native && t.mode === 'web') { updateFrame(); nativeShow(t.id); }   // Maße vor dem Einblenden erneut senden
   }
 }
 function closeOverlays() { closeMenu(); closeSugg(); closeOverlay(); }
