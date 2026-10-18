@@ -2,3 +2,7 @@ node_modules/
 frontend/dist/*
 !frontend/dist/gitkeep
 build/bin/
+
+# Local browser test output
+frontend/test-results/
+frontend/playwright-report/

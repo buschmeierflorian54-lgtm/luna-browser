@@ -5,9 +5,14 @@ import { EventsOn } from '../wailsjs/runtime/runtime.js';
 // Tabs (native WKWebViews)
 // Der Entwicklungs-Zugang im normalen Browser (http://localhost:34115) teilt sich die nativen Tab-Ansichten mit dem
 // App-Fenster. Damit er dessen Seiten nicht verschiebt oder umschaltet, sendet er native Befehle nur mit ?native=1.
-const NATIVE_OK = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.external) || new URLSearchParams(location.search).has('native');
+const NATIVE_OK =
+  !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.external) ||
+  new URLSearchParams(location.search).has('native');
 export const IS_NATIVE = NATIVE_OK;
-const nat = (fn, fallback) => (...a) => (NATIVE_OK ? fn(...a) : Promise.resolve(fallback));
+const nat =
+  (fn, fallback) =>
+  (...a) =>
+    NATIVE_OK ? fn(...a) : Promise.resolve(fallback);
 export const load = nat((id, url) => App.WebLoad(id, url));
 export const back = nat((id) => App.WebBack(id));
 export const forward = nat((id) => App.WebForward(id));
@@ -45,8 +50,8 @@ export const sessionLoad = () => App.SessionLoad();
 export const openFile = (path, reveal) => App.OpenFile(path, reveal);
 
 // Ereignisse aus Go
-export const onWeb = (cb) => EventsOn('web', (j) => cb(JSON.parse(j)));   // Tab-Ereignisse
-export const onCmd = (cb) => EventsOn("cmd", cb);                         // Menü-Befehle
+export const onWeb = (cb) => EventsOn('web', (j) => cb(JSON.parse(j))); // Tab-Ereignisse
+export const onCmd = (cb) => EventsOn('cmd', cb); // Menü-Befehle
 
 // Spotify
 export const spotifyState = () => App.SpotifyState();
@@ -73,10 +78,11 @@ export const sonosConfigure = (on, ids) => App.SonosConfigure(on, ids);
 export const mcpStatus = () => App.MCPStatus();
 export const mcpConfigure = (on) => App.MCPConfigure(on);
 export const mcpCopySetup = () => App.MCPCopySetup();
-export const onMCP = cb => EventsOn('mcp-command', j => cb(JSON.parse(j)));
-export const mcpCommandActive = id => App.MCPCommandActive(id);
-export const mcpReply = (id,value,error) => App.MCPReply(id,JSON.stringify(value ?? null),error || '');
-export const mcpPage = (id,args) => App.MCPPage(id,JSON.stringify(args));
+export const onMCP = (cb) => EventsOn('mcp-command', (j) => cb(JSON.parse(j)));
+export const mcpCommandActive = (id) => App.MCPCommandActive(id);
+export const mcpReply = (id, value, error) =>
+  App.MCPReply(id, JSON.stringify(value ?? null), error || '');
+export const mcpPage = (id, args) => App.MCPPage(id, JSON.stringify(args));
 
 export const setDockIcon = nat((png) => App.SetDockIcon(png));
 
@@ -87,4 +93,4 @@ export const spotifyGetQueue = () => App.SpotifyGetQueue();
 export const spotifyScheduleNext = (uri, title) => App.SpotifyScheduleNext(uri, title);
 export const spotifyCancelNext = () => App.SpotifyCancelNext();
 export const spotifyNextStatus = () => App.SpotifyNextStatus();
-export const onSpotifyNext = cb => EventsOn('spotify-next', j => cb(JSON.parse(j)));
+export const onSpotifyNext = (cb) => EventsOn('spotify-next', (j) => cb(JSON.parse(j)));

@@ -1,21 +1,31 @@
 // Suchansicht: Ergebnisse der eigenen Suche (Brave) als eingebaute Browser-Seite,
 // im selben Design wie Startseite und Seitenleiste (kein fremdes Web-Layout, keine Kopfzeile).
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const esc = (s) =>
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
 const letter = (s) => esc((s || '?').trim().charAt(0).toUpperCase() || '?');
 const secs = (ms) => (ms / 1000).toFixed(2).replace('.', ',');
 
 const I = {
   tab: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M3 10h18M8 6V4h8v2"/></svg>',
   star: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/></svg>',
-  starOn: '<svg width="15" height="15" viewBox="0 0 24 24" fill="#a24d84" stroke="#a24d84" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/></svg>',
+  starOn:
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="#a24d84" stroke="#a24d84" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/></svg>',
   warn: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg>',
   key: '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></svg>',
 };
 
 function fav(url, host) {
-  return url ? `<img class="sr-fav" src="${esc(url)}" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.outerHTML='<span class=&quot;sr-fav fb&quot;>${letter(host)}</span>'">` : `<span class="sr-fav fb">${letter(host)}</span>`;
+  return url
+    ? `<img class="sr-fav" src="${esc(url)}" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.outerHTML='<span class=&quot;sr-fav fb&quot;>${letter(host)}</span>'">`
+    : `<span class="sr-fav fb">${letter(host)}</span>`;
 }
-const thumb = (u, cls) => (u ? `<img class="${cls}" src="${esc(u)}" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'">` : '');
+const thumb = (u, cls) =>
+  u
+    ? `<img class="${cls}" src="${esc(u)}" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.style.display='none'">`
+    : '';
 
 function result(r, i, sel, bm) {
   const on = bm(r.url);
@@ -34,7 +44,8 @@ function result(r, i, sel, bm) {
 
 function strips(d, filter) {
   let h = '';
-  const news = (d.news || []), vids = (d.videos || []);
+  const news = d.news || [],
+    vids = d.videos || [];
   if (news.length && (filter === 'all' || filter === 'news')) {
     h += `<h3 class="sv-h">Nachrichten</h3><div class="${filter === 'news' ? 'sv-grid3' : 'strip'}">${news.map((n) => `<a class="nc" href="${esc(n.url)}" data-act="sr-open" data-url="${esc(n.url)}"><div class="im">${thumb(n.thumb, '')}</div><div class="cb"><div class="ct">${esc(n.title)}</div><div class="cm">${fav(n.favicon, n.host)}<span>${esc(n.host)}${n.age ? ' · ' + esc(n.age) : ''}</span></div></div></a>`).join('')}</div>`;
   }
@@ -45,16 +56,30 @@ function strips(d, filter) {
 }
 
 function pager(t, d) {
-  const cur = t.page; let last = cur; if (d.more && cur < 9) last = cur + 1;
-  const start = Math.max(0, last - 6); const out = [];
-  if (cur > 0) out.push(`<button data-act="sv-page" data-p="${cur - 1}" aria-label="Zurück">←</button>`);
-  for (let i = start; i <= last; i++) out.push(i === cur ? `<span class="cur">${i + 1}</span>` : `<button data-act="sv-page" data-p="${i}">${i + 1}</button>`);
-  if (d.more && cur < 9) out.push(`<button data-act="sv-page" data-p="${cur + 1}" aria-label="Weiter">→</button>`);
+  const cur = t.page;
+  let last = cur;
+  if (d.more && cur < 9) last = cur + 1;
+  const start = Math.max(0, last - 6);
+  const out = [];
+  if (cur > 0)
+    out.push(`<button data-act="sv-page" data-p="${cur - 1}" aria-label="Zurück">←</button>`);
+  for (let i = start; i <= last; i++)
+    out.push(
+      i === cur
+        ? `<span class="cur">${i + 1}</span>`
+        : `<button data-act="sv-page" data-p="${i}">${i + 1}</button>`,
+    );
+  if (d.more && cur < 9)
+    out.push(`<button data-act="sv-page" data-p="${cur + 1}" aria-label="Weiter">→</button>`);
   return out.length > 1 ? `<nav class="sv-pg" aria-label="Seiten">${out.join('')}</nav>` : '';
 }
 
 function skeleton() {
-  return Array.from({ length: 6 }, () => '<div class="sk"><i class="a"></i><div><i class="b"></i><i class="c"></i><i class="d"></i></div></div>').join('');
+  return Array.from(
+    { length: 6 },
+    () =>
+      '<div class="sk"><i class="a"></i><div><i class="b"></i><i class="c"></i><i class="d"></i></div></div>',
+  ).join('');
 }
 
 function problem(t) {
@@ -68,23 +93,45 @@ function problem(t) {
 // t: Tab mit q, page, data, sErr, sLoading, sel, filter; bm(url) sagt, ob ein Lesezeichen existiert.
 export function searchHTML(t, bm) {
   const d = t.data;
-  const head = `<div class="sv-top"><div class="sv-title"><div class="luna-search-brand">Luna Search</div><h1>${esc(t.q)}</h1><span class="sv-meta">${t.sLoading ? 'Suche läuft …' : d ? `Seite ${t.page + 1} · ${secs(d.millis)} s · Brave` : ''}</span></div>${d && !t.sErr ? `<div class="stabs sv-filter" role="tablist">
+  const head = `<div class="sv-top"><div class="sv-title"><div class="luna-search-brand">Luna Search</div><h1>${esc(t.q)}</h1><span class="sv-meta">${t.sLoading ? 'Suche läuft …' : d ? `Seite ${t.page + 1} · ${secs(d.millis)} s · Brave` : ''}</span></div>${
+    d && !t.sErr
+      ? `<div class="stabs sv-filter" role="tablist">
     <button class="${t.filter === 'all' ? 'on' : ''}" data-act="sv-filter" data-k="all">Alle</button>
     <button class="${t.filter === 'news' ? 'on' : ''}" data-act="sv-filter" data-k="news">Nachrichten${d.news?.length ? ' · ' + d.news.length : ''}</button>
-    <button class="${t.filter === 'video' ? 'on' : ''}" data-act="sv-filter" data-k="video">Videos${d.videos?.length ? ' · ' + d.videos.length : ''}</button></div>` : ''}</div>`;
+    <button class="${t.filter === 'video' ? 'on' : ''}" data-act="sv-filter" data-k="video">Videos${d.videos?.length ? ' · ' + d.videos.length : ''}</button></div>`
+      : ''
+  }</div>`;
   if (t.sErr) return `<div class="sv">${head}${problem(t)}</div>`;
-  if (t.sLoading || !d) return `<div class="sv">${head}<div class="sv-grid"><div class="sv-main">${skeleton()}</div></div></div>`;
-  const alt = d.altered ? `<div class="sv-alt">Ergebnisse für <b>${esc(d.altered)}</b>. <button class="link" data-act="sv-alt" data-q="${esc(d.altered)}">Stattdessen „${esc(t.q)}“ suchen</button></div>` : '';
+  if (t.sLoading || !d)
+    return `<div class="sv">${head}<div class="sv-grid"><div class="sv-main">${skeleton()}</div></div></div>`;
+  const alt = d.altered
+    ? `<div class="sv-alt">Ergebnisse für <b>${esc(d.altered)}</b>. <button class="link" data-act="sv-alt" data-q="${esc(d.altered)}">Stattdessen „${esc(t.q)}“ suchen</button></div>`
+    : '';
   let main = '';
   if (t.filter === 'all') {
     const res = d.results || [];
-    const first = res.slice(0, 3).map((r, i) => result(r, i, t.sel, bm)).join('');
-    const rest = res.slice(3).map((r, i) => result(r, i + 3, t.sel, bm)).join('');
-    const faq = (d.faq || []).length ? `<h3 class="sv-h">Häufige Fragen</h3><div class="sv-faq">${d.faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('')}</div>` : '';
-    main = (res.length ? first + strips(d, 'all') + faq + rest : `<div class="sv-msg"><h2>Keine Treffer</h2><p>Zu „${esc(t.q)}“ hat Luna Search nichts gefunden.</p></div>`);
+    const first = res
+      .slice(0, 3)
+      .map((r, i) => result(r, i, t.sel, bm))
+      .join('');
+    const rest = res
+      .slice(3)
+      .map((r, i) => result(r, i + 3, t.sel, bm))
+      .join('');
+    const faq = (d.faq || []).length
+      ? `<h3 class="sv-h">Häufige Fragen</h3><div class="sv-faq">${d.faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('')}</div>`
+      : '';
+    main = res.length
+      ? first + strips(d, 'all') + faq + rest
+      : `<div class="sv-msg"><h2>Keine Treffer</h2><p>Zu „${esc(t.q)}“ hat Luna Search nichts gefunden.</p></div>`;
   } else {
-    main = strips(d, t.filter) || `<div class="sv-msg"><h2>Nichts gefunden</h2><p>Für diese Suche gibt es hier keine ${t.filter === 'news' ? 'Nachrichten' : 'Videos'}.</p></div>`;
+    main =
+      strips(d, t.filter) ||
+      `<div class="sv-msg"><h2>Nichts gefunden</h2><p>Für diese Suche gibt es hier keine ${t.filter === 'news' ? 'Nachrichten' : 'Videos'}.</p></div>`;
   }
-  const info = d.info && t.filter === 'all' && t.page === 0 ? `<aside class="sv-side"><div class="info">${thumb(d.info.thumb, 'in-im')}<div class="ib"><h2>${esc(d.info.title)}</h2>${d.info.desc ? `<p>${d.info.desc}</p>` : ''}${(d.info.attrs || []).length ? `<dl>${d.info.attrs.map((a) => `<dt>${esc(a[0])}</dt><dd>${esc(a[1])}</dd>`).join('')}</dl>` : ''}${d.info.url ? `<a class="go" href="${esc(d.info.url)}" data-act="sr-open" data-url="${esc(d.info.url)}">${esc(d.info.host)} ↗</a>` : ''}</div></div></aside>` : '';
+  const info =
+    d.info && t.filter === 'all' && t.page === 0
+      ? `<aside class="sv-side"><div class="info">${thumb(d.info.thumb, 'in-im')}<div class="ib"><h2>${esc(d.info.title)}</h2>${d.info.desc ? `<p>${d.info.desc}</p>` : ''}${(d.info.attrs || []).length ? `<dl>${d.info.attrs.map((a) => `<dt>${esc(a[0])}</dt><dd>${esc(a[1])}</dd>`).join('')}</dl>` : ''}${d.info.url ? `<a class="go" href="${esc(d.info.url)}" data-act="sr-open" data-url="${esc(d.info.url)}">${esc(d.info.host)} ↗</a>` : ''}</div></div></aside>`
+      : '';
   return `<div class="sv">${head}${alt}<div class="sv-grid ${info ? 'two' : ''}"><div class="sv-main">${main}${t.filter === 'all' ? pager(t, d) : ''}</div>${info}</div></div>`;
 }

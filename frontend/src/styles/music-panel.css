@@ -1,0 +1,671 @@
+/* ---------- Luna Music (Seitenpanel) ---------- */
+.spc:has(#lunaMusicPanel) .spH,
+.spc:has(#lunaMusicPanel) .spDescription,
+.spc:has(#lunaMusicPanel) .spTrail {
+  display: none;
+}
+#spBody:has(#lunaMusicPanel) {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+#lunaMusicPanel {
+  --g: #1db954;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  color: var(--ink);
+}
+.lm-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 14px 14px;
+}
+.lm-header,
+.lm-tabs {
+  flex-shrink: 0;
+}
+.lm-header {
+  padding: 12px 16px 6px !important;
+}
+.lm-tabs {
+  margin: 8px 14px 12px !important;
+}
+#lunaMusicPanel button {
+  font-family: inherit;
+  color: inherit;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+#lunaMusicPanel button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+#lunaMusicPanel button:focus-visible,
+#lunaMusicPanel input:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+.lm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px 12px;
+}
+.lm-header > svg {
+  width: 150px;
+  height: 38px;
+  color: var(--acc);
+}
+#lunaMusicPanel .lm-gear {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mute2);
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.4s;
+}
+#lunaMusicPanel .lm-gear:hover {
+  background: var(--hover);
+  color: var(--ink);
+  transform: rotate(60deg);
+}
+
+/* Player (kompakt, unten) */
+.lm-player {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  flex-shrink: 0;
+  margin: 0 10px 10px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  box-shadow: 0 10px 26px -14px color-mix(in srgb, var(--acc) 60%, transparent);
+}
+.lm-bg {
+  position: absolute;
+  inset: -30px;
+  z-index: -1;
+  background: center/cover no-repeat;
+  filter: blur(28px) saturate(1.5);
+  opacity: 0.5;
+  transition: opacity 0.6s;
+}
+.lm-player.idle .lm-bg {
+  opacity: 0;
+}
+.lm-player::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--card) 62%, transparent);
+}
+.lm-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 10px;
+}
+.lm-cover {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+.lm-cover-in {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+  background: var(--soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--acc);
+  box-shadow: 0 6px 12px -6px #0007;
+}
+.lm-cover-in img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  animation: lm-in 0.5s ease;
+}
+@keyframes lm-in {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lm-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lm-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lm-artist {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mute2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#lunaMusicPanel input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  margin: 0;
+  cursor: pointer;
+  --p: 0%;
+}
+#lunaMusicPanel input[type='range']::-webkit-slider-runnable-track {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--acc) var(--p),
+    color-mix(in srgb, var(--ink) 14%, transparent) var(--p)
+  );
+}
+#lunaMusicPanel input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0;
+  height: 0;
+}
+#lunaMusicPanel input[type='range']:disabled {
+  cursor: default;
+}
+.lm-seek {
+  display: block;
+  width: 100%;
+  height: 9px;
+}
+.lm-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+#lunaMusicPanel .lm-controls button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink2);
+  transition:
+    transform 0.15s,
+    background 0.15s;
+}
+#lunaMusicPanel .lm-controls button:hover {
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+#lunaMusicPanel .lm-controls button:active {
+  transform: scale(0.9);
+}
+#lunaMusicPanel .lm-controls .lm-play {
+  width: 36px;
+  height: 36px;
+  background: var(--pri);
+  color: var(--pri-fg);
+}
+#lunaMusicPanel .lm-controls .lm-play:hover {
+  background: var(--pri-h);
+}
+
+/* Tabs */
+.lm-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  margin: 16px 0 14px;
+  border-radius: 14px;
+  background: var(--soft);
+  border: 1px solid var(--line2);
+}
+.lm-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 2px 8px #3a243322;
+  transition: transform 0.3s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+#lunaMusicPanel[data-section='queue'] .lm-pill {
+  transform: translateX(100%);
+}
+#lunaMusicPanel .lm-tabs button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--mute2);
+  transition: color 0.2s;
+}
+#lunaMusicPanel .lm-tabs button[aria-selected='true'] {
+  color: var(--ink);
+}
+
+/* Suche */
+.lm-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 6px 0 13px;
+  border-radius: 21px;
+  background: var(--input);
+  border: 1px solid var(--line3);
+  color: var(--mute);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
+}
+.lm-search:focus-within {
+  border-color: var(--acc);
+  background: var(--card);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--acc) 16%, transparent);
+}
+.lm-search svg {
+  flex-shrink: 0;
+}
+.lm-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font:
+    600 12.5px Manrope,
+    sans-serif;
+  outline: none !important;
+}
+.lm-search input::placeholder {
+  color: var(--mute);
+}
+#lunaMusicPanel .lm-clear {
+  display: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  color: var(--mute2);
+}
+#lunaMusicPanel .lm-clear:hover {
+  background: var(--hover);
+}
+.lm-search.has .lm-clear {
+  display: flex;
+}
+
+#lunaMusicPanel h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 20px 3px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+#lunaMusicPanel h3 em {
+  font-style: normal;
+  letter-spacing: 0;
+  padding: 1px 7px;
+  border-radius: 9px;
+  background: var(--soft);
+  color: var(--mute2);
+}
+
+/* Zeilen */
+.lm-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--soft);
+  color: var(--acc);
+}
+.lm-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lm-art.rd {
+  border-radius: 50%;
+}
+.lm-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 6px;
+  margin: 0 -6px;
+  border-radius: 14px;
+  transition: background 0.15s;
+  min-width: 0;
+  animation: lm-up 0.35s both;
+}
+.lm-row:hover {
+  background: var(--soft);
+}
+.lm-row[draggable='true'] {
+  cursor: grab;
+}
+.lm-row.now {
+  background: color-mix(in srgb, var(--acc) 11%, transparent);
+}
+.lm-row.now .lm-rt b {
+  color: var(--acc);
+}
+.lm-rt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lm-rt b {
+  font-size: 12.5px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lm-rt small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mute2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lm-ra {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transform: translateX(6px);
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.lm-row:hover .lm-ra,
+.lm-row:focus-within .lm-ra {
+  opacity: 1;
+  transform: none;
+}
+#lunaMusicPanel .lm-ra button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mute2);
+}
+#lunaMusicPanel .lm-ra button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+#lunaMusicPanel .lm-ra .go {
+  background: var(--pri);
+  color: var(--pri-fg);
+}
+#lunaMusicPanel .lm-ra .go:hover {
+  background: var(--pri-h);
+  color: var(--pri-fg);
+}
+@keyframes lm-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.lm-row:nth-child(2) {
+  animation-delay: 0.03s;
+}
+.lm-row:nth-child(3) {
+  animation-delay: 0.06s;
+}
+.lm-row:nth-child(4) {
+  animation-delay: 0.09s;
+}
+.lm-row:nth-child(5) {
+  animation-delay: 0.12s;
+}
+.lm-row:nth-child(n + 6) {
+  animation-delay: 0.15s;
+}
+
+/* Karten (Künstler/Alben) */
+.lm-rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  margin: 0 -14px;
+  padding: 2px 14px 10px;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 14px;
+  scrollbar-width: none;
+}
+.lm-rail::-webkit-scrollbar {
+  display: none;
+}
+#lunaMusicPanel .lm-card {
+  flex: 0 0 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  padding: 0;
+  text-align: left;
+  scroll-snap-align: start;
+  transition: transform 0.2s;
+}
+#lunaMusicPanel .lm-card:hover {
+  transform: translateY(-3px);
+  background: transparent;
+}
+.lm-card .lm-art {
+  width: 104px;
+  height: 104px;
+  border-radius: 14px;
+  margin-bottom: 6px;
+  box-shadow: 0 10px 20px -10px #0006;
+}
+.lm-card .lm-art.rd {
+  border-radius: 50%;
+}
+.lm-card b {
+  max-width: 100%;
+  font-size: 11.5px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lm-card small {
+  max-width: 100%;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--mute2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lm-card.round {
+  align-items: center;
+  text-align: center;
+}
+.lm-card.round b,
+.lm-card.round small {
+  text-align: center;
+}
+
+/* Leer / Laden */
+.lm-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 34px 14px 20px;
+}
+.lm-eic {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  background: color-mix(in srgb, var(--acc) 13%, var(--soft));
+  color: var(--acc);
+}
+.lm-empty b {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.lm-empty p {
+  margin: 0;
+  max-width: 240px;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--mute2);
+}
+#lunaMusicPanel .lm-cta {
+  margin-top: 10px;
+  padding: 9px 16px;
+  border-radius: 19px;
+  background: var(--pri);
+  color: var(--pri-fg);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+#lunaMusicPanel .lm-cta:hover {
+  background: var(--pri-h);
+}
+.lm-skel > div {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 0;
+}
+.lm-skel i,
+.lm-skel u {
+  display: block;
+  background: linear-gradient(90deg, var(--soft) 30%, var(--hover) 50%, var(--soft) 70%) 0 0/300%
+    100%;
+  animation: lm-sh 1.2s linear infinite;
+}
+.lm-skel i {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+}
+.lm-skel span {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.lm-skel u {
+  height: 9px;
+  border-radius: 5px;
+  width: 80%;
+}
+.lm-skel u + u {
+  width: 50%;
+}
+@keyframes lm-sh {
+  to {
+    background-position: -300% 0;
+  }
+}
+.lm-qbar {
+  display: flex;
+  justify-content: flex-end;
+}
+#lunaMusicPanel .lm-qbar button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mute2);
+}
+#lunaMusicPanel .lm-qbar button:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.lm-note {
+  margin: 18px 3px 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--mute);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lm-row,
+  .lm-cover-in img,
+  .lm-skel i,
+  .lm-skel u {
+    animation: none;
+  }
+  .lm-pill,
+  .lm-cover {
+    transition: none;
+  }
+}

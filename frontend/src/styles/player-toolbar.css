@@ -1,0 +1,437 @@
+/* Spotify-Banner: ein-/ausklappbar */
+#widget-banner .bh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 8px;
+}
+#widget-banner .bhT {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 4px 8px 4px 4px;
+  border-radius: 10px;
+  font:
+    800 11px Manrope,
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+  max-width: 100%;
+}
+#widget-banner .bhT:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+#widget-banner .bhT .chev {
+  flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+#widget-banner .collapsed .bhT .chev {
+  transform: rotate(-90deg);
+}
+#widget-banner .bhMini {
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 12px;
+  color: var(--mute2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0;
+  opacity: 0;
+  transition:
+    max-width 0.35s,
+    opacity 0.3s;
+}
+#widget-banner .collapsed .bhMini {
+  max-width: 46vw;
+  opacity: 1;
+  margin-left: 2px;
+}
+#widget-banner .bhHint {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mute);
+}
+.spCollapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.3s;
+}
+.spCI {
+  min-height: 0;
+  overflow: hidden;
+}
+.collapsed .spCollapse {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spCollapse,
+  #widget-banner .chev,
+  #widget-banner .bhMini {
+    transition: none;
+  }
+}
+
+/* ---------- Mini-Player: Teil der oberen Leiste (verschmilzt mit ihr) ---------- */
+.spChip {
+  transition:
+    transform 0.18s,
+    box-shadow 0.18s,
+    background 0.18s,
+    opacity 0.15s;
+}
+.spChip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(58, 36, 51, 0.28);
+}
+#spChip.morph .spChip {
+  opacity: 0;
+  transition: none;
+}
+/* Die Karte hat die Farbe der Leiste (Theme), ohne eigenen Rand oben: oben bündig mit dem Panel, nach unten "hängend".
+   Startzustand = Chip (dunkel, 12px Ecken); .show macht daraus die Verlängerung der Leiste mit der verwischten Seite dahinter. */
+.spPop {
+  --E: cubic-bezier(0.2, 0.95, 0.25, 1.04);
+  --tint: color-mix(in srgb, var(--panel) 76%, transparent);
+  position: fixed;
+  z-index: 68;
+  box-sizing: border-box;
+  color: var(--ink);
+  transition:
+    width 0.46s var(--E),
+    height 0.46s var(--E),
+    top 0.46s var(--E);
+}
+.spPop[hidden] {
+  display: none;
+}
+.spPop .pBody {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: #3a2433;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  backdrop-filter: blur(30px) saturate(1.5);
+  transition:
+    border-radius 0.46s var(--E),
+    background-color 0.4s,
+    border-color 0.4s,
+    box-shadow 0.46s;
+}
+.spPop.show .pBody {
+  background: var(--tint);
+  border-radius: 0 0 22px 22px;
+  box-shadow: 0 26px 48px -22px rgba(58, 36, 51, 0.3);
+}
+/* Sanfter Übergang: In der Leiste ist die Karte deckend in Leistenfarbe und läuft unterhalb der Kante über ~70px in das Glas aus */
+.spPop .pBody:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(var(--J, 56px) + 70px);
+  background: linear-gradient(
+    to bottom,
+    var(--panel) 0,
+    var(--panel) var(--J, 56px),
+    transparent 100%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.spPop.show .pBody:before {
+  opacity: 1;
+  transition: opacity 0.5s 0.15s;
+}
+.spPop .pBody > .pc {
+  z-index: 1;
+}
+/* Randlinie: beginnt unter der Kante ganz zart und wird nach unten kräftiger (Naht hört früher auf) */
+.spPop .pBody:after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  top: var(--J, 56px);
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 22px 22px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 24px, #000 96px);
+  mask-image: linear-gradient(to bottom, transparent 0, transparent 24px, #000 96px);
+}
+.spPop.show .pBody:after {
+  opacity: 1;
+  transition: opacity 0.3s 0.3s;
+}
+/* Hohlkehlen: weicher Anschluss an die Leiste, wo die Karte unter der Leiste sichtbar wird */
+.spPop .pFl,
+.spPop .pFr {
+  position: absolute;
+  top: var(--J, 56px);
+  width: 36px;
+  height: 36px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, rgba(0, 0, 0, 0) 100%);
+  mask-image: linear-gradient(to bottom, #000 0, rgba(0, 0, 0, 0) 100%);
+}
+.spPop .pFl {
+  left: -36px;
+  background: radial-gradient(circle at 0 100%, transparent 35.2px, var(--panel) 36px);
+}
+.spPop .pFr {
+  right: -36px;
+  background: radial-gradient(circle at 100% 100%, transparent 35.2px, var(--panel) 36px);
+}
+.spPop.show .pFl,
+.spPop.show .pFr {
+  opacity: 1;
+  transition: opacity 0.45s 0.3s;
+}
+.spPop .pc {
+  position: relative;
+  width: 336px;
+  padding: 16px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.2s ease;
+}
+.spPop.show .pc {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.3s ease 0.16s,
+    transform 0.42s cubic-bezier(0.2, 0.9, 0.3, 1) 0.16s;
+}
+.pTop {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.pArt {
+  position: relative;
+  flex-shrink: 0;
+  width: 66px;
+  height: 66px;
+  border: 0;
+  padding: 0;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: 0 8px 20px rgba(58, 36, 51, 0.3);
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.pArt:hover {
+  transform: scale(1.05);
+}
+.pArt .spArt {
+  background: var(--hover);
+  color: var(--ink);
+}
+.pExp {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.pArt:hover .pExp {
+  opacity: 1;
+}
+.pInfo {
+  min-width: 0;
+  flex: 1;
+}
+.pT {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pA {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink2);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pAl {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mute);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pSeek {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--mute2);
+  font-variant-numeric: tabular-nums;
+}
+.pSeek span {
+  width: 32px;
+}
+.pSeek span:last-child {
+  text-align: right;
+}
+.pSeek input {
+  flex: 1;
+}
+.pCtl {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 0 4px;
+}
+.pIc {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mute2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+.pIc:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.pIc:active {
+  transform: scale(0.9);
+}
+.pIc.on {
+  color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 16%, transparent);
+}
+.pIc.big {
+  color: var(--ink);
+}
+.pPlay {
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pri);
+  color: var(--pri-fg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 8px 18px rgba(58, 36, 51, 0.28);
+  transition: transform 0.15s;
+}
+.pPlay:hover {
+  transform: scale(1.07);
+}
+.pPlay:active {
+  transform: scale(0.94);
+}
+.pVol {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--mute2);
+}
+.pVol input {
+  flex: 1;
+}
+.pMsg {
+  padding: 6px 2px 2px;
+  text-align: left;
+}
+.pBtn {
+  margin-top: 12px;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--pri);
+  color: var(--pri-fg);
+  font:
+    800 13px Manrope,
+    sans-serif;
+}
+.spPop input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 3px;
+  outline: none;
+  background: linear-gradient(90deg, var(--ink) var(--p, 0%), var(--line3) var(--p, 0%));
+}
+.spPop input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transition:
+    width 0.12s,
+    height 0.12s;
+}
+.spPop:hover input[type='range']::-webkit-slider-thumb {
+  width: 13px;
+  height: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spPop,
+  .spPop .pc,
+  .spPop .pBody,
+  .spPop .pFl,
+  .spPop .pFr {
+    transition: none;
+  }
+}
+
+/* Der Chip-Platzhalter in der Leiste wächst synchron zur Karte; die Adressleiste weicht flexibel aus. */
+#spChip {
+  flex-shrink: 0;
+  transition: width 0.46s cubic-bezier(0.2, 0.95, 0.25, 1.04);
+}

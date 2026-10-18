@@ -1,0 +1,112 @@
+/* Anfrage für die lokale Einstellungsseite */
+
+.luna-wordmark {
+  display: block;
+  width: min(350px, 78vw);
+  height: auto;
+  color: var(--acc);
+  margin: 14px 0 0;
+  overflow: visible;
+}
+.st-hero .st-greet {
+  font-size: 21px;
+  margin-top: 2px;
+}
+.luna-search-brand {
+  color: var(--acc);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  margin-bottom: 8px;
+}
+
+.st-brand-widget {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  width: min(560px, 100%);
+  margin: 20px 0 16px;
+  padding: 18px 24px;
+  border: 1px solid color-mix(in srgb, var(--card) 65%, var(--line));
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 8px 28px #50233e0a;
+}
+.st-brand-widget .st-clock {
+  margin: 0;
+  font-size: 52px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.st-brand-widget .luna-wordmark {
+  width: 270px;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+}
+.st-brand-divider {
+  width: 1px;
+  height: 42px;
+  flex-shrink: 0;
+  background: var(--line3);
+}
+@media (max-width: 600px) {
+  .st-brand-widget {
+    gap: 12px;
+    padding: 15px 16px;
+    border-radius: 20px;
+  }
+  .st-brand-widget .st-clock {
+    font-size: clamp(26px, 6.5vw, 42px);
+  }
+  .st-brand-divider {
+    height: 32px;
+  }
+  .st-brand-widget .luna-wordmark {
+    width: 190px;
+  }
+}
+
+.spotify-search-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 1px solid #1db95444;
+  border-radius: 8px;
+  background: color-mix(in srgb, #1db954 10%, var(--card));
+  color: #168640;
+  padding: 4px 7px;
+  font:
+    750 11px Manrope,
+    sans-serif;
+  white-space: nowrap;
+}
+.spotify-search-chip[hidden] {
+  display: none;
+}
+.spotify-search-chip:hover {
+  background: color-mix(in srgb, #1db954 19%, var(--card));
+}
+.spotify-search-chip > span:last-child {
+  font-size: 15px;
+  opacity: 0.7;
+}
+#urlbox.spotify-search-mode #lock,
+.st-search.spotify-search-mode > .st-si {
+  display: none;
+}
+#urlbox.spotify-search-mode:focus-within,
+.st-search.spotify-search-mode {
+  border-color: #1db95477;
+}
+.st-search .spotify-search-chip {
+  padding: 7px 9px;
+  font-size: 12px;
+  margin-right: 3px;
+}
+html[data-theme='dark'] .spotify-search-chip {
+  color: #57dc88;
+}

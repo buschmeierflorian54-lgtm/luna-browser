@@ -1,0 +1,154 @@
+/* ---------- Lesezeichen verwalten ---------- */
+.chip.add {
+  color: var(--mute2);
+}
+.chip.add svg {
+  width: 13px;
+  height: 13px;
+}
+.chip.add:hover {
+  color: var(--ink);
+}
+.bmhint {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mute);
+}
+.st-card .tdel {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  border: 1px solid var(--line);
+  color: var(--mute2);
+  opacity: 0;
+  transform: scale(0.8);
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
+}
+.st-card:hover .tdel {
+  opacity: 1;
+  transform: none;
+}
+.tdel:hover {
+  background: var(--err);
+  color: #fff;
+  border-color: var(--err);
+}
+.st-card .big.plus {
+  background: transparent;
+  border: 2px dashed var(--line3);
+  color: var(--mute);
+  box-shadow: none;
+}
+.st-card.addtile:hover .big.plus {
+  border-color: var(--acc);
+  color: var(--acc);
+}
+.bmlist {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bmrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--input);
+}
+.bmrow .dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  color: #fff;
+  font-style: normal;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--h, 320), 75%, 66%),
+    hsl(calc(var(--h, 320) + 35), 65%, 50%)
+  );
+}
+.bmrow .t {
+  flex: 1;
+  min-width: 0;
+}
+.bmrow .t b {
+  display: block;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bmrow .t small {
+  display: block;
+  color: var(--mute);
+  font-weight: 600;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn.sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+.btn.danger {
+  color: var(--err);
+}
+.btn.danger:hover {
+  background: var(--err);
+  color: #fff;
+  border-color: var(--err);
+}
+.bmcard {
+  width: min(460px, 92vw);
+}
+.fld {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fld span {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--mute2);
+}
+.fld input {
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid var(--line3);
+  background: var(--input);
+  padding: 0 14px;
+  font:
+    600 14px Manrope,
+    sans-serif;
+  color: var(--ink);
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.fld input:focus {
+  border-color: var(--acc);
+  background: var(--card);
+}

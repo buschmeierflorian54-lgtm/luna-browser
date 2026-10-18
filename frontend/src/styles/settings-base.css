@@ -1,0 +1,117 @@
+/* Einstellungen */
+.ovl {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(58, 36, 51, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ovl[hidden] {
+  display: none;
+}
+.card {
+  width: min(560px, 92vw);
+  max-height: 88vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 24px 60px rgba(58, 36, 51, 0.4);
+}
+.card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 12px 22px;
+  border-bottom: 1px solid var(--line2);
+}
+.card > header b {
+  font-size: 15px;
+  font-weight: 800;
+}
+.cbody {
+  padding: 20px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cbody h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.muted {
+  margin: 0;
+  color: var(--mute2);
+  line-height: 1.5;
+}
+.muted.small {
+  font-size: 12px;
+}
+.muted .link {
+  padding: 0 2px;
+  font-size: inherit;
+}
+.state {
+  font-weight: 800;
+  color: var(--err);
+}
+.state.ok {
+  color: var(--ok);
+}
+#keyIn {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line3);
+  background: var(--card);
+  padding: 0 14px;
+  font:
+    600 14px Manrope,
+    sans-serif;
+  color: var(--ink);
+  outline: none;
+  -webkit-user-select: text;
+  user-select: text;
+}
+#keyIn:focus {
+  border-color: var(--acc);
+}
+.cbody .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn[disabled] {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.kmsg {
+  min-height: 18px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--mute2);
+}
+.kmsg.ok {
+  color: var(--ok);
+}
+.kmsg.err {
+  color: var(--err);
+}
+.keyhint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.keyhint span {
+  color: var(--mute2);
+}

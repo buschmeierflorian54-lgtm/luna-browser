@@ -1,6 +1,6 @@
-# Browser (macOS, Wails)
+# Luna Browser (macOS, Wails)
 
-Echter Browser im Pink-Design des Dateimanagers. Jede Seite rendert in einem **nativen WKWebView**
+Browser mit wählbaren Farbthemes. Jede Seite rendert in einem **nativen WKWebView**
 (`internal/web`, cgo/ObjC) als Unteransicht des Fensters; Tabs, Adressleiste und Seitenleisten sind HTML.
 
 ```
@@ -11,7 +11,7 @@ go test ./internal/...
 
 ## Funktionen
 Tabs (auch Seiten, die selbst Tabs öffnen, ⌘-Klick auf Links), Adressleiste mit Vorschlägen aus Verlauf und
-Lesezeichen (Suche über DuckDuckGo), Zurück/Vor/Neu laden/Stopp, Ladebalken, Favicons, Lesezeichen (⌘D, Leiste,
+Lesezeichen, Zurück/Vor/Neu laden/Stopp, Ladebalken, Favicons, Lesezeichen (⌘D, Leiste,
 Seitenleiste), Verlauf (durchsuchbar, löschbar), Downloads (nach ~/Downloads, Öffnen/Im Finder zeigen),
 Suche auf der Seite (⌘F), Zoom (⌘+ ⌘- ⌘0), Sitzung wird wiederhergestellt, JS-Dialoge, Datei-Upload,
 Fehlerseite. Tastenkürzel liegen im Menü, damit sie auch gelten, wenn eine Seite den Fokus hat.
@@ -61,11 +61,17 @@ Ereignisse aus Go ans Frontend laufen über eine Warteschlange (`App.emit`), nie
 Wails' `ExecJS` gibt dort einen autoreleasten String frei und stürzt ab.
 Overlays (Menü, Vorschläge) über der Seite: kurz ein Foto der Seite zeigen und die native Ansicht verbergen.
 
-## Nicht getestet / nicht umgesetzt
-- Nur über den Browser-Zugang von `wails dev` getestet (Go-Backend und native Tabs echt, aber das native Fenster
-  habe ich nie selbst gesehen; kein Screenshot-Zugriff). Optik und Positionierung der Seite im Fenster sind unbestätigt.
-- Ungetestet: Downloads, Popups (`window.open`), JS-Dialoge, Datei-Upload, Spotify-Overlay über einer geladenen Seite.
-- Fehlt: Privates Fenster, Druck, Lesezeichen-Ordner, Tabs verschieben, Passwörter, Erweiterungen, Kamera/Mikrofon.
+## Prüfung und Grenzen
+
+`go test ./...` prüft die Backend-Pakete. Die Playwright-Prüfungen im Frontend
+verwenden ein simuliertes Backend: Musikpanel mit Suche und Warteschlange,
+Luna-Übernahme, Einstellungsdialoge und isolierte Kapitel, Tab-Gruppen sowie
+Benachrichtigungen und das Entfernen der Gestenspur vor Screenshots.
+Sie verändern keine echten Konten, Geräte oder Browserdaten.
+
+Native WKWebView-Schichtung, macOS-Zwischenablage, hörbare Spotify-Wiedergabe und
+Sonos-Hardware brauchen weiterhin separate Tests in der laufenden macOS-App.
+Ein erfolgreicher Build allein bestätigt diese Abläufe nicht.
 
 ## Seitenleiste erweitern
 
@@ -117,3 +123,45 @@ nach neuen Geräten. Bekannte Geräte werden alle 5 Sekunden per HTTP auf Erreic
 Tests: SOAP/Begrenzung, Auswahl/Persistenz, Ausgangswechsel, deaktivierter Sync und
 unveränderte Lautstärke; Hardware-Erkennung und CoreAudio lesend lokal geprüft.
 Ein tatsächlicher Lautstärketasten-/Hörtest steht aus.
+
+## Projektstruktur und Wartung
+
+- `main.go`, `app.go`, `mcp.go`, `dock_icon.go`: App-Start, Wails-Anbindung,
+  MCP und macOS-App-Icon.
+- `internal/`: getrennte Go-Pakete für Browseransichten, Speicherung, Suche,
+  Spotify, Sonos, lokale Warteschlange und MCP.
+- `frontend/src/main.js`: Browser-Zustand, Navigation und Verdrahtung der Bereiche.
+- `frontend/src/settings.js`: Einstellungskapitel, Statusabfragen und API-Schlüssel-UI.
+- `frontend/src/tab-groups.js`: Tab-Reihenfolge, Gruppen und Drag-and-drop.
+- `frontend/src/screenshots.js`: Screenshot-Status und Vorschauanimation.
+- `frontend/src/ui.js`: gemeinsame Darstellungshelfer.
+- `frontend/src/music-*.js`, `spotify*.js`, `sonos-view.js`: Musik und Geräteoberflächen.
+- `frontend/src/notifications.js`, `sidepanel.js`: gemeinsame Dialoge und Seitenpanel.
+- `frontend/src/styles/`: Styles nach Bereichen; `style.css` legt die Reihenfolge fest.
+  Die Reihenfolge ist Teil der CSS-Kaskade und darf nicht blind alphabetisch sortiert werden.
+- `frontend/tests/`: wiederholbare Oberflächentests mit simuliertem Backend.
+- `frontend/wailsjs/`: von Wails erzeugte Bindings; nicht manuell umbauen.
+- `frontend/dist/`, `build/bin/`, `frontend/test-results/`: erzeugte Ausgaben,
+  keine Quellcode-Ablage.
+
+### Frontend entwickeln und prüfen
+
+Benötigt werden Node/npm sowie für den nativen Build Go, Wails und die macOS-Werkzeuge.
+Im Verzeichnis `frontend`:
+
+```sh
+npm ci
+npx playwright install chromium  # einmalig für die Oberflächentests
+npm run dev                    # reine Oberfläche, ohne natives Backend
+npm run format                 # eigenen JS-/CSS-Code einheitlich formatieren
+npm run check                  # Formatprüfung, Oberflächentests und Vite-Build
+```
+
+Die Tests starten ihren Vite-Server selbst auf `127.0.0.1:5174`; dieser Port muss frei sein.
+Im Projektstamm prüft `go test ./...` das Backend. `wails build` erzeugt anschließend
+die App unter `build/bin/browser-mac.app`.
+
+Neue Funktionen möglichst in einem eigenen Fachmodul halten und über explizite
+Callbacks an den Browser anbinden. Keine Rückimporte aus Fachmodulen in `main.js`.
+`main.js` enthält weiterhin die zentrale Navigation; weitere Aufteilungen können
+schrittweise erfolgen, ohne funktionierende Musik- oder Geräteabläufe neu zu schreiben.

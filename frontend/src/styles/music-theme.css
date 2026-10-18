@@ -1,0 +1,137 @@
+/* Musik-Widgets gehören zur aktuellen Luna-Farbwelt. */
+.spBan,
+.spChip {
+  background: color-mix(in srgb, var(--acc) 28%, #15202b);
+  color: #fff;
+}
+.spBan:hover,
+.spChip:hover {
+  background: color-mix(in srgb, var(--acc) 40%, #15202b);
+}
+.spBan .spS,
+.spChip .spT2 {
+  color: rgba(255, 255, 255, 0.76);
+}
+.spBan .spTag,
+.spBan .spBar {
+  background: rgba(255, 255, 255, 0.16);
+}
+.spBan .spBar > div {
+  background: color-mix(in srgb, var(--acc) 35%, white);
+}
+.spBan .spPlay,
+.spChip .spPlay {
+  background: #fff;
+  color: color-mix(in srgb, var(--acc) 40%, #15202b);
+}
+.spBan .spBtn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  box-shadow: none;
+  transition:
+    transform 0.15s,
+    opacity 0.15s;
+  opacity: 0.8;
+}
+.spBan .spBtn:hover {
+  background: transparent;
+  color: #fff;
+  transform: scale(1.12);
+  opacity: 1;
+}
+.spBan .spBtn:active {
+  transform: scale(0.95);
+}
+.spBan .spBtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spBan .spBtn {
+    transition: none;
+  }
+}
+#widget-banner .bh span {
+  color: var(--mute);
+}
+#widget-banner .bh button {
+  color: var(--mute2);
+}
+#widget-banner .bh button:hover {
+  background: var(--hover);
+}
+.st-logo {
+  filter: drop-shadow(0 18px 24px color-mix(in srgb, var(--acc) 30%, transparent));
+}
+[data-queue-uri] {
+  cursor: grab;
+}
+[data-queue-uri]:active {
+  cursor: grabbing;
+}
+.queue-dragging {
+  opacity: 0.5;
+}
+.music-queue-drop {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 95;
+  width: 210px;
+  min-height: 155px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 22px;
+  border: 1px solid color-mix(in srgb, var(--acc) 55%, transparent);
+  border-radius: 25px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(24px);
+  color: var(--ink);
+  box-shadow: 0 18px 65px #0003;
+  animation: queue-appear 0.2s ease-out;
+  transition:
+    transform 0.16s,
+    background 0.16s;
+}
+.music-queue-drop[hidden] {
+  display: none;
+}
+.music-queue-drop svg {
+  color: var(--acc);
+}
+.music-queue-drop b {
+  font-size: 14px;
+}
+.music-queue-drop span {
+  font-size: 12px;
+  color: var(--mute2);
+}
+.music-queue-drop.over {
+  transform: scale(1.07);
+  background: var(--hover);
+  border-color: var(--acc);
+}
+@keyframes queue-appear {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .music-queue-drop {
+    animation: none;
+    transition: none;
+  }
+}

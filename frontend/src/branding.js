@@ -38,9 +38,12 @@ const settingsLetters = {
   g: [32, 'M25 49 C13 36 -2 57 3 69 C8 81 22 62 25 47 L17 86 C9 116 -9 101 4 90 Q19 78 34 64'],
 };
 let settingsX = 0;
-const settingsPaths = [...'Einstellungen'].map(letter => {
-  const [advance, path] = settingsLetters[letter];
-  const x = settingsX; settingsX += advance;
-  return `<path transform="translate(${x} 0)" d="${path}"/>`;
-}).join('');
+const settingsPaths = [...'Einstellungen']
+  .map((letter) => {
+    const [advance, path] = settingsLetters[letter];
+    const x = settingsX;
+    settingsX += advance;
+    return `<path transform="translate(${x} 0)" d="${path}"/>`;
+  })
+  .join('');
 export const settingsWordmark = `<svg class="settings-wordmark" viewBox="-8 4 ${settingsX + 18} 108" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${settingsPaths}</svg>`;

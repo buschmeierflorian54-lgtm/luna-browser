@@ -1,0 +1,411 @@
+/* Sonos Sync */
+#set-sonos {
+  color: var(--ink);
+}
+.sonos-settings {
+  padding: 0 !important;
+  overflow: hidden;
+}
+.sonos-hero {
+  position: relative;
+  padding: 30px;
+  background: linear-gradient(120deg, color-mix(in srgb, var(--acc) 15%, var(--card)), var(--card));
+  border-bottom: 1px solid var(--line);
+}
+.sonos-wordmark {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+.sonos-wordmark i {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--mute);
+  margin-left: 10px;
+}
+.sonos-hero h2 {
+  font-size: 32px !important;
+  letter-spacing: -0.05em;
+  line-height: 1.15;
+  margin: 25px 0 12px !important;
+}
+.sonos-hero p {
+  max-width: 300px;
+  color: var(--mute);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.sonos-keys {
+  position: absolute;
+  right: 30px;
+  top: 90px;
+  display: flex;
+  gap: 8px;
+  transform: rotate(-7deg);
+}
+.sonos-keys span {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 42px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  box-shadow: 0 5px 0 var(--line);
+  font-size: 21px;
+}
+.sonos-body {
+  padding: 25px 30px;
+}
+.sonos-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 30px 0 18px;
+  gap: 12px;
+}
+.sonos-list-head h3 {
+  margin: 0 0 5px;
+  font-size: 17px;
+}
+.sonos-list-head small {
+  color: var(--mute);
+  font-size: 11px;
+}
+.sonos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.sonos-device {
+  position: relative;
+  padding: 20px 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.sonos-device.selected {
+  border-color: var(--acc);
+  background: color-mix(in srgb, var(--acc) 7%, var(--card));
+}
+.sonos-check {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  color: var(--acc);
+}
+.sonos-product {
+  height: 115px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+}
+.sonos-product img {
+  max-height: 115px;
+  max-width: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 9px #0001);
+}
+.sonos-product svg {
+  height: 90px;
+  stroke: var(--mute);
+  fill: none;
+  stroke-width: 2;
+}
+.sonos-device b,
+.sonos-device small,
+.sonos-online {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.sonos-device b {
+  font-size: 13px;
+}
+.sonos-device small {
+  font-size: 11px;
+  color: var(--mute);
+  margin-top: 5px;
+}
+.sonos-online {
+  font-size: 10px;
+  color: var(--mute);
+  margin-top: 13px;
+}
+.sonos-device.offline {
+  opacity: 0.6;
+}
+.sonos-empty {
+  padding: 32px 16px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  color: var(--mute);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.sonos-notice {
+  color: var(--mute);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.sonos-notice:empty {
+  display: none;
+}
+@media (max-width: 800px) {
+  .sonos-keys {
+    display: none;
+  }
+  .sonos-body,
+  .sonos-hero {
+    padding: 24px;
+  }
+}
+
+.music-spotify-launch {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.music-spotify-launch:hover {
+  background: var(--hover);
+}
+.music-spotify-launch:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+.music-spotify-launch:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* Schwarzes Liquid Glass für die Sonos-Steuerung. */
+#set-sonos {
+  --ink: #f5f5f7;
+  --ink2: #eeeef2;
+  --mute: #b3b3bd;
+  --mute2: #c1c1ca;
+  --acc: #edd6e8;
+  --line: rgba(255, 255, 255, 0.14);
+  --line3: rgba(255, 255, 255, 0.2);
+  --card: #222226;
+  --input: rgba(255, 255, 255, 0.045);
+  color-scheme: dark;
+  position: relative;
+  isolation: isolate;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 0 0, rgba(255, 255, 255, 0.14), transparent 42%),
+    radial-gradient(ellipse at 100% 75%, rgba(186, 150, 178, 0.09), transparent 48%),
+    linear-gradient(
+      145deg,
+      rgba(28, 28, 33, 0.96),
+      rgba(7, 8, 11, 0.94) 65%,
+      rgba(23, 22, 28, 0.96)
+    );
+  -webkit-backdrop-filter: blur(32px) saturate(130%);
+  backdrop-filter: blur(32px) saturate(130%);
+  box-shadow:
+    inset 0 1px 0 #ffffff25,
+    inset 0 -1px 0 #ffffff0b,
+    0 24px 55px #100b182b,
+    0 4px 12px #0002;
+}
+#set-sonos::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    transparent 20%,
+    #ffffff04 32%,
+    #ffffff08 33%,
+    transparent 49%
+  );
+}
+#set-sonos .sonos-hero {
+  background: radial-gradient(ellipse at 85% 12%, #ffffff0c, transparent 65%);
+  border-color: #ffffff10;
+  padding: 32px;
+}
+#set-sonos .sonos-wordmark {
+  color: #fff;
+  letter-spacing: 0.2em;
+  font-size: 15px;
+}
+#set-sonos .sonos-wordmark i {
+  color: #bbb5bf;
+  letter-spacing: 0.03em;
+}
+#set-sonos .sonos-hero h2 {
+  color: #faf9fc;
+  text-shadow: 0 2px 20px #ffffff12;
+  font-weight: 650;
+}
+#set-sonos .sonos-hero p {
+  color: var(--mute);
+}
+#set-sonos .sonos-keys {
+  gap: 9px;
+  transform: perspective(400px) rotateY(-12deg) rotateZ(-9deg);
+}
+#set-sonos .sonos-keys span {
+  width: 47px;
+  height: 45px;
+  color: #eeeaf1;
+  border: 1px solid #ffffff2b;
+  background: linear-gradient(150deg, #ffffff25, #ffffff08 60%);
+  box-shadow:
+    inset 0 1px 0 #ffffff30,
+    0 4px 0 #08080b,
+    0 10px 18px #0006;
+  border-radius: 13px;
+  text-shadow: 0 1px 8px #fff3;
+}
+#set-sonos .sonos-body {
+  padding: 26px 32px 30px;
+}
+#set-sonos .swrow {
+  border-color: #ffffff19;
+  border-radius: 18px;
+  background: linear-gradient(120deg, #ffffff0c, #ffffff04);
+  box-shadow: inset 0 1px 0 #ffffff08;
+  padding: 17px;
+}
+#set-sonos .swrow b {
+  color: #f5f4f7;
+  font-size: 14px;
+}
+#set-sonos .swrow span {
+  color: var(--mute);
+  font-size: 11px;
+  line-height: 1.6;
+}
+#set-sonos .switch {
+  background: #ffffff22;
+  box-shadow: inset 0 1px 4px #0005;
+}
+#set-sonos .switch.on {
+  background: #e1c8db;
+  box-shadow: 0 0 18px #dfbbd31c;
+}
+#set-sonos .switch i {
+  background: linear-gradient(#fff, #e4e4e8);
+}
+#set-sonos .sonos-list-head {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+#set-sonos .sonos-list-head > span {
+  font-size: 10px;
+  padding: 6px 9px;
+  border: 1px solid #ffffff12;
+  border-radius: 20px;
+  background: #ffffff05;
+}
+#set-sonos .sonos-list-head h3 {
+  font-weight: 650;
+  color: #f6f5f8;
+}
+#set-sonos .sonos-device {
+  border-color: #ffffff14;
+  border-radius: 20px;
+  background: linear-gradient(150deg, #ffffff0c, #ffffff03);
+  box-shadow:
+    inset 0 1px 0 #ffffff0b,
+    0 6px 16px #0002;
+  transition:
+    background 0.18s,
+    border-color 0.18s,
+    transform 0.18s;
+}
+#set-sonos .sonos-device:hover {
+  background: linear-gradient(150deg, #ffffff17, #ffffff07);
+  border-color: #ffffff35;
+  transform: translateY(-2px);
+}
+#set-sonos .sonos-device.selected {
+  border-color: #dfc6d98c;
+  background: linear-gradient(150deg, #dcbdd51c, #ffffff07);
+  box-shadow:
+    inset 0 1px 0 #fff2,
+    0 0 0 1px #d8b5d00a,
+    0 8px 20px #0003;
+}
+#set-sonos .sonos-check {
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ffffff0d;
+  border: 1px solid #ffffff20;
+  color: #bdbbc5;
+  font-size: 12px;
+}
+#set-sonos .selected .sonos-check {
+  background: #ead7e5;
+  color: #27202a;
+  border-color: #f5e8f0;
+}
+#set-sonos .sonos-product {
+  background: radial-gradient(ellipse at 50% 60%, #ffffff18, transparent 70%);
+}
+#set-sonos .sonos-product img {
+  filter: drop-shadow(0 12px 10px #0008) drop-shadow(0 -1px 1px #ffffff25);
+}
+#set-sonos .sonos-online::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #a7c4b8;
+  box-shadow: 0 0 6px #a7c4b830;
+  vertical-align: 1px;
+}
+#set-sonos .offline {
+  opacity: 0.65;
+}
+#set-sonos .offline .sonos-online::before {
+  background: #90909b;
+  box-shadow: none;
+}
+#set-sonos .sonos-empty {
+  background: #ffffff04;
+  border-color: #ffffff20;
+}
+#set-sonos button:focus-visible {
+  outline: 2px solid #f2deed;
+  outline-offset: 4px;
+}
+@media (max-width: 800px) {
+  #set-sonos .sonos-hero,
+  #set-sonos .sonos-body {
+    padding: 24px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #set-sonos .sonos-device {
+    transition: none;
+  }
+  #set-sonos .sonos-device:hover {
+    transform: none;
+  }
+}

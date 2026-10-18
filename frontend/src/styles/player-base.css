@@ -1,0 +1,353 @@
+/* Spotify */
+.spArt {
+  flex-shrink: 0;
+  background: #6b4a5e;
+  color: #fff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.spT1 {
+  font-size: 12px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spT2 {
+  font-size: 11px;
+  font-weight: 600;
+  color: #d9bccd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spBar {
+  height: 3px;
+  border-radius: 2px;
+  background: #5a3c50;
+  overflow: hidden;
+}
+.spBar > div {
+  height: 100%;
+  background: #f2b8d8;
+  width: 0;
+}
+.spPlay {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 0;
+  background: #fbeef6;
+  color: #3a2433;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+}
+.spPlay.sm {
+  width: 32px;
+  height: 32px;
+}
+.spBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: #4d3044;
+  color: #fbeef6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.spBtn:hover {
+  background: #5e3c52;
+}
+#widget-banner .banner {
+  margin-bottom: 16px;
+}
+#widget-banner .bh {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 8px;
+}
+#widget-banner .bh span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a6c7e;
+}
+#widget-banner .bh button {
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6f5264;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+#widget-banner .bh button:hover {
+  background: #ead0df;
+}
+.spBan {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background: #3a2433;
+  border-radius: 20px;
+  color: #fbeef6;
+  cursor: pointer;
+}
+.spBan:hover {
+  background: #44293a;
+}
+.spS {
+  font-size: 12px;
+  font-weight: 700;
+  color: #d9bccd;
+}
+.spB1 {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spTag {
+  flex-shrink: 0;
+  height: fit-content;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: #5a3c50;
+}
+
+/* Vollbild-Overlay (nur im Fenster) */
+#spotify-ov {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: #2a1a24;
+  color: #fbeef6;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+#spotify-ov[hidden] {
+  display: none;
+}
+.ovBg {
+  position: absolute;
+  inset: -60px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(70px) saturate(1.3);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.ovTop {
+  position: relative;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px 0 90px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d9bccd;
+  --wails-draggable: drag;
+}
+.ovX {
+  --wails-draggable: no-drag;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fbeef6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.ovX:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.ovMain {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 12px 24px 32px;
+  overflow: auto;
+}
+.ovArt .spArt {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  background: #4d3044;
+}
+.ovInfo {
+  text-align: center;
+  max-width: 560px;
+}
+.ovTitle {
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.ovArtist {
+  font-size: 17px;
+  font-weight: 700;
+  color: #f2d3e6;
+  margin-top: 6px;
+}
+.ovAlbum {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c9a9bc;
+  margin-top: 3px;
+}
+.ovSeek {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  font-size: 12px;
+  font-weight: 700;
+  color: #d9bccd;
+}
+.ovSeek span {
+  width: 36px;
+}
+.ovSeek span:last-child {
+  text-align: right;
+}
+.ovSeek input {
+  flex: 1;
+}
+.ovCtl {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.ovBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: #d9bccd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.ovBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.ovBtn.on {
+  color: #f2b8d8;
+  background: rgba(242, 184, 216, 0.16);
+}
+.ovBtn.big {
+  width: 52px;
+  height: 52px;
+  color: #fbeef6;
+}
+.ovPlay {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 0;
+  background: #fbeef6;
+  color: #3a2433;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.ovPlay:hover {
+  transform: scale(1.04);
+}
+.ovVol {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 260px;
+  color: #d9bccd;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ovVol input {
+  flex: 1;
+}
+.ovVol span {
+  width: 26px;
+  text-align: right;
+}
+.ovMsg {
+  text-align: center;
+}
+#spotify-ov input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #fff var(--p, 0%), rgba(255, 255, 255, 0.22) var(--p, 0%));
+  outline: none;
+}
+#spotify-ov input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fbeef6;
+  border: 0;
+}
+
+.spChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 6px 0 5px;
+  background: #3a2433;
+  border-radius: 12px;
+  color: #fbeef6;
+  cursor: pointer;
+  max-width: 200px;
+  flex-shrink: 0;
+}
+.spChip:hover {
+  background: #4d3044;
+}
+.spChipT {
+  min-width: 0;
+  flex: 1;
+  max-width: 120px;
+}
+.spChip .spT1 {
+  font-size: 11px;
+}
+.spChip .spT2 {
+  font-size: 10px;
+}
+#widget-banner {
+  width: min(760px, 100%);
+}

@@ -5,9 +5,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "playwright test",
+    "format": "prettier --write \"src/**/*.js\" \"src/**/*.css\" \"tests/**/*.cjs\" playwright.config.cjs",
+    "format:check": "prettier --check \"src/**/*.js\" \"src/**/*.css\" \"tests/**/*.cjs\" playwright.config.cjs",
+    "check": "npm run format:check && npm test && npm run build"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "prettier": "3.9.10",
     "vite": "^7.0.0"
   }
 }
