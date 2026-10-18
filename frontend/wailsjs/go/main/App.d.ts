@@ -12,6 +12,8 @@ export function Downloads():Promise<Array<store.Download>>;
 
 export function DownloadsClear():Promise<void>;
 
+export function EditBookmark(arg1:string,arg2:string,arg3:string):Promise<Array<store.Bookmark>>;
+
 export function History(arg1:string,arg2:number):Promise<Array<store.Visit>>;
 
 export function HistoryAdd(arg1:string,arg2:string):Promise<void>;

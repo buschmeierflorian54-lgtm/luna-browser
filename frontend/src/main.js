@@ -270,8 +270,9 @@ function renderToolbar() {
 }
 function renderBar() {
   const bar = $('#bmbar');
-  bar.hidden = !(S.bar && S.bookmarks.length);
-  bar.innerHTML = S.bookmarks.slice(0, 14).map((b) => `<button class="chip" data-act="open-url" data-url="${esc(b.url)}" title="${esc(b.title)}"><i class="dot">${esc(initial(b.title))}</i><span>${esc(b.title)}</span></button>`).join('');
+  bar.hidden = !S.bar;
+  bar.innerHTML = (S.bookmarks.length ? S.bookmarks.slice(0, 16).map((b) => `<button class="chip" data-act="open-url" data-url="${esc(b.url)}" data-bm="${esc(b.url)}" title="${esc(b.title)} – Rechtsklick: bearbeiten oder löschen"><i class="dot">${esc(initial(b.title))}</i><span>${esc(b.title)}</span></button>`).join('') : '<span class="bmhint">Noch keine Lesezeichen</span>')
+    + `<button class="chip add" data-act="bm-add" title="Lesezeichen hinzufügen" aria-label="Lesezeichen hinzufügen">${ICON.plus}<span>Hinzufügen</span></button>`;
   updateFrame();
 }
 /* ---------- Startseite ---------- */
@@ -304,7 +305,7 @@ function startHTML() {
     <div class="st-status">${S.hasKey ? '<span class="pill ok"><i></i>Suche bereit · Brave</span>' : '<button class="pill warn" data-act="settings"><i></i>Eigene Suche einrichten – Brave-Schlüssel hinterlegen</button>'}</div>
     <div class="st-quick">${QUICK.map((q, i) => `<button class="qa" data-act="cmd" data-cmd="${q[0]}" ${delay(i + 3)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${q[2]}</svg>${q[1]}</button>`).join('')}</div>
     <section id="widget-banner" hidden></section>
-    ${bms.length ? `<section class="st-sec"><h3>Lesezeichen</h3><div class="st-tiles">${bms.map((b, i) => `<button class="st-card tile" data-act="open-url" data-url="${esc(b.url)}" title="${esc(b.title)}" ${delay(i + 6)}><span class="st-glare"></span><div class="big" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</div><span class="tt">${esc(b.title)}</span><span class="th">${esc(hostOf(b.url))}</span></button>`).join('')}</div></section>` : ''}
+    <section class="st-sec"><h3>Lesezeichen</h3><div class="st-tiles">${bms.map((b, i) => `<button class="st-card tile" data-act="open-url" data-url="${esc(b.url)}" data-bm="${esc(b.url)}" title="${esc(b.title)} – Rechtsklick: bearbeiten oder löschen" ${delay(i + 6)}><span class="st-glare"></span><span class="tdel" role="button" aria-label="Lesezeichen löschen" data-act="bm-del" data-url="${esc(b.url)}">${ICON.x}</span><div class="big" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</div><span class="tt">${esc(b.title)}</span><span class="th">${esc(hostOf(b.url))}</span></button>`).join('')}<button class="st-card tile addtile" data-act="bm-add" ${delay(bms.length + 6)}><span class="st-glare"></span><div class="big plus">${ICON.plus}</div><span class="tt">Hinzufügen</span><span class="th">&nbsp;</span></button></div></section>
     <section class="st-sec" id="recent"><h3>Zuletzt besucht</h3><div class="st-recent"><div class="hint">Lade …</div></div></section>
   </div></div>`;
 }
@@ -386,7 +387,7 @@ async function renderStart() {
   const wasHidden = el.hidden;
   el.hidden = !show;
   if (!show) { setBanner(null); startSig = ''; stopStartMotion(); return; }
-  const sig = [S.hasKey, S.bookmarks.map((b) => b.url).join('|')].join('#');
+  const sig = [S.hasKey, S.bookmarks.map((b) => b.url + '\u0001' + b.title).join('|')].join('#');
   if (!wasHidden && sig === startSig) return;      // nichts geändert: Einblend-Animation nicht neu starten
   startSig = sig;
   el.innerHTML = startHTML();
@@ -444,7 +445,7 @@ function closeOverlays() { closeMenu(); closeSugg(); closeOverlay(); }
 
 /* ---------- Menü ---------- */
 let menuOpen = false;
-function closeMenu() { if (!menuOpen) return; menuOpen = false; $('#menu').style.display = 'none'; cover(false); }
+function closeMenu() { if (!menuOpen) return; menuOpen = false; const m = $('#menu'); m.style.display = 'none'; m.onclick = null; cover(false); }
 function openMenu() {
   if (menuOpen) { closeMenu(); return; }
   const t = cur(), z = Math.round((t?.zoom || 1) * 100);
@@ -537,7 +538,7 @@ async function renderSide() {
   const tabs = [['bookmarks', 'Lesezeichen'], ['history', 'Verlauf'], ['downloads', 'Downloads']];
   let body = '';
   if (S.sideTab === 'bookmarks') {
-    body = `<div class="slist">${S.bookmarks.length ? S.bookmarks.map((b) => `<div class="sitem"><button class="go" data-act="open-url" data-url="${esc(b.url)}"><div class="t"><b>${esc(b.title)}</b><small>${esc(b.url)}</small></div></button><button class="rm" data-act="rm-bm" data-url="${esc(b.url)}" aria-label="Entfernen">${ICON.x}</button></div>`).join('') : '<div class="hint">Mit dem Stern in der Adressleiste (⌘D) merkst du dir Seiten.</div>'}</div>`;
+    body = `<div class="shead"><span class="hint" style="padding:0">${S.bookmarks.length} ${S.bookmarks.length === 1 ? 'Eintrag' : 'Einträge'}</span><button class="link" data-act="bm-add">+ Hinzufügen</button></div><div class="slist">${S.bookmarks.length ? S.bookmarks.map((b) => `<div class="sitem" data-bm="${esc(b.url)}"><button class="go" data-act="open-url" data-url="${esc(b.url)}"><div class="t"><b>${esc(b.title)}</b><small>${esc(shownUrl(b.url))}</small></div></button><button class="rm" data-act="bm-edit" data-url="${esc(b.url)}" aria-label="Bearbeiten" title="Bearbeiten"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button><button class="rm" data-act="rm-bm" data-url="${esc(b.url)}" aria-label="Entfernen" title="Löschen">${ICON.x}</button></div>`).join('') : '<div class="hint">Mit dem Stern in der Adressleiste (⌘D) oder „Hinzufügen“ merkst du dir Seiten.</div>'}</div>`;
   } else if (S.sideTab === 'history') {
     const h = await api.history(histQ, 200);
     body = `<div class="shead"><input id="histQ" type="search" placeholder="Verlauf durchsuchen" value="${esc(histQ)}"><button class="link" data-act="clear-history">Löschen</button></div><div class="slist">${h.length ? h.map((v) => `<div class="sitem"><button class="go" data-act="open-url" data-url="${esc(v.url)}"><div class="t"><b>${esc(v.title || hostOf(v.url))}</b><small>${esc(fmtTime(v.last))} · ${esc(hostOf(v.url))}</small></div></button><button class="rm" data-act="rm-hist" data-url="${esc(v.url)}" aria-label="Entfernen">${ICON.x}</button></div>`).join('') : '<div class="hint">Keine Einträge.</div>'}</div>`;
@@ -569,7 +570,7 @@ function onDownload(e) {
 /* ---------- Einstellungen: eigene Seite in eigenem Tab ---------- */
 let setMsg = { text: '', kind: '' };
 const GEAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2.2-1.3L14 3h-4l-.4 2.4a7 7 0 0 0-2.2 1.3l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2.2 1.3L10 21h4l.4-2.4a7 7 0 0 0 2.2-1.3l2.3.9 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>';
-const SET_SECTIONS = [['look', 'Darstellung'], ['start', 'Start'], ['search', 'Suche'], ['data', 'Daten']];
+const SET_SECTIONS = [['look', 'Darstellung'], ['bm', 'Lesezeichen'], ['start', 'Start'], ['search', 'Suche'], ['data', 'Daten']];
 function settingsPageHTML() {
   const th = themeMode();
   return `<div class="sp">
@@ -578,6 +579,12 @@ function settingsPageHTML() {
       <section id="set-look" class="sp-card"><h2>Darstellung</h2>
         <p class="muted">Hell, Dunkel oder passend zum System. Webseiten folgen dem Erscheinungsbild.</p>
         <div class="themes">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<button class="theme ${th === k ? 'on' : ''}" data-act="theme" data-m="${k}"><span class="tp tp-${k}"><i></i><i></i><i></i></span><b>${l}</b></button>`).join('')}</div>
+        <div class="swrow"><div><b>Lesezeichenleiste anzeigen</b><span>${S.bar ? 'Die Leiste unter der Adressleiste ist sichtbar.' : 'Aus: Lesezeichen findest du weiter in der Seitenleiste und auf der Startseite.'}</span></div>
+          <button class="switch ${S.bar ? 'on' : ''}" role="switch" aria-checked="${S.bar}" aria-label="Lesezeichenleiste anzeigen" data-act="pref-bar"><i></i></button></div>
+      </section>
+      <section id="set-bm" class="sp-card"><h2>Lesezeichen</h2>
+        <div class="bmlist">${S.bookmarks.length ? S.bookmarks.map((b) => `<div class="bmrow" data-bm="${esc(b.url)}"><i class="dot" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</i><div class="t"><b>${esc(b.title)}</b><small>${esc(shownUrl(b.url))}</small></div><button class="btn sm" data-act="bm-edit" data-url="${esc(b.url)}">Bearbeiten</button><button class="btn sm" data-act="bm-del" data-url="${esc(b.url)}">Löschen</button></div>`).join('') : '<p class="muted">Noch keine Lesezeichen.</p>'}</div>
+        <div class="row"><button class="btn pri" data-act="bm-add">+ Lesezeichen hinzufügen</button></div>
       </section>
       <section id="set-start" class="sp-card"><h2>Start</h2>
         <div class="swrow"><div><b>Zuletzt geöffnete Seiten merken</b><span>${S.restore ? 'Beim nächsten Start öffnen sich die Tabs von zuletzt.' : 'Aus: Der Browser startet immer mit der Startseite.'}</span></div>
@@ -627,6 +634,71 @@ async function saveKey() {
   for (const x of S.tabs) if (x.mode === 'search' && x.sErr) loadEntry(x, true);
 }
 
+/* ---------- Lesezeichen: Dialog (hinzufügen/bearbeiten), Kontextmenü, Verwaltung ---------- */
+let bmDlg = null;       // { oldUrl } beim Bearbeiten
+function refreshBookmarks() { renderToolbar(); renderBar(); renderSide(); renderSettingsView(); startSig = ''; renderStart(); }
+function closeBmDialog() {
+  if (!bmDlg) return;
+  bmDlg = null; const ov = $('#bm-ov'); ov.hidden = true; ov.innerHTML = '';
+  const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id);
+}
+function openBmDialog(o = {}) {
+  closeMenu(); closeSugg(); closeOverlay();
+  const editing = !!o.oldUrl;
+  bmDlg = { oldUrl: o.oldUrl || '' }; nativeShow(-1);
+  const ov = $('#bm-ov'); ov.hidden = false;
+  ov.innerHTML = `<div class="card bmcard" role="document"><header><b>${editing ? 'Lesezeichen bearbeiten' : 'Lesezeichen hinzufügen'}</b><button class="ib sm" data-act="bm-close" aria-label="Schließen">${ICON.x}</button></header>
+    <div class="cbody"><label class="fld"><span>Name</span><input id="bmTitle" type="text" value="${esc(o.title || '')}" placeholder="z. B. Wikipedia" spellcheck="false" autocomplete="off"></label>
+    <label class="fld"><span>Adresse</span><input id="bmUrl" type="text" value="${esc(o.url || '')}" placeholder="https://…" spellcheck="false" autocomplete="off" autocapitalize="off"></label>
+    <div id="bmErr" class="kmsg err"></div>
+    <div class="row"><button class="btn pri" data-act="bm-save">Speichern</button><button class="btn" data-act="bm-close">Abbrechen</button>${editing ? '<button class="btn danger" data-act="bm-del-dlg">Löschen</button>' : ''}</div></div></div>`;
+  setTimeout(() => { const i = $(o.url ? '#bmTitle' : '#bmUrl'); i?.focus(); i?.select(); }, 0);
+}
+function bmFromPage() {      // Vorbelegung: die Seite, die gerade offen ist
+  const t = cur();
+  if (t && (t.mode === 'web' || t.mode === 'search') && t.url) return { url: t.url, title: t.mode === 'search' ? t.q + ' – Suche' : (t.title || hostOf(t.url)) };
+  return {};
+}
+async function saveBm() {
+  const err = (x) => { const e = $('#bmErr'); if (e) e.textContent = x; };
+  const raw = $('#bmUrl').value.trim(); let title = $('#bmTitle').value.trim();
+  if (!raw) return err('Bitte eine Adresse eingeben.');
+  const u = isSearchUrl(raw) ? raw : toURL(raw);
+  if (!u) return err('Das sieht nicht nach einer Adresse aus (z. B. beispiel.de oder https://beispiel.de).');
+  if (!title) title = hostOf(u) || u;
+  const old = bmDlg?.oldUrl;
+  try { S.bookmarks = old ? await api.editBookmark(old, u, title) : await api.editBookmark('', u, title); } catch (e) { return err(String(e?.message || e)); }
+  closeBmDialog(); refreshBookmarks(); toast(old ? 'Lesezeichen gespeichert' : 'Lesezeichen hinzugefügt');
+}
+async function deleteBm(u) {
+  S.bookmarks = await api.setBookmark(u, '', false); refreshBookmarks(); toast('Lesezeichen gelöscht');
+}
+const bmByUrl = (u) => S.bookmarks.find((b) => b.url === u);
+function editBm(u) { const b = bmByUrl(u); if (b) openBmDialog({ oldUrl: b.url, url: b.url, title: b.title }); }
+
+// Kontextmenü (Rechtsklick auf Lesezeichen) – nutzt dasselbe Menü-Element wie ⋯
+function showCtx(items, x, y) {
+  const m = $('#menu');
+  if (menuOpen) { m.style.display = 'none'; } else { menuOpen = true; cover(true); }
+  m.innerHTML = items.map((it, i) => it === '-' ? '<div class="msep"></div>' : `<button class="mi" data-ci="${i}"><span>${esc(it.label)}</span></button>`).join('');
+  m.style.display = 'block';
+  m.style.left = Math.max(6, Math.min(x, innerWidth - m.offsetWidth - 6)) + 'px'; m.style.top = Math.max(6, Math.min(y, innerHeight - m.offsetHeight - 6)) + 'px';
+  m.onclick = (ev) => { const b = ev.target.closest('[data-ci]'); if (!b) return; closeMenu(); items[+b.dataset.ci].act(); };
+}
+document.addEventListener('contextmenu', (ev) => {
+  const el = ev.target.closest('[data-bm]'); if (!el) return;
+  ev.preventDefault();
+  const u = el.dataset.bm;
+  showCtx([
+    { label: 'Öffnen', act: () => visit(cur(), u) },
+    { label: 'In neuem Tab öffnen', act: () => newTab(u, { background: true }) },
+    '-',
+    { label: 'Bearbeiten …', act: () => editBm(u) },
+    { label: 'Löschen', act: () => deleteBm(u) },
+  ], ev.clientX, ev.clientY);
+});
+$('#bm-ov').addEventListener('mousedown', (ev) => { if (ev.target.id === 'bm-ov') closeBmDialog(); });
+
 /* ---------- Befehle (Menü, Tasten, Klicks) ---------- */
 function setZoom(f) { const t = cur(); if (!t?.native || t.mode !== 'web') return; t.zoom = Math.min(3, Math.max(0.3, Math.round(f * 100) / 100)); api.zoom(t.id, t.zoom); toast('Zoom ' + Math.round(t.zoom * 100) + ' %'); }
 async function toggleBookmark() {
@@ -654,7 +726,7 @@ async function runCmd(c) {
     case 'zoom-out': setZoom((t?.zoom || 1) - 0.1); break;
     case 'zoom-reset': setZoom(1); break;
     case 'toggle-side': S.side = !S.side; renderToolbar(); renderSide(); break;
-    case 'toggle-bar': S.bar = !S.bar; renderBar(); break;
+    case 'toggle-bar': S.bar = !S.bar; api.setPref('showBookmarkBar', S.bar).catch(() => {}); renderBar(); renderSettingsView(); break;
     case 'show-history': openSide('history'); break;
     case 'show-bookmarks': openSide('bookmarks'); break;
     case 'show-downloads': openSide('downloads'); break;
@@ -693,7 +765,18 @@ document.addEventListener('click', async (ev) => {
     case 'sv-alt': openSearch(t, d.q, 0); break;
     case 'sv-retry': loadEntry(t, true); break;
     case 'side-tab': S.sideTab = d.k; renderSide(); break;
-    case 'rm-bm': S.bookmarks = await api.setBookmark(d.url, '', false); renderToolbar(); renderBar(); renderSide(); break;
+    case 'rm-bm': await deleteBm(d.url); break;
+    case 'bm-add': openBmDialog(bmFromPage()); break;
+    case 'bm-edit': editBm(d.url); break;
+    case 'bm-del': ev.stopPropagation(); await deleteBm(d.url); break;
+    case 'bm-del-dlg': { const o = bmDlg?.oldUrl; closeBmDialog(); if (o) await deleteBm(o); break; }
+    case 'bm-save': saveBm(); break;
+    case 'bm-close': closeBmDialog(); break;
+    case 'pref-bar': {
+      S.bar = !S.bar;
+      try { await api.setPref('showBookmarkBar', S.bar); } catch { S.bar = !S.bar; toast('Konnte nicht gespeichert werden'); }
+      renderBar(); renderSettingsView(); break;
+    }
     case 'rm-hist': await api.historyRemove(d.url); renderSide(); break;
     case 'clear-history': await api.historyClear(); renderSide(); startSig = ''; renderStart(); toast('Verlauf gelöscht'); break;
     case 'clear-dl': S.downloads = []; await api.downloadsClear(); renderSide(); toast('Download-Liste geleert'); break;
@@ -725,6 +808,7 @@ document.addEventListener('submit', (ev) => {
 document.addEventListener('input', (ev) => { if (ev.target.id === 'startQ') armQuickSite(ev.target, ev); });
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
 document.addEventListener('keydown', (ev) => {
+  if (bmDlg) { if (ev.key === 'Escape') { ev.preventDefault(); closeBmDialog(); return; } if (ev.key === 'Enter' && ['bmTitle', 'bmUrl'].includes(ev.target.id)) { ev.preventDefault(); saveBm(); return; } }
   const t = cur();
   if (t?.mode === 'search' && t.data && !['INPUT', 'TEXTAREA'].includes(ev.target.tagName) && !ev.altKey) {
     const n = (t.data.results || []).length;
@@ -768,7 +852,7 @@ setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie
   // Jeder Schritt zeigt seine Meldung mindestens 320 ms, damit man das Hochfahren sieht – die echte Arbeit läuft währenddessen.
   const step = (label, frac, work) => { splashStep(label, frac); return Promise.all([work ? work() : null, wait(320)]).then((r) => r[0]); };
   try {
-    [S.hasKey, S.restore] = await step('Einstellungen laden …', 0.14, async () => [await api.keyStatus(), !!(await api.prefs()).restoreSession]);
+    [S.hasKey, S.restore, S.bar] = await step('Einstellungen laden …', 0.14, async () => { const p = await api.prefs(); return [await api.keyStatus(), !!p.restoreSession, p.showBookmarkBar !== false]; });
     [S.bookmarks, S.downloads] = await step('Lesezeichen & Verlauf …', 0.36, () => Promise.all([api.bookmarks(), api.downloads()]));
     S.downloads = (S.downloads || []).map((d, i) => ({ id: -i - 1, name: d.name, path: d.path, state: 'done', received: 0, total: 0 }));
     S.bookmarks = S.bookmarks || [];

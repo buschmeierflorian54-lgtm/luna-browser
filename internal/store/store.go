@@ -103,6 +103,36 @@ func (s *Store) SetBookmark(url, title string, on bool) []Bookmark {
 	return append([]Bookmark{}, out...)
 }
 
+// EditBookmark ändert Adresse und Titel eines Lesezeichens und behält seine Position.
+// Gibt es oldURL nicht, wird neu angelegt. Ein anderes Lesezeichen mit der neuen Adresse wird ersetzt (keine Doppelten).
+func (s *Store) EditBookmark(oldURL, url, title string) []Bookmark {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if title == "" {
+		title = url
+	}
+	out := make([]Bookmark, 0, len(s.bookmarks)+1)
+	placed := false
+	for _, b := range s.bookmarks {
+		switch {
+		case b.URL == oldURL:
+			b.URL, b.Title = url, title
+			out = append(out, b)
+			placed = true
+		case b.URL == url:
+			// Duplikat der neuen Adresse: entfernen (das bearbeitete bleibt)
+		default:
+			out = append(out, b)
+		}
+	}
+	if !placed {
+		out = append(out, Bookmark{URL: url, Title: title, Added: time.Now().UnixMilli()})
+	}
+	s.bookmarks = out
+	s.write("bookmarks.json", s.bookmarks)
+	return append([]Bookmark{}, out...)
+}
+
 /* Verlauf */
 
 func (s *Store) HistoryAdd(url, title string) {
@@ -214,7 +244,7 @@ func (s *Store) SessionLoad() string {
 /* Einstellungen (Ein/Aus-Schalter) */
 
 // PrefKeys sind die erlaubten Schlüssel; unbekannte werden abgelehnt.
-var PrefKeys = map[string]bool{"restoreSession": true}
+var PrefKeys = map[string]bool{"restoreSession": true, "showBookmarkBar": true}
 
 func (s *Store) Prefs() map[string]bool {
 	s.mu.Lock()

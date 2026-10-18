@@ -18,6 +18,10 @@ export function DownloadsClear() {
   return window['go']['main']['App']['DownloadsClear']();
 }
 
+export function EditBookmark(arg1, arg2, arg3) {
+  return window['go']['main']['App']['EditBookmark'](arg1, arg2, arg3);
+}
+
 export function History(arg1, arg2) {
   return window['go']['main']['App']['History'](arg1, arg2);
 }

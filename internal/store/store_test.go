@@ -40,4 +40,24 @@ func TestStore(t *testing.T) {
 	if !s3.Prefs()["restoreSession"] || s3.Prefs()["unbekannt"] {
 		t.Fatalf("Prefs: %v", s3.Prefs())
 	}
+	// Lesezeichen bearbeiten: Position bleibt, Doppelte verschwinden
+	e, _ := New(t.TempDir())
+	e.SetBookmark("https://1.de", "Eins", true)
+	e.SetBookmark("https://2.de", "Zwei", true)
+	e.SetBookmark("https://3.de", "Drei", true)
+	bs := e.EditBookmark("https://2.de", "https://zwei.de", "Zwei neu")
+	if len(bs) != 3 || bs[1].URL != "https://zwei.de" || bs[1].Title != "Zwei neu" {
+		t.Fatalf("Edit: %+v", bs)
+	}
+	bs = e.EditBookmark("https://1.de", "https://3.de", "Drei mit Eins")
+	if len(bs) != 2 || bs[0].URL != "https://3.de" || bs[0].Title != "Drei mit Eins" {
+		t.Fatalf("Duplikat: %+v", bs)
+	}
+	if bs = e.EditBookmark("https://gibtsnicht.de", "https://neu.de", ""); len(bs) != 3 || bs[2].Title != "https://neu.de" {
+		t.Fatalf("Neu: %+v", bs)
+	}
+	e.SetPref("showBookmarkBar", false)
+	if v, ok := e.Prefs()["showBookmarkBar"]; !ok || v {
+		t.Fatal("showBookmarkBar nicht speicherbar")
+	}
 }

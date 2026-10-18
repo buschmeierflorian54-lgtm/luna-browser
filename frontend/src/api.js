@@ -20,6 +20,7 @@ export const snapshot = (id) => App.WebSnapshot(id);
 // Lesezeichen, Verlauf, Downloads, Sitzung
 export const bookmarks = () => App.Bookmarks();
 export const setBookmark = (url, title, on) => App.SetBookmark(url, title, on);
+export const editBookmark = (oldUrl, url, title) => App.EditBookmark(oldUrl, url, title);
 export const historyAdd = (url, title) => App.HistoryAdd(url, title);
 export const history = (q, limit) => App.History(q, limit);
 export const historyRemove = (url) => App.HistoryRemove(url);

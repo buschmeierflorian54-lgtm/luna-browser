@@ -89,6 +89,9 @@ func (a *App) Bookmarks() []store.Bookmark { return a.st.Bookmarks() }
 func (a *App) SetBookmark(url, title string, on bool) []store.Bookmark {
 	return a.st.SetBookmark(url, title, on)
 }
+func (a *App) EditBookmark(oldURL, url, title string) []store.Bookmark {
+	return a.st.EditBookmark(oldURL, url, title)
+}
 func (a *App) HistoryAdd(url, title string)                  { a.st.HistoryAdd(url, title) }
 func (a *App) History(query string, limit int) []store.Visit { return a.st.History(query, limit) }
 func (a *App) HistoryRemove(url string)                      { a.st.HistoryRemove(url) }

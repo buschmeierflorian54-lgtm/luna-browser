@@ -22,6 +22,11 @@ Daten: `~/Library/Application Support/browser-mac/`.
 Widget auf der Startseite, Klick öffnet ein Vollbild-Overlay im Fenster (Klick irgendwohin, Esc oder X schließt).
 Beim ersten Zugriff fragt macOS nach Automation-Rechten für Spotify.
 
+## Lesezeichen
+Hinzufügen (+ in der Leiste, auf der Startseite, in der Seitenleiste und in den Einstellungen), Bearbeiten und Löschen
+(Rechtsklick auf ein Lesezeichen, ✕ auf den Startseiten-Kacheln, Verwaltung in den Einstellungen). Die Lesezeichenleiste
+lässt sich in den Einstellungen ausblenden (`showBookmarkBar` in `prefs.json`).
+
 ## Start und Sitzung
 Standard: Der Browser startet immer mit der Startseite. In den Einstellungen (⌘,; eigene Seite in eigenem Tab) lässt sich „Zuletzt geöffnete Seiten merken“
 einschalten; dann stellt er beim nächsten Start die Tabs von zuletzt wieder her. Ist es aus, wird nichts gespeichert
