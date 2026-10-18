@@ -1,8 +1,13 @@
 package main
 
 import (
+	"browser-mac/internal/browsermcp"
+	"browser-mac/internal/secret"
+	"context"
 	"embed"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -24,6 +29,9 @@ var shutterSound []byte
 //
 //go:embed frontend/src/gesture-core.js
 var gestureCore string
+
+//go:embed frontend/src/page-control.js
+var pageControl string
 
 // buildMenu: Tastenkürzel müssen im Menü liegen, damit sie auch gelten, wenn eine Webseite den Fokus hat.
 // Jeder Eintrag schickt ein "cmd"-Ereignis ans Frontend.
@@ -82,6 +90,24 @@ func buildMenu(app *App) *menu.Menu {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--mcp":
+			dir, err := os.UserConfigDir()
+			if err == nil {
+				err = browsermcp.RunBridge(context.Background(), secret.New(filepath.Join(dir, "browser-mac")))
+			}
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			return
+		case "--mcp-setup-prompt":
+			exe, _ := os.Executable()
+			fmt.Print(browsermcp.SetupPrompt(exe))
+			return
+		}
+	}
 	app := NewApp()
 	err := wails.Run(&options.App{
 		Title:            "Browser",
@@ -92,6 +118,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 239, G: 182, B: 213, A: 1},
 		AssetServer:      &assetserver.Options{Assets: assets},
 		OnStartup:        app.startup,
+		OnShutdown:       app.shutdown,
 		Bind:             []interface{}{app},
 		Menu:             buildMenu(app),
 		Mac:              &mac.Options{TitleBar: mac.TitleBarHiddenInset()},

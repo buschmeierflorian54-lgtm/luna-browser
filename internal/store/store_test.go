@@ -40,6 +40,20 @@ func TestStore(t *testing.T) {
 	if !s3.Prefs()["restoreSession"] || s3.Prefs()["unbekannt"] {
 		t.Fatalf("Prefs: %v", s3.Prefs())
 	}
+	// Automatic playback consent defaults off and survives both enabling and disabling.
+	if s3.Prefs()["spotifyAutoNextAlways"] {
+		t.Fatal("automatic playback must be opt-in")
+	}
+	s3.SetPref("spotifyAutoNextAlways", true)
+	consent, _ := New(s.dir)
+	if !consent.Prefs()["spotifyAutoNextAlways"] {
+		t.Fatal("consent was not persisted")
+	}
+	consent.SetPref("spotifyAutoNextAlways", false)
+	revoked, _ := New(s.dir)
+	if revoked.Prefs()["spotifyAutoNextAlways"] {
+		t.Fatal("revocation was not persisted")
+	}
 	// Lesezeichen bearbeiten: Position bleibt, Doppelte verschwinden
 	e, _ := New(t.TempDir())
 	e.SetBookmark("https://1.de", "Eins", true)

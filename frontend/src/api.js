@@ -58,3 +58,33 @@ export const keyStatus = () => App.SearchKeyStatus();
 export const keySet = (key) => App.SearchKeySet(key);
 export const keyClear = () => App.SearchKeyClear();
 export const keyTest = () => App.SearchKeyTest();
+
+export const spotifyAPIStatus = () => App.SpotifyAPIStatus();
+export const spotifyAPIConfigure = (id) => App.SpotifyAPIConfigure(id);
+export const spotifyAPIConnect = () => App.SpotifyAPIConnect();
+export const spotifyAPIDisconnect = () => App.SpotifyAPIDisconnect();
+export const spotifySearch = (q) => App.SpotifySearch(q);
+export const spotifyPlay = (uri) => App.SpotifyPlay(uri);
+
+export const sonosStatus = () => App.SonosStatus();
+export const sonosScan = () => App.SonosScan();
+export const sonosConfigure = (on, ids) => App.SonosConfigure(on, ids);
+
+export const mcpStatus = () => App.MCPStatus();
+export const mcpConfigure = (on) => App.MCPConfigure(on);
+export const mcpCopySetup = () => App.MCPCopySetup();
+export const onMCP = cb => EventsOn('mcp-command', j => cb(JSON.parse(j)));
+export const mcpCommandActive = id => App.MCPCommandActive(id);
+export const mcpReply = (id,value,error) => App.MCPReply(id,JSON.stringify(value ?? null),error || '');
+export const mcpPage = (id,args) => App.MCPPage(id,JSON.stringify(args));
+
+export const setDockIcon = nat((png) => App.SetDockIcon(png));
+
+export const spotifyQueue = (uri) => App.SpotifyQueue(uri);
+
+export const spotifyGetQueue = () => App.SpotifyGetQueue();
+
+export const spotifyScheduleNext = (uri, title) => App.SpotifyScheduleNext(uri, title);
+export const spotifyCancelNext = () => App.SpotifyCancelNext();
+export const spotifyNextStatus = () => App.SpotifyNextStatus();
+export const onSpotifyNext = cb => EventsOn('spotify-next', j => cb(JSON.parse(j)));

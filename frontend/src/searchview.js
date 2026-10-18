@@ -60,7 +60,7 @@ function skeleton() {
 function problem(t) {
   const e = t.sErr;
   const key = e === 'NOKEY' || /Schlüssel/.test(e);
-  return `<div class="sv-msg">${key ? I.key : I.warn}<h2>${e === 'NOKEY' ? 'Eigene Suche einrichten' : key ? 'Schlüssel wird abgelehnt' : 'Suche nicht möglich'}</h2>
+  return `<div class="sv-msg">${key ? I.key : I.warn}<h2>${e === 'NOKEY' ? 'Luna Search einrichten' : key ? 'Schlüssel wird abgelehnt' : 'Suche nicht möglich'}</h2>
     <p>${e === 'NOKEY' ? 'Hinterlege deinen Brave-API-Schlüssel, dann sucht dieser Browser direkt über Brave – ohne Umweg über eine fremde Webseite.' : esc(e)}</p>
     <div class="row">${key ? '<button class="btn pri" data-act="settings">Einstellungen öffnen</button><button class="btn" data-act="open-brave">Schlüssel bei Brave holen</button>' : '<button class="btn pri" data-act="sv-retry">Erneut versuchen</button>'}</div></div>`;
 }
@@ -68,7 +68,7 @@ function problem(t) {
 // t: Tab mit q, page, data, sErr, sLoading, sel, filter; bm(url) sagt, ob ein Lesezeichen existiert.
 export function searchHTML(t, bm) {
   const d = t.data;
-  const head = `<div class="sv-top"><div class="sv-title"><h1>${esc(t.q)}</h1><span class="sv-meta">${t.sLoading ? 'Suche läuft …' : d ? `Seite ${t.page + 1} · ${secs(d.millis)} s · Brave` : ''}</span></div>${d && !t.sErr ? `<div class="stabs sv-filter" role="tablist">
+  const head = `<div class="sv-top"><div class="sv-title"><div class="luna-search-brand">Luna Search</div><h1>${esc(t.q)}</h1><span class="sv-meta">${t.sLoading ? 'Suche läuft …' : d ? `Seite ${t.page + 1} · ${secs(d.millis)} s · Brave` : ''}</span></div>${d && !t.sErr ? `<div class="stabs sv-filter" role="tablist">
     <button class="${t.filter === 'all' ? 'on' : ''}" data-act="sv-filter" data-k="all">Alle</button>
     <button class="${t.filter === 'news' ? 'on' : ''}" data-act="sv-filter" data-k="news">Nachrichten${d.news?.length ? ' · ' + d.news.length : ''}</button>
     <button class="${t.filter === 'video' ? 'on' : ''}" data-act="sv-filter" data-k="video">Videos${d.videos?.length ? ' · ' + d.videos.length : ''}</button></div>` : ''}</div>`;
@@ -81,7 +81,7 @@ export function searchHTML(t, bm) {
     const first = res.slice(0, 3).map((r, i) => result(r, i, t.sel, bm)).join('');
     const rest = res.slice(3).map((r, i) => result(r, i + 3, t.sel, bm)).join('');
     const faq = (d.faq || []).length ? `<h3 class="sv-h">Häufige Fragen</h3><div class="sv-faq">${d.faq.map((f) => `<details><summary>${esc(f.q)}</summary><p>${esc(f.a)}</p></details>`).join('')}</div>` : '';
-    main = (res.length ? first + strips(d, 'all') + faq + rest : `<div class="sv-msg"><h2>Keine Treffer</h2><p>Zu „${esc(t.q)}“ hat Brave nichts gefunden.</p></div>`);
+    main = (res.length ? first + strips(d, 'all') + faq + rest : `<div class="sv-msg"><h2>Keine Treffer</h2><p>Zu „${esc(t.q)}“ hat Luna Search nichts gefunden.</p></div>`);
   } else {
     main = strips(d, t.filter) || `<div class="sv-msg"><h2>Nichts gefunden</h2><p>Für diese Suche gibt es hier keine ${t.filter === 'news' ? 'Nachrichten' : 'Videos'}.</p></div>`;
   }

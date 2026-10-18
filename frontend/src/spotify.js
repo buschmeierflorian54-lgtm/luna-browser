@@ -190,9 +190,9 @@ function tick() {
   document.querySelectorAll('[data-sp=pct]').forEach((e) => { e.style.width = pct; });
   document.querySelectorAll('[data-sp=pos]').forEach((e) => { e.textContent = mmss(p); });
   document.querySelectorAll('[data-sp=dur]').forEach((e) => { e.textContent = mmss(s.duration); });
-  const seek = document.querySelector('[data-sp=seek]'); if (seek && !M.seeking) seek.value = Math.floor(p);
+  if (!M.seeking) document.querySelectorAll('[data-sp=seek]').forEach(r => { r.value = Math.floor(p); });
+  if (!M.volDrag) { document.querySelectorAll('[data-sp=vol]').forEach(r => { r.value = s.volume; }); document.querySelectorAll('[data-sp=volv]').forEach(v => { v.textContent = s.volume; }); }
   document.querySelectorAll('input[type=range][data-sp]').forEach((r) => r.style.setProperty('--p', ((r.value - r.min) / ((r.max - r.min) || 1) * 100).toFixed(1) + '%'));
-  const vol = document.querySelector('[data-sp=vol]'); if (vol && !M.volDrag) { vol.value = s.volume; const v = document.querySelector('[data-sp=volv]'); if (v) v.textContent = s.volume; }
 }
 
 /* ---------- Abfragen ---------- */
@@ -246,6 +246,7 @@ document.addEventListener('keydown', (ev) => {
 $('#spotify-ov').addEventListener('click', (ev) => { if (!ev.target.closest('button, input')) closeOv(); });
 document.addEventListener('input', (ev) => {
   const t = ev.target;
+  if (t.matches('input[type=range][data-sp]')) t.style.setProperty('--p', ((t.value - t.min) / ((t.max - t.min) || 1) * 100).toFixed(1) + '%');
   if (t.dataset?.sp === 'seek') { M.seeking = true; document.querySelectorAll('[data-sp=pos]').forEach((e) => { e.textContent = mmss(+t.value); }); }
   if (t.dataset?.sp === 'vol') { M.volDrag = true; const vv = $('[data-sp=volv]'); if (vv) vv.textContent = t.value; clearTimeout(M.volT); M.volT = setTimeout(() => api.spotifyCommand('volume', +t.value).catch(() => {}), 80); }
 });
@@ -261,6 +262,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) poll
 export function setHooks(h) { Object.assign(hooks, h); }
 export function refresh() { M.sig.banner = ''; render(); }
 export function closeOverlay() { closeOv(); }
+export function isOverlayOpen() { return M.ov; }
 export function initSpotify() { wirePop(); render(); setInterval(tick, 500); return poll(); }   // wartet auf die erste Abfrage
 // path: Ordner, in dem das Banner erscheinen soll (oder null)
 export function setBanner(path, label) {

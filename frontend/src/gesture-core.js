@@ -11,7 +11,7 @@
     var enabled = opts.enabled || function () { return window.__fmGesture !== false; };
     var ACCENT = '#d27cb0';
 
-    var pts = null, fired = false, swallow = 0, canvas = null, ctx = null, raf = 0, fade = null;
+    var pts = null, fired = false, swallow = 0, canvas = null, ctx = null, raf = 0, fade = null, shotTimer = 0;
 
     function skip(el) {
       if (!el || !el.closest) return false;
@@ -142,8 +142,14 @@
           fired = true;
           try { var sel = window.getSelection && window.getSelection(); if (sel) sel.removeAllRanges(); } catch (x) { /* egal */ }
           var mx = 0, my = 0; for (var k = 0; k < pts.length; k++) { mx += pts[k].x; my += pts[k].y; }
-          if (canvas) fadeOut({ x: mx / pts.length, y: my / pts.length, r: 40 });
-          try { onS({ x: mx / pts.length, y: my / pts.length }); } catch (x) { /* nie die Seite stören */ }
+          var shotPoint = { x: mx / pts.length, y: my / pts.length };
+          removeCanvas();
+          // WKWebView kann Animationsframes pausieren. Ein kurzer Timer lässt die
+          // entfernte Spur verschwinden, ohne die Aufnahme an rAF zu koppeln.
+          shotTimer = setTimeout(function () {
+            shotTimer = 0;
+            try { onS(shotPoint); } catch (x) { /* nie die Seite stören */ }
+          }, 120);
           pts = null; swallow = Date.now() + 450; fired = false; return true;
         }
       }
@@ -154,6 +160,7 @@
       return had;
     }
     function down(e) {
+      if (shotTimer) return;
       if (e.button !== 0 || e.detail > 1 || e.metaKey || e.ctrlKey || e.altKey || !enabled() || skip(e.target)) { pts = null; return; }
       pts = [{ x: e.clientX, y: e.clientY, t: Date.now() }]; fired = false;
     }
@@ -188,7 +195,7 @@
     return function detach() {
       target.removeEventListener('mousedown', down, true); target.removeEventListener('mousemove', move, true);
       target.removeEventListener('mouseup', end, true); target.removeEventListener('click', click, true);
-      window.removeEventListener('blur', end); removeCanvas();
+      window.removeEventListener('blur', end); clearTimeout(shotTimer); shotTimer = 0; removeCanvas();
     };
   };
 })();

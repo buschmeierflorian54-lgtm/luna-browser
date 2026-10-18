@@ -99,7 +99,7 @@ func snapshotVia(start func(req C.int)) (string, error) {
 			return "", errors.New("kein Bild")
 		}
 		return b, nil
-	case <-time.After(5 * time.Second):
+	case <-time.After(15 * time.Second):
 		return "", errors.New("Zeitüberschreitung")
 	}
 }
@@ -136,4 +136,20 @@ func ConfigureGesture(src string, on bool) {
 		v = 1
 	}
 	C.fmwConfigureGesture(c, C.int(v))
+}
+
+// Evaluate runs only the trusted, generated MCP operation script.
+func Evaluate(id int, script string) (string, error) {
+	source := C.CString(script)
+	defer C.free(unsafe.Pointer(source))
+	return snapshotVia(func(req C.int) { C.fmwEvaluate(C.int(id), source, req) })
+}
+
+func SetDockIcon(data []byte) bool {
+	if len(data) == 0 {
+		return false
+	}
+	p := C.CBytes(data)
+	defer C.free(p)
+	return C.fmwSetDockIcon(p, C.int(len(data))) != 0
 }

@@ -38,6 +38,34 @@ export function HistoryRemove(arg1) {
   return window['go']['main']['App']['HistoryRemove'](arg1);
 }
 
+export function MCPCommandActive(arg1) {
+  return window['go']['main']['App']['MCPCommandActive'](arg1);
+}
+
+export function MCPConfigure(arg1) {
+  return window['go']['main']['App']['MCPConfigure'](arg1);
+}
+
+export function MCPCopySetup() {
+  return window['go']['main']['App']['MCPCopySetup']();
+}
+
+export function MCPPage(arg1, arg2) {
+  return window['go']['main']['App']['MCPPage'](arg1, arg2);
+}
+
+export function MCPReply(arg1, arg2, arg3) {
+  return window['go']['main']['App']['MCPReply'](arg1, arg2, arg3);
+}
+
+export function MCPSetupPrompt() {
+  return window['go']['main']['App']['MCPSetupPrompt']();
+}
+
+export function MCPStatus() {
+  return window['go']['main']['App']['MCPStatus']();
+}
+
 export function Notes() {
   return window['go']['main']['App']['Notes']();
 }
@@ -90,6 +118,10 @@ export function SetBookmark(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetBookmark'](arg1, arg2, arg3);
 }
 
+export function SetDockIcon(arg1) {
+  return window['go']['main']['App']['SetDockIcon'](arg1);
+}
+
 export function SetGesture(arg1) {
   return window['go']['main']['App']['SetGesture'](arg1);
 }
@@ -102,8 +134,64 @@ export function SetPref(arg1, arg2) {
   return window['go']['main']['App']['SetPref'](arg1, arg2);
 }
 
+export function SonosConfigure(arg1, arg2) {
+  return window['go']['main']['App']['SonosConfigure'](arg1, arg2);
+}
+
+export function SonosScan() {
+  return window['go']['main']['App']['SonosScan']();
+}
+
+export function SonosStatus() {
+  return window['go']['main']['App']['SonosStatus']();
+}
+
+export function SpotifyAPIConfigure(arg1) {
+  return window['go']['main']['App']['SpotifyAPIConfigure'](arg1);
+}
+
+export function SpotifyAPIConnect() {
+  return window['go']['main']['App']['SpotifyAPIConnect']();
+}
+
+export function SpotifyAPIDisconnect() {
+  return window['go']['main']['App']['SpotifyAPIDisconnect']();
+}
+
+export function SpotifyAPIStatus() {
+  return window['go']['main']['App']['SpotifyAPIStatus']();
+}
+
+export function SpotifyCancelNext() {
+  return window['go']['main']['App']['SpotifyCancelNext']();
+}
+
 export function SpotifyCommand(arg1, arg2) {
   return window['go']['main']['App']['SpotifyCommand'](arg1, arg2);
+}
+
+export function SpotifyGetQueue() {
+  return window['go']['main']['App']['SpotifyGetQueue']();
+}
+
+export function SpotifyNextStatus() {
+  return window['go']['main']['App']['SpotifyNextStatus']();
+}
+
+export function SpotifyPlay(arg1) {
+  return window['go']['main']['App']['SpotifyPlay'](arg1);
+}
+
+export function SpotifyQueue(arg1) {
+  return window['go']['main']['App']['SpotifyQueue'](arg1);
+}
+
+export function SpotifyScheduleNext(arg1, arg2) {
+  return window['go']['main']['App']['SpotifyScheduleNext'](arg1, arg2);
+}
+
+export function SpotifySearch(arg1) {
+  return window['go']['main']['App']['SpotifySearch'](arg1);
 }
 
 export function SpotifyState() {

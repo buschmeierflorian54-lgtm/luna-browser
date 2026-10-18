@@ -1,10 +1,21 @@
+import { createBrowserNotifications } from './notifications.js';
+import { initMusicPanel } from './music-panel.js';
+import { initAutoNext } from './music-autonext.js';
+import { initQueueDrop } from './spotify-queue.js';
+import { applyColorTheme, colorThemesHTML, colorTheme, themeIconURL, COLOR_THEMES } from './color-themes.js';
+import { lunaPageAction } from './page-control.js';
+import { mcpSettingsHTML } from './mcp-view.js';
+import { sonosSettingsHTML, updateSonosSettings } from './sonos-view.js';
 import './style.css';
+import { spotifyResultsHTML, spotifySettingsHTML } from './spotify-view.js';
+import { bindSpotifySearch, syncSpotifySearch, spotifyCommand, spotifySearchURL } from './spotify-search.js';
 import './gesture-core.js';
 import * as api from './api.js';
 import { IS_NATIVE } from './api.js';
 import { searchHTML } from './searchview.js';
-import logoUrl from './assets/logo.png';
-import { initSpotify, setBanner, refresh as spRefresh, setHooks, closeOverlay } from './spotify.js';
+import { panelGroups, addPanelGroup, renamePanelGroup, removePanelGroup, assignPanel, registerPanel, initSidePanel, renderSide, setActivePanel, activePanel, allPanels, isPanelHidden, setPanelHidden, movePanel, resetPanels, refreshBadges } from './sidepanel.js';
+import { lunaWordmark, settingsWordmark } from './branding.js';
+import { initSpotify, setBanner, refresh as spRefresh, setHooks, closeOverlay, isOverlayOpen } from './spotify.js';
 
 /* ---------- Helfer ---------- */
 const $ = (s) => document.querySelector(s);
@@ -49,17 +60,18 @@ const isDark = () => document.documentElement.dataset.theme === 'dark';
 function applyTheme(mode, persist) {
   if (persist) { try { localStorage.setItem(THEME_KEY, mode); } catch { /* ohne Speicher: gilt nur jetzt */ } }
   document.documentElement.dataset.theme = (mode === 'dark' || (mode === 'auto' && prefersDark())) ? 'dark' : 'light';
+  applyColorTheme();
   api.setAppearance(mode);   // nativ: Webseiten folgen über prefers-color-scheme, Systemelemente passen sich an
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (themeMode() === 'auto') applyTheme('auto'); });
 
 /* ---------- Native Ansichten: während des Startbildschirms verborgen ---------- */
 let splashing = true, pendingShow = -1;
-function nativeShow(id) { if (splashing) { pendingShow = id; return; } api.show(id); }
+function nativeShow(id) { if (isOverlayOpen() || S.cover > 0) id = -1; if (splashing) { pendingShow = id; return; } api.show(id); }
 
 /* ---------- Zustand ---------- */
 const S = {
-  hasKey: false, restore: false, gesture: true, notes: {}, tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
+  hasKey: false, autoNextAlways: false, restore: false, gesture: true, notes: {}, tabs: [], groups: {}, active: 0, next: 1, bookmarks: [], downloads: [],
   side: false, sideTab: 'bookmarks', bar: true, cover: 0, sugg: [], suggSel: -1, findOpen: false,
 };
 const tabById = (id) => S.tabs.find((t) => t.id === id);
@@ -72,10 +84,10 @@ const mkTab = (id, url) => ({
   under: false, cameFromSearch: false, fwdWeb: false, fwdSearch: false,
 });
 
-function toast(msg) {
-  const el = $('#toast'); el.textContent = msg; el.classList.add('show');
-  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 2600);
-}
+const notifications = createBrowserNotifications({ cover: async on => {
+  const done = cover(on); if (on) nativeShow(-1); await done;
+} });
+function toast(msg, duration = 2600) { notifications.toast(msg, duration); }
 
 /* ---------- Tabs ---------- */
 function newTab(url, opts = {}) {
@@ -91,6 +103,10 @@ function adoptPopup(id) {            // Tab, den eine Seite selbst geöffnet hat
 }
 /* ---------- Navigation: Startseite · Suche · Web ---------- */
 function visit(t, input) {
+  if (String(input).startsWith('spotify-search:')) { try { openSearch(t, decodeURIComponent(input.slice(15)), 0, { provider: 'spotify' }); } catch { toast('Ungültiger Suchbegriff'); } return; }
+  const spotifyQuery = spotifyCommand(String(input));
+  if (spotifyQuery !== null) { if (spotifyQuery) openSearch(t, spotifyQuery, 0, { provider: 'spotify' }); return; }
+  if (String(input).trim().toLowerCase() === 'einstellungen') { askSettings(t, input); return; }
   const r = resolve(input); if (!r) return;
   if (r.q !== undefined) openSearch(t, r.q, 0); else openWeb(t, r.url);
 }
@@ -112,7 +128,7 @@ function openSearch(t, q, page = 0, opts = {}) {
   if (t.mode === 'start' || t.mode === 'settings') t.under = false;
   if (!opts.noPush) {
     if (t.mode !== 'search') { t.sHist = []; t.sIdx = -1; }
-    t.sHist = t.sHist.slice(0, t.sIdx + 1); t.sHist.push({ q, page, data: null }); t.sIdx = t.sHist.length - 1;
+    t.sHist = t.sHist.slice(0, t.sIdx + 1); t.sHist.push({ q, page, data: null, provider: opts.provider || 'web' }); t.sIdx = t.sHist.length - 1;
   }
   t.mode = 'search'; t.lazy = false; t.fwdWeb = false; t.fwdSearch = false; t.error = false;
   loadEntry(t, opts.force);
@@ -122,18 +138,19 @@ function openSearch(t, q, page = 0, opts = {}) {
 // zeigt den Eintrag sHist[sIdx]; Ergebnisse werden pro Eintrag gemerkt (Zurück/Vor kostet keine Anfrage)
 async function loadEntry(t, force) {
   const e = t.sHist[t.sIdx]; if (!e) return;
-  t.q = e.q; t.page = e.page; t.url = 'search:' + encodeURIComponent(e.q); t.title = e.q + ' – Suche'; t.sel = 0; t.sErr = '';
+  t.provider = e.provider || 'web';
+  t.q = e.q; t.page = e.page; t.url = (t.provider === 'spotify' ? 'spotify-search:' : 'search:') + encodeURIComponent(e.q); t.title = e.q + (t.provider === 'spotify' ? ' – Spotify' : ' – Luna Search'); t.sel = 0; t.sErr = '';
   const tok = ++t.sTok;
   if (e.data && !force) { t.data = e.data; t.sLoading = false; t.loading = false; if (t.id === S.active) renderAll(); return; }
   t.data = null;
-  if (!S.hasKey) { t.sErr = 'NOKEY'; t.sLoading = false; t.loading = false; if (t.id === S.active) renderAll(); return; }
+  if (t.provider !== 'spotify' && !S.hasKey) { t.sErr = 'NOKEY'; t.sLoading = false; t.loading = false; if (t.id === S.active) renderAll(); return; }
   t.sLoading = true; t.loading = true; t.progress = 0.45;
   if (t.id === S.active) renderAll();
   try {
-    const d = await api.search(e.q, e.page);
+    const d = t.provider === 'spotify' ? await api.spotifySearch(e.q) : await api.search(e.q, e.page);
     if (tok !== t.sTok) return;
     e.data = t.data = d;
-    if (e.page === 0) api.historyAdd(t.url, t.title);
+    if (e.page === 0 && t.provider !== 'spotify') api.historyAdd(t.url, t.title);
   } catch (err) {
     if (tok !== t.sTok) return;
     t.sErr = String(err?.message || err);
@@ -169,6 +186,7 @@ function activate(id) {
   $('#url').blur();
   S.active = id;
   const t = cur();
+  if(t.group && S.groups[t.group]) S.groups[t.group].collapsed=false;
   if (t.lazy) { t.lazy = false; visit(t, t.url); }
   nativeShow(t.mode === 'web' && t.native ? t.id : -1);
   if (t.native) api.zoom(t.id, t.zoom);
@@ -176,11 +194,26 @@ function activate(id) {
   if (t.mode === 'start') setTimeout(() => $('#url').focus(), 0);
   saveSession();
 }
+const closingTabs = new Map();
 function closeTab(id) {
+ if(closingTabs.has(id))return closingTabs.get(id);
+ const task=(async()=>{
+  // Start in a microtask so the lock exists even when reduced motion skips animation.
+  await Promise.resolve();
+  const el=$(`#tabs [data-tab-id="${id}"]`);
+  if(el&&!matchMedia('(prefers-reduced-motion: reduce)').matches){
+   const width=el.getBoundingClientRect().width;
+   await el.animate([{opacity:1,maxWidth:width+'px',minWidth:width+'px',transform:'translateY(0)'},{opacity:0,maxWidth:'0px',minWidth:'0px',paddingLeft:'0px',paddingRight:'0px',marginRight:'-4px',transform:'translateY(8px) scale(.94)'}],{duration:190,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'}).finished.catch(()=>{});
+  }
+  closingTabs.delete(id);closeTabNow(id);
+ })();closingTabs.set(id,task);return task;
+}
+function closeTabNow(id) {
   const i = S.tabs.findIndex((t) => t.id === id); if (i < 0) return;
   const t = S.tabs[i];
   if (t.native) api.close(id);
   S.tabs.splice(i, 1);
+  if(t.group&&!S.tabs.some(x=>x.group===t.group))delete S.groups[t.group];
   if (!S.tabs.length) { newTab(); return; }
   if (S.active === id) activate(S.tabs[Math.min(i, S.tabs.length - 1)].id);
   else { renderTabs(); saveSession(); }
@@ -196,9 +229,9 @@ function saveSession() {
   clearTimeout(sessT);
   if (!S.restore) { api.sessionSave(''); return; }          // Merken ist aus: nichts behalten
   sessT = setTimeout(() => {
-    const tabs = S.tabs.filter((t) => t.url && !t.error && t.mode !== 'settings').map((t) => ({ url: t.mode === 'web' ? t.webUrl || t.url : t.url, title: t.title }));
-    const act = Math.max(0, S.tabs.filter((t) => t.url && !t.error && t.mode !== 'settings').findIndex((t) => t.id === S.active));
-    api.sessionSave(JSON.stringify({ tabs, active: act }));
+    const tabs = S.tabs.filter((t) => !t.error && t.mode !== 'settings').map((t) => ({ url: t.mode === 'web' ? t.webUrl || t.url : t.url, title: t.title, group:t.group||'' }));
+    const act = Math.max(0, S.tabs.filter((t) => !t.error && t.mode !== 'settings').findIndex((t) => t.id === S.active));
+    api.sessionSave(JSON.stringify({ tabs, active: act, groups:S.groups }));
   }, 700);
 }
 async function restoreSession() {
@@ -206,7 +239,8 @@ async function restoreSession() {
   try {
     const s = JSON.parse(await api.sessionLoad() || 'null');
     if (s && s.tabs && s.tabs.length) {
-      s.tabs.forEach((x, i) => { const t = mkTab(S.next++, x.url); t.title = x.title || hostOf(x.url); t.lazy = true; S.tabs.push(t); if (i === s.active) S.active = t.id; });
+      S.groups=Object.fromEntries(Object.entries(s.groups||{}).filter(([id,g])=>/^tg-[a-z0-9-]+$/.test(id)&&g&&typeof g.title==='string').map(([id,g])=>[id,{title:g.title.slice(0,40),collapsed:!!g.collapsed}]));
+      s.tabs.forEach((x, i) => { const t = mkTab(S.next++, x.url); t.title = x.title || hostOf(x.url); t.lazy = !!x.url; t.group=S.groups[x.group]?x.group:''; S.tabs.push(t); if (i === s.active) S.active = t.id; });
       if (!S.active) S.active = S.tabs[0].id;
       activate(S.active);
       return;
@@ -249,10 +283,18 @@ api.onWeb((e) => {
 
 /* ---------- Rendern ---------- */
 function renderTabs() {
-  $('#tabs').innerHTML = S.tabs.map((t) => {
+  if(closingTabs.size)return;
+  const htmlTab = (t) => {
     const label = t.title || (t.url ? hostOf(t.url) : 'Neuer Tab');
     const ico = t.loading ? '<span class="spin"></span>' : t.mode === 'search' ? `<span class="fav">${ICON.search}</span>` : t.mode === 'settings' ? `<span class="fav">${GEAR}</span>` : t.icon ? `<img class="fav" src="${esc(t.icon)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'fav',innerHTML:window.__globe}))">` : `<span class="fav">${ICON.globe}</span>`;
-    return `<div class="tab ${t.id === S.active ? 'act' : ''}" title="${esc(label)}">${ico}<button class="tlab" role="tab" aria-selected="${t.id === S.active}" data-act="tab" data-id="${t.id}">${esc(label)}</button>${S.tabs.length > 1 ? `<button class="tx" data-act="close" data-id="${t.id}" aria-label="Tab schließen">${ICON.x}</button>` : ''}</div>`;
+    return `<div class="tab ${t.id === S.active ? 'act' : ''} ${t.group?'grouped':''}" draggable="true" data-tab-id="${t.id}" title="${esc(label)}">${ico}<button class="tlab" role="tab" aria-selected="${t.id === S.active}" data-act="tab" data-id="${t.id}">${esc(label)}</button>${S.tabs.length > 1 ? `<button class="tx" data-act="close" data-id="${t.id}" aria-label="Tab schließen">${ICON.x}</button>` : ''}</div>`;
+  };
+  const seen=new Set();
+  $('#tabs').innerHTML=S.tabs.map(t=>{
+   if(!t.group||!S.groups[t.group])return htmlTab(t);
+   if(seen.has(t.group))return '';seen.add(t.group);
+   const g=S.groups[t.group],members=S.tabs.filter(x=>x.group===t.group);
+   return `<div class="tab-group ${g.collapsed?'collapsed':''}" data-tab-group="${esc(t.group)}"><button class="tab-group-label" data-act="tab-group-toggle" data-group="${esc(t.group)}" aria-expanded="${!g.collapsed}" title="${esc(g.title)} · Rechtsklick zum Bearbeiten"><i></i><span>${esc(g.title)}</span><small>${members.length}</small></button>${g.collapsed?'':members.map(htmlTab).join('')}</div>`;
   }).join('') + `<button class="ib" id="newtab" data-act="new-tab" aria-label="Neuer Tab">${ICON.plus}</button>`;
   $('#body').style.borderRadius = '0';
 }
@@ -266,6 +308,8 @@ function renderToolbar() {
   $('#bReload').classList.toggle('off', t.mode === 'start' || t.mode === 'settings');
   const input = $('#url');
   if (document.activeElement !== input) input.value = t.mode === 'settings' ? 'Einstellungen' : shownUrl(t.mode === 'start' ? '' : t.url);
+  bindSpotifySearch(input, (target) => visit(cur(), target), () => { clearTimeout(quickT); closeSugg(); });
+  syncSpotifySearch(input, t.url);
   $('#lock').innerHTML = t.mode === 'settings' ? GEAR : t.mode === 'search' ? ICON.search : t.url.startsWith('https://') ? ICON.lock : '';
   const bm = !!t.url && isBookmarked(t.url);
   $('#bStar').innerHTML = bm ? ICON.starOn : ICON.star;
@@ -298,17 +342,21 @@ function startHTML() {
   return `<div class="st-bg"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><canvas class="st-waves" aria-hidden="true"></canvas></div>
   <div class="st-scroll"><div class="st-wrap">
     <header class="st-hero">
-      <div class="st-logo-w"><img class="st-logo" src="${logoUrl}" alt="" draggable="false"><span class="st-halo"></span></div>
-      <div class="st-clock" id="stClock" aria-label="Uhrzeit"></div>
+      <div class="st-logo-w"><img class="st-logo" src="${themeIconURL()}" alt="" draggable="false"><span class="st-halo"></span></div>
+      <div class="st-brand-widget" role="group" aria-label="Uhrzeit und Luna Browser">
+        <div class="st-clock" id="stClock" aria-label="Uhrzeit"></div>
+        <span class="st-brand-divider" aria-hidden="true"></span>
+        ${lunaWordmark}
+      </div>
       <h1 class="st-greet">${GREET()}</h1>
       <p class="st-date">${esc(date)}</p>
     </header>
     <form id="startForm" class="st-search" autocomplete="off">
       <svg class="st-si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="startQ" type="text" placeholder="Im Web suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
+      <input id="startQ" type="text" placeholder="Mit Luna Search suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
       <kbd>⌘L</kbd><span class="st-glow"></span>
     </form>
-    <div class="st-status">${S.hasKey ? '<span class="pill ok"><i></i>Suche bereit · Brave</span>' : '<button class="pill warn" data-act="settings"><i></i>Eigene Suche einrichten – Brave-Schlüssel hinterlegen</button>'}</div>
+    <div class="st-status">${S.hasKey ? '<span class="pill ok"><i></i>Luna Search · bereit</span>' : '<button class="pill warn" data-act="settings"><i></i>Luna Search einrichten</button>'}</div>
     <div class="st-quick">${QUICK.map((q, i) => `<button class="qa" data-act="cmd" data-cmd="${q[0]}" ${delay(i + 3)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${q[2]}</svg>${q[1]}</button>`).join('')}</div>
     <section id="widget-banner" hidden></section>
     <section class="st-sec"><h3>Lesezeichen</h3><div class="st-tiles">${bms.map((b, i) => `<button class="st-card tile" data-act="open-url" data-url="${esc(b.url)}" data-bm="${esc(b.url)}" title="${esc(b.title)} – Rechtsklick: bearbeiten oder löschen" ${delay(i + 6)}><span class="st-glare"></span><span class="tdel" role="button" aria-label="Lesezeichen löschen" data-act="bm-del" data-url="${esc(b.url)}">${ICON.x}</span><div class="big" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</div><span class="tt">${esc(b.title)}</span><span class="th">${esc(hostOf(b.url))}</span></button>`).join('')}<button class="st-card tile addtile" data-act="bm-add" ${delay(bms.length + 6)}><span class="st-glare"></span><div class="big plus">${ICON.plus}</div><span class="tt">Hinzufügen</span><span class="th">&nbsp;</span></button></div></section>
@@ -345,6 +393,8 @@ function startWaves(canvas, host, still) {
     ctx.clearRect(0, 0, w, h);
     L.forEach((ly, i) => {
       const [rgb, al] = dark ? ly.d : ly.l;
+      const palette = COLOR_THEMES.find(p => p[0] === colorTheme());
+      const waveColor = alpha => palette[0] === 'luna' ? `rgba(${rgb},${alpha})` : `hsla(${palette[2] + i * 10},${palette[3]}%,${dark ? 40 : 72}%,${alpha})`;
       const base = h * ly.b + my * 22 * (i + 1) * 0.5;
       const ph = ly.p + t * ly.s * 6.283 + mx * 1.4 * (i % 2 ? -1 : 1);
       ctx.beginPath(); ctx.moveTo(0, h);
@@ -355,7 +405,7 @@ function startWaves(canvas, host, still) {
       }
       ctx.lineTo(w, h); ctx.closePath();
       const g = ctx.createLinearGradient(0, base - ly.a, 0, h);
-      g.addColorStop(0, `rgba(${rgb},${al})`); g.addColorStop(1, `rgba(${rgb},${al * 0.15})`);
+      g.addColorStop(0, waveColor(al)); g.addColorStop(1, waveColor(al * 0.15));
       ctx.fillStyle = g; ctx.fill();
     });
   };
@@ -397,10 +447,20 @@ async function renderStart() {
   if (!wasHidden && sig === startSig) return;      // nichts geändert: Einblend-Animation nicht neu starten
   startSig = sig;
   el.innerHTML = startHTML();
+  bindSpotifySearch($('#startQ'), (target) => visit(cur(), target), () => clearTimeout(quickT));
   el.style.setProperty('--mx', 0); el.style.setProperty('--my', 0);
   startMotion(el);
   setBanner('start', 'Spotify'); spRefresh();
-  const h = await api.history('', 8);
+  const history = await api.history('', 0);
+  const seen = new Set();
+  const h = history.filter((v) => {
+    // Eine Website nur einmal; Unterseiten und www-Varianten zusammenfassen.
+    let site;
+    try { const u = new URL(v.url); if (!['http:', 'https:'].includes(u.protocol)) return false; site = u.hostname.replace(/^www\./, ''); }
+    catch { return false; }
+    if (seen.has(site)) return false;
+    seen.add(site); return true;
+  }).slice(0, 3);
   const box = $('#recent .st-recent'); if (!box) return;
   box.innerHTML = h.length ? h.map((v, i) => `<button class="st-card rc" data-act="open-url" data-url="${esc(v.url)}" style="--d:${420 + i * 50}ms"><span class="st-glare"></span><span class="rl" style="--h:${hueOf(hostOf(v.url))}">${esc(initial(v.title || hostOf(v.url)))}</span><span class="rt"><b>${esc(v.title || hostOf(v.url))}</b><i>${esc(hostOf(v.url))}</i></span></button>`).join('') : '<div class="hint">Noch nichts besucht – leg einfach los.</div>';
 }
@@ -410,7 +470,8 @@ function renderSearchView() {
   el.hidden = !show;
   if (!show) return;
   const top = el.scrollTop;
-  el.innerHTML = searchHTML(t, isBookmarked);
+  el.classList.toggle('spotify-results-page', t.provider === 'spotify');
+  el.innerHTML = t.provider === 'spotify' ? spotifyResultsHTML(t) : searchHTML(t, isBookmarked);
   el.scrollTop = t.sLoading ? 0 : top;
 }
 function renderAll() { renderTabs(); renderToolbar(); renderBar(); renderStart(); renderSearchView(); renderSettingsView(); renderSide(); updateFrame(); }
@@ -474,14 +535,14 @@ $('#menu').addEventListener('click', (ev) => { const b = ev.target.closest('[dat
 /* ---------- Adressleiste & Vorschläge ---------- */
 const url = $('#url');
 let suggOpen = false, suggToken = 0;
-function closeSugg() { if (!suggOpen) return; suggOpen = false; $('#sugg').hidden = true; S.sugg = []; S.suggSel = -1; cover(false); }
+function closeSugg() { suggToken++; if (!suggOpen) return; suggOpen = false; $('#sugg').hidden = true; S.sugg = []; S.suggSel = -1; cover(false); }
 async function openSugg(q) {
   const token = ++suggToken;
   const text = q.trim();
   if (!text) { closeSugg(); return; }
   const [hist] = await Promise.all([api.history(text, 6)]);
   if (token !== suggToken) return;
-  const items = [{ kind: 'go', label: text, sub: /^[^\s]+\.[a-z]{2,}/i.test(text) || /:\/\//.test(text) ? 'Öffnen' : 'Mit Brave suchen', url: text }];
+  const items = [{ kind: 'go', label: text, sub: /^[^\s]+\.[a-z]{2,}/i.test(text) || /:\/\//.test(text) ? 'Öffnen' : 'Mit Luna Search suchen', url: text }];
   const seen = new Set();
   for (const b of S.bookmarks) if ((b.title + b.url).toLowerCase().includes(text.toLowerCase()) && !seen.has(b.url)) { seen.add(b.url); items.push({ kind: 'bm', label: b.title, sub: shownUrl(b.url), url: b.url }); }
   for (const v of hist) if (!seen.has(v.url)) { seen.add(v.url); items.push({ kind: 'h', label: v.title || hostOf(v.url), sub: shownUrl(v.url), url: v.url }); }
@@ -506,9 +567,10 @@ function armQuickSite(input, ev) {
   if (ev && ev.inputType && !ev.inputType.startsWith('insert')) return;
   const key = input.value.trim().toLowerCase();
   const target = QUICK_SITES[key];
-  if (!target) return;
+  if (!target && key !== 'einstellungen') return;
   quickT = setTimeout(() => {
     if (input.value.trim().toLowerCase() !== key) return;
+    if (key === 'einstellungen') { askSettings(cur(), input.value); return; }
     closeSugg(); input.blur(); visit(cur(), target);
   }, 350);
 }
@@ -522,6 +584,31 @@ url.addEventListener('keydown', (ev) => {
     paintSugg();
   }
 });
+
+/* Lokale Einstellungen als bewusste Auswahl statt unbemerkter Navigation. */
+let settingsPromptRequest = false;
+async function askSettings(tab, query) {
+  clearTimeout(quickT);
+  if (settingsPromptRequest) return;
+  settingsPromptRequest = true;
+  closeOverlays();
+  try {
+    const choice = await notifications.ask({ kind: 'settings', title: 'Einstellungen öffnen?',
+      eyebrow: 'LUNA BROWSER · GANZ NACH DEINEM GESCHMACK',
+      message: 'Möchtest du die Einstellungen von Luna Browser öffnen?',
+      note: 'Farben, Startseite, Musik und mehr – mach Luna zu deinem Browser.',
+      confirmLabel: 'Einstellungen öffnen', alternativeLabel: 'Stattdessen im Web suchen',
+    });
+    if (choice === 'confirm') openSettings();
+    else if (choice === 'alternative' && S.tabs.includes(tab)) openSearch(tab, query);
+  } finally { settingsPromptRequest = false; }
+}
+function confirmClearHistory() {
+  return notifications.ask({ kind: 'history', title: 'Verlauf löschen?',
+    message: 'Möchtest du deinen gesamten Browserverlauf löschen?',
+    note: 'Diese Einträge können danach nicht wiederhergestellt werden.', confirmLabel: 'Verlauf löschen',
+  }).then(choice => choice === 'confirm');
+}
 
 /* ---------- Suche auf der Seite ---------- */
 const findIn = $('#findIn');
@@ -539,34 +626,89 @@ function fmtTime(ms) {
   return diff === 0 ? hm : diff === 1 ? 'Gestern, ' + hm : d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ', ' + hm;
 }
 const fmtSize = (b) => (b < 1e6 ? Math.round(b / 1e3) + ' KB' : b < 1e9 ? (b / 1e6).toFixed(1).replace('.', ',') + ' MB' : (b / 1e9).toFixed(1).replace('.', ',') + ' GB');
-let histQ = '';
-async function renderSide() {
-  const side = $('#side'); side.hidden = !S.side;
-  if (!S.side) return;
-  const hasNote = !!S.notes[noteKeyOf(cur()) || ''];
-  const tabs = [['bookmarks', 'Lesezeichen'], ['history', 'Verlauf'], ['downloads', 'Downloads'], ['notes', 'Notizen' + (hasNote ? ' •' : '')]];
-  let body = '';
-  if (S.sideTab === 'notes') {
-    const key = noteKeyOf(cur());
-    // Wer gerade tippt und noch auf derselben Seite ist, wird nicht unterbrochen
-    if (document.activeElement?.id === 'noteText' && S.noteShown === key) return;
-    S.noteShown = key;
-    body = notesPanelHTML();
-  } else if (S.sideTab === 'bookmarks') {
-    body = `<div class="shead"><span class="hint" style="padding:0">${S.bookmarks.length} ${S.bookmarks.length === 1 ? 'Eintrag' : 'Einträge'}</span><button class="link" data-act="bm-add">+ Hinzufügen</button></div><div class="slist">${S.bookmarks.length ? S.bookmarks.map((b) => `<div class="sitem" data-bm="${esc(b.url)}"><button class="go" data-act="open-url" data-url="${esc(b.url)}"><div class="t"><b>${esc(b.title)}</b><small>${esc(shownUrl(b.url))}</small></div></button><button class="rm" data-act="bm-edit" data-url="${esc(b.url)}" aria-label="Bearbeiten" title="Bearbeiten"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button><button class="rm" data-act="rm-bm" data-url="${esc(b.url)}" aria-label="Entfernen" title="Löschen">${ICON.x}</button></div>`).join('') : '<div class="hint">Mit dem Stern in der Adressleiste (⌘D) oder „Hinzufügen“ merkst du dir Seiten.</div>'}</div>`;
-  } else if (S.sideTab === 'history') {
-    const h = await api.history(histQ, 200);
-    body = `<div class="shead"><input id="histQ" type="search" placeholder="Verlauf durchsuchen" value="${esc(histQ)}"><button class="link" data-act="clear-history">Löschen</button></div><div class="slist">${h.length ? h.map((v) => `<div class="sitem"><button class="go" data-act="open-url" data-url="${esc(v.url)}"><div class="t"><b>${esc(v.title || hostOf(v.url))}</b><small>${esc(fmtTime(v.last))} · ${esc(hostOf(v.url))}</small></div></button><button class="rm" data-act="rm-hist" data-url="${esc(v.url)}" aria-label="Entfernen">${ICON.x}</button></div>`).join('') : '<div class="hint">Keine Einträge.</div>'}</div>`;
-  } else {
-    const L = S.downloads.slice().reverse();
-    body = `<div class="shead"><span class="hint" style="padding:0">${L.length} Einträge</span><button class="link" data-act="clear-dl">Liste leeren</button></div><div class="slist">${L.length ? L.map((d) => `<div class="sitem"><div class="t"><b>${esc(d.name)}</b>${d.state === 'progress' || d.state === 'start' ? `<div class="sbar"><div style="width:${d.total ? Math.min(100, d.received / d.total * 100) : 40}%"></div></div><small>${fmtSize(d.received || 0)}${d.total > 0 ? ' von ' + fmtSize(d.total) : ''}</small>` : d.state === 'failed' ? '<small style="color:#9c2f45">Fehlgeschlagen</small>' : `<small>${esc(d.path.replace(/^\/Users\/[^/]+/, '~'))}</small>`}</div>${d.state === 'done' ? `<button class="link" data-act="dl-open" data-path="${esc(d.path)}">Öffnen</button><button class="link" data-act="dl-reveal" data-path="${esc(d.path)}">Finder</button>` : ''}</div>`).join('') : '<div class="hint">Noch keine Downloads.</div>'}</div>`;
-  }
-  const keepFocus = document.activeElement?.id === 'histQ';
-  side.innerHTML = `<div><div class="stabs">${tabs.map(([k, l]) => `<button class="${S.sideTab === k ? 'on' : ''}" data-act="side-tab" data-k="${k}">${l}</button>`).join('')}</div>${body}</div>`;
-  if (keepFocus) { const i = $('#histQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+/* ---------- Seitenpanel: Bereiche als Registrierungen (Gerüst: sidepanel.js) ---------- */
+const emptyState = (icon, title, text, btn) => `<div class="empty2">${icon}<b>${esc(title)}</b><p>${text}</p>${btn || ''}</div>`;
+const EMPTY_ICON = (d) => `<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const NO_HIT = EMPTY_ICON('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>');
+const plural2 = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+function dayLabel(ms) {
+  const d = new Date(ms), n = new Date(), day = (x) => new Date(x).setHours(0, 0, 0, 0);
+  const diff = Math.round((day(n) - day(d)) / 864e5);
+  if (diff <= 0) return 'Heute'; if (diff === 1) return 'Gestern';
+  if (diff < 7) return d.toLocaleDateString('de-DE', { weekday: 'long' });
+  return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: d.getFullYear() === n.getFullYear() ? undefined : 'numeric' });
 }
-document.addEventListener('input', (ev) => { if (ev.target.id === 'histQ') { histQ = ev.target.value; renderSide(); } });
-function openSide(tab) { S.side = true; if (tab) S.sideTab = tab; renderToolbar(); renderSide(); }
+const hmOf = (ms) => new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+const EXT_COL = { pdf: '#c63f57', zip: '#8a5a2b', dmg: '#3a2433', png: '#3f7fd0', jpg: '#3f7fd0', jpeg: '#3f7fd0', gif: '#3f7fd0', mp4: '#cf5a2a', mov: '#cf5a2a', mp3: '#23866a', txt: '#7d6474', doc: '#2f62c4', docx: '#2f62c4', xls: '#23866a', xlsx: '#23866a', ppt: '#c4632f', pptx: '#c4632f' };
+function openSettingsAt(section) { settingsSection = section; openSettings(); if (section === 'spotify') refreshSpotifyAccount(); if (section === 'spotify') refreshSonos(); if(section==='mcp') refreshMCPStatus(); }
+
+registerPanel({
+  id: 'bookmarks', title: 'Lesezeichen', desc: 'Deine gemerkten Seiten', order: 10,
+  icon: '<path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/>',
+  search: { placeholder: 'Lesezeichen durchsuchen' },
+  count: () => plural2(S.bookmarks.length, 'Lesezeichen', 'Lesezeichen'),
+  primary: () => ({ label: '+ Neu', onClick: () => openBmDialog(bmFromPage()) }),
+  menu: () => [
+    { label: S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', onClick: () => runCmd('toggle-bar') },
+    { label: 'Alle verwalten …', onClick: () => openSettingsAt('bm') },
+  ],
+  render: ({ q, rawQ }) => {
+    const list = S.bookmarks.filter((b) => !q || (b.title + ' ' + b.url).toLowerCase().includes(q));
+    if (list.length) return list.map((b) => `<div class="si" data-bm="${esc(b.url)}"><button class="go" data-nav data-act="open-url" data-url="${esc(b.url)}" title="${esc(b.title)} – ⌘-Klick: neuer Tab"><span class="av" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</span><span class="stx"><b>${esc(b.title)}</b><small>${esc(hostOf(b.url) || shownUrl(b.url))}</small></span></button><span class="acts"><button class="ia" data-act="bm-edit" data-url="${esc(b.url)}" aria-label="Bearbeiten" title="Bearbeiten"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button><button class="ia" data-act="rm-bm" data-url="${esc(b.url)}" aria-label="Löschen" title="Löschen">${ICON.x}</button></span></div>`).join('');
+    return q ? emptyState(NO_HIT, 'Keine Treffer', `Für „${esc(rawQ)}“ gibt es kein Lesezeichen.`)
+      : emptyState(EMPTY_ICON('<path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/>'), 'Noch keine Lesezeichen', 'Merke dir Seiten mit dem Stern in der Adressleiste (⌘D).', '<button class="btn pri" data-act="bm-add">+ Lesezeichen hinzufügen</button>');
+  },
+});
+
+registerPanel({
+  id: 'history', title: 'Verlauf', desc: 'Besuchte Seiten und Suchen, nach Tagen geordnet', order: 20,
+  icon: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  search: { placeholder: 'Verlauf durchsuchen' },
+  count: () => (S.histN == null ? '' : plural2(S.histN, 'Eintrag', 'Einträge')),
+  menu: () => [{ label: 'Gesamten Verlauf löschen …', onClick: async () => { if (await confirmClearHistory()) runCmd('clear-history-now'); } }],
+  render: async ({ q, rawQ }) => {
+    const h = await api.history(rawQ || '', 300);
+    S.histN = h.length; const c = document.getElementById('spCnt'); if (c && activePanel() === 'history') c.textContent = plural2(h.length, 'Eintrag', 'Einträge');
+    if (!h.length) return q ? emptyState(NO_HIT, 'Keine Treffer', `Im Verlauf steht nichts zu „${esc(rawQ)}“.`) : emptyState(EMPTY_ICON('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 'Noch kein Verlauf', 'Besuchte Seiten und Suchen erscheinen hier, nach Tagen geordnet.');
+    let last = '';
+    return h.map((v) => {
+      const g = dayLabel(v.last), head = g !== last ? `<div class="sgh">${esc(g)}</div>` : ''; last = g;
+      return `${head}<div class="si"><button class="go" data-nav data-act="open-url" data-url="${esc(v.url)}" title="${esc(shownUrl(v.url))} – ⌘-Klick: neuer Tab"><span class="av" style="--h:${hueOf(hostOf(v.url))}">${esc(initial(v.title || hostOf(v.url)))}</span><span class="stx"><b>${esc(v.title || hostOf(v.url))}</b><small>${esc(hmOf(v.last))} · ${esc(hostOf(v.url))}</small></span></button><span class="acts"><button class="ia" data-act="rm-hist" data-url="${esc(v.url)}" aria-label="Eintrag entfernen" title="Entfernen">${ICON.x}</button></span></div>`;
+    }).join('');
+  },
+});
+
+registerPanel({
+  id: 'downloads', title: 'Downloads', desc: 'Geladene Dateien', order: 30,
+  icon: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  search: { placeholder: 'Downloads durchsuchen' },
+  count: () => plural2(S.downloads.length, 'Download', 'Downloads'),
+  badge: () => { const n = S.downloads.filter((d) => d.state === 'progress').length; return n ? String(n) : ''; },
+  menu: () => (S.downloads.length ? [{ label: 'Liste leeren', onClick: () => runCmd('clear-dl-now') }] : []),
+  render: ({ q, rawQ }) => {
+    const L = S.downloads.slice().reverse().filter((d) => !q || d.name.toLowerCase().includes(q));
+    if (!L.length) return q ? emptyState(NO_HIT, 'Keine Treffer', `Kein Download passt zu „${esc(rawQ)}“.`) : emptyState(EMPTY_ICON('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'), 'Keine Downloads', 'Geladene Dateien landen in „Downloads“ und erscheinen hier.');
+    return L.map((d) => {
+      const ext = (d.name.split('.').pop() || '').toLowerCase().slice(0, 4), col = EXT_COL[ext] || '#7d6474';
+      const pct = d.total > 0 ? Math.min(100, Math.round(d.received / d.total * 100)) : 0, run = d.state === 'progress' || d.state === 'start';
+      return `<div class="si dl"><span class="fx" style="background:${col}">${esc(ext || 'Datei')}</span><div class="stx"><b title="${esc(d.name)}">${esc(d.name)}</b>${run ? `<div class="sbar"><div style="width:${d.total ? pct : 35}%"></div></div><small>${fmtSize(d.received || 0)}${d.total > 0 ? ' von ' + fmtSize(d.total) + ' · ' + pct + ' %' : ''}</small>` : d.state === 'failed' ? '<small class="bad">Fehlgeschlagen</small>' : `<small>${esc(d.path.replace(/^\/Users\/[^/]+/, '~'))}</small>`}</div>${d.state === 'done' ? `<span class="acts on"><button class="ia" data-act="dl-open" data-path="${esc(d.path)}" aria-label="Öffnen" title="Öffnen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-9 9M18 13v6H5V6h6"/></svg></button><button class="ia" data-act="dl-reveal" data-path="${esc(d.path)}" aria-label="Im Finder zeigen" title="Im Finder zeigen"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></button></span>` : ''}</div>`;
+    }).join('');
+  },
+});
+
+registerPanel({
+  id: 'notes', title: 'Notizen', desc: 'Notizzettel zur aktuellen Seite (auch per Kreis-Geste)', order: 40,
+  icon: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  count: () => plural2(Object.keys(S.notes).length, 'Notiz', 'Notizen'),
+  badge: () => { const k = noteKeyOf(cur()); return k && S.notes[k] ? true : ''; },
+  keep: () => document.activeElement?.id === 'noteText' && S.noteShown === noteKeyOf(cur()),   // wer tippt, wird nicht unterbrochen
+  render: () => { S.noteShown = noteKeyOf(cur()); return notesPanelHTML(); },
+});
+
+function updateSideBadges() { refreshBadges(); }
+function openSide(tab) { S.side = true; if (tab) setActivePanel(tab); renderToolbar(); renderSide(); }
+function closeSide() { if (!S.side) return; S.side = false; renderToolbar(); renderSide(); }
+initSidePanel({ host: $('#side'), isOpen: () => S.side, close: closeSide, showMenu: (items, x, y) => showCtx(items, x, y), openPanelSettings: () => openSettingsAt('panels') });
 
 /* ---------- Notizzettel (seitenbasiert) + Mausgeste ---------- */
 // Schlüssel: Adresse der Seite ohne #Anker; Suchen: "search:<Begriff>". Startseite/Einstellungen haben keinen Zettel.
@@ -596,7 +738,7 @@ function refreshNotesUI() {
   const key = noteKeyOf(cur()), n = key ? S.notes[key] : null;
   const st = $('#noteStat'); if (st) st.textContent = n ? 'Gespeichert · ' + fmtTime(n.updated) : 'Leer';
   const del = document.querySelector('[data-act=note-del]'); if (del) del.disabled = !n;
-  const tabBtn = document.querySelector('.stabs [data-k=notes]'); if (tabBtn) tabBtn.textContent = 'Notizen' + (n ? ' •' : '');
+  updateSideBadges();
 }
 let noteT = 0;
 async function saveNote(text) {
@@ -610,7 +752,7 @@ document.addEventListener('input', (ev) => {
   const v = ev.target.value; clearTimeout(noteT); noteT = setTimeout(() => saveNote(v), 450);
 });
 function toggleNotes() {
-  if (S.side && S.sideTab === 'notes') { S.side = false; renderToolbar(); renderSide(); return; }
+  if (S.side && activePanel() === 'notes') { S.side = false; renderToolbar(); renderSide(); return; }
   openSide('notes'); setTimeout(() => $('#noteText')?.focus(), 120);
 }
 // Die Gesten für Seiten ohne native Ansicht (Startseite, Suche, Einstellungen); Webseiten melden sie über ein eingeschleustes Skript.
@@ -619,16 +761,27 @@ window.__fmCircle({ target: $('#page'), enabled: () => S.gesture,
   onS: () => { if (cur()?.mode !== 'web') takeShot(); } });
 
 /* ---------- Screenshot (S-Geste): Zwischenablage + Kamera-Sound + Animation ---------- */
-let shotBusy = false;
+let shotBusy = false, shotStatusTimer;
+function showShotStatus(text, done = false) {
+ clearTimeout(shotStatusTimer);
+ let status = $('#shotStatus');
+ if (!status) { status = document.createElement('div'); status.id = 'shotStatus'; status.setAttribute('role', 'status'); document.body.append(status); }
+ status.textContent = text;
+ if (done) shotStatusTimer = setTimeout(() => status.remove(), 5000);
+}
 async function takeShot() {
   if (shotBusy) return;
   shotBusy = true;
+  showShotStatus('Screenshot wird erstellt …');
   const t = cur(), web = !!t && t.mode === 'web' && t.native;
   try {
     const b64 = await api.screenshot(web ? t.id : -1);       // kopiert in die Zwischenablage und spielt den Ton (Go)
+    if (!b64) throw new Error('Leere Aufnahme');
+    showShotStatus('✓ Screenshot kopiert', true);
+    toast('Screenshot in Zwischenablage kopiert');
     await shotAnimation('data:image/jpeg;base64,' + b64, web);
-  } catch (e) { toast('Screenshot nicht möglich'); }
-  shotBusy = false;
+  } catch (e) { showShotStatus('Screenshot fehlgeschlagen', true); toast('Screenshot nicht möglich: ' + String(e?.message || e)); }
+  finally { shotBusy = false; }
 }
 // Blitz über dem Seitenbereich, dann schrumpft das Bild als Vorschau in die Ecke (wie bei macOS) und verschwindet wieder.
 async function shotAnimation(src, web) {
@@ -648,19 +801,19 @@ async function shotAnimation(src, web) {
   label.style.left = target.left + 'px'; label.style.top = (target.top + th + 10) + 'px'; label.style.width = tw + 'px';
   layer.append(img, flash, label);
   if (!reduce) {
-    flash.animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: 320, easing: 'ease-out', fill: 'forwards' });
-    await img.animate([{ transform: 'scale(1)' }, { transform: 'scale(.985)', offset: 0.35 }, { transform: 'scale(1)' }], { duration: 260 }).finished.catch(() => {});
+    flash.animate([{ opacity: 0.95 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+    await img.animate([{ transform: 'scale(1)' }, { transform: 'scale(.985)', offset: 0.35 }, { transform: 'scale(1)' }], { duration: 100 }).finished.catch(() => {});
     await img.animate([
       { left: page.left + 'px', top: page.top + 'px', width: page.width + 'px', height: page.height + 'px', borderRadius: '12px', boxShadow: '0 0 0 rgba(0,0,0,0)' },
       { left: target.left + 'px', top: target.top + 'px', width: tw + 'px', height: th + 'px', borderRadius: '16px', boxShadow: '0 18px 44px rgba(0,0,0,.45)' },
-    ], { duration: 620, easing: 'cubic-bezier(.2,.9,.25,1)', fill: 'forwards' }).finished.catch(() => {});
-    label.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 260, fill: 'forwards' });
-    await new Promise((r) => setTimeout(r, 1500));
+    ], { duration: 260, easing: 'cubic-bezier(.2,.9,.25,1)', fill: 'forwards' }).finished.catch(() => {});
+    label.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 100, fill: 'forwards' });
+    await new Promise((r) => setTimeout(r, 500));
     await Promise.all([
-      img.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(40px) scale(.94)' }], { duration: 380, easing: 'ease-in', fill: 'forwards' }).finished,
-      label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, fill: 'forwards' }).finished,
+      img.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateX(40px) scale(.94)' }], { duration: 180, easing: 'ease-in', fill: 'forwards' }).finished,
+      label.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: 'forwards' }).finished,
     ]).catch(() => {});
-  } else { place(img, target); toast('In Zwischenablage kopiert'); await new Promise((r) => setTimeout(r, 1200)); }
+  } else { place(img, target); await new Promise((r) => setTimeout(r, 500)); }
   layer.innerHTML = '';
   if (covered) { pg.hidden = true; const c = cur(); if (c && c.native && c.mode === 'web') { updateFrame(); nativeShow(c.id); } }
 }
@@ -676,27 +829,56 @@ function onDownload(e) {
     if (e.state === 'done') { d.state = 'done'; api.downloadAdd(d.name, d.path); toast('Geladen: ' + d.name); }
     if (e.state === 'failed') { d.state = 'failed'; }
   }
-  if (S.side && S.sideTab === 'downloads') renderSide();
+  if (S.side && activePanel() === 'downloads') renderSide(); else refreshBadges();
 }
 
 /* ---------- Einstellungen: eigene Seite in eigenem Tab ---------- */
 let setMsg = { text: '', kind: '' };
 const GEAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2.2-1.3L14 3h-4l-.4 2.4a7 7 0 0 0-2.2 1.3l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2.2 1.3L10 21h4l.4-2.4a7 7 0 0 0 2.2-1.3l2.3.9 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>';
-const SET_SECTIONS = [['look', 'Darstellung'], ['bm', 'Lesezeichen'], ['start', 'Start'], ['input', 'Bedienung'], ['search', 'Suche'], ['data', 'Daten']];
+let mcpStatus = {};
+async function refreshMCPStatus(){try{mcpStatus=await api.mcpStatus();if(settingsSection==='mcp'&&cur()?.mode==='settings')renderSettingsView()}catch(e){toast(String(e))}}
+let sonosState = {};
+let sonosBusy = false;
+async function refreshSonos() {
+ if (sonosBusy) return; sonosBusy = true;
+ try { const next = await api.sonosStatus(); if (JSON.stringify(next) !== JSON.stringify(sonosState)) { sonosState = next; updateSonosSettings($('#set-sonos'), sonosState); } }
+ catch { /* Hintergrundabfrage: bei Fehler bleibt die bestehende Ansicht erhalten. */ }
+ finally { sonosBusy = false; }
+}
+setInterval(() => { if (cur()?.mode === 'settings' && settingsSection === 'spotify') refreshSonos(); }, 5000);
+let spotifyAccount = {};
+let spotifyStatusBusy = false;
+async function refreshSpotifyAccount() {
+ if (spotifyStatusBusy) return; spotifyStatusBusy = true;
+ try { const next = await api.spotifyAPIStatus(); if (JSON.stringify(next) !== JSON.stringify(spotifyAccount)) { spotifyAccount = next; if (settingsSection === 'spotify' && cur()?.mode === 'settings') renderSettingsView(); } }
+ catch { /* Verbindungsfehler werden bei Aktionen sichtbar */ } finally { spotifyStatusBusy = false; }
+}
+setInterval(() => { if (cur()?.mode === 'settings' && settingsSection === 'spotify') refreshSpotifyAccount(); }, 2000);
+let settingsSection = 'look';
+const SET_SECTIONS = [['look', 'Darstellung'], ['bm', 'Lesezeichen'], ['panels', 'Seitenpanel'], ['start', 'Start'], ['input', 'Bedienung'], ['search', 'Suche'], ['spotify', 'Spotify'], ['mcp', 'KI & MCP'], ['data', 'Daten']];
 function settingsPageHTML() {
   const th = themeMode();
-  return `<div class="sp">
-    <nav class="sp-nav" aria-label="Einstellungen"><h1>Einstellungen</h1>${SET_SECTIONS.map(([id, l], i) => `<button class="${i === 0 ? 'on' : ''}" data-act="set-nav" data-s="${id}">${l}</button>`).join('')}</nav>
+  const html = `<div class="sp">
+    <nav class="sp-nav" aria-label="Einstellungen"><h1 class="settings-heading" aria-label="Einstellungen">${settingsWordmark}</h1>${SET_SECTIONS.map(([id, l], i) => `<button class="${id === settingsSection ? 'on' : ''}" data-act="set-nav" data-s="${id}">${l}</button>`).join('')}</nav>
     <div class="sp-main">
       <section id="set-look" class="sp-card"><h2>Darstellung</h2>
         <p class="muted">Hell, Dunkel oder passend zum System. Webseiten folgen dem Erscheinungsbild.</p>
         <div class="themes">${[['auto', 'Automatisch'], ['light', 'Hell'], ['dark', 'Dunkel']].map(([k, l]) => `<button class="theme ${th === k ? 'on' : ''}" data-act="theme" data-m="${k}"><span class="tp tp-${k}"><i></i><i></i><i></i></span><b>${l}</b></button>`).join('')}</div>
+        ${colorThemesHTML()}
         <div class="swrow"><div><b>Lesezeichenleiste anzeigen</b><span>${S.bar ? 'Die Leiste unter der Adressleiste ist sichtbar.' : 'Aus: Lesezeichen findest du weiter in der Seitenleiste und auf der Startseite.'}</span></div>
           <button class="switch ${S.bar ? 'on' : ''}" role="switch" aria-checked="${S.bar}" aria-label="Lesezeichenleiste anzeigen" data-act="pref-bar"><i></i></button></div>
       </section>
       <section id="set-bm" class="sp-card"><h2>Lesezeichen</h2>
         <div class="bmlist">${S.bookmarks.length ? S.bookmarks.map((b) => `<div class="bmrow" data-bm="${esc(b.url)}"><i class="dot" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</i><div class="t"><b>${esc(b.title)}</b><small>${esc(shownUrl(b.url))}</small></div><button class="btn sm" data-act="bm-edit" data-url="${esc(b.url)}">Bearbeiten</button><button class="btn sm" data-act="bm-del" data-url="${esc(b.url)}">Löschen</button></div>`).join('') : '<p class="muted">Noch keine Lesezeichen.</p>'}</div>
         <div class="row"><button class="btn pri" data-act="bm-add">+ Lesezeichen hinzufügen</button></div>
+      </section>
+      <section id="set-panels" class="sp-card"><h2>Seitenpanel</h2>
+        <p class="muted">Erstelle eigene Menüs und ordne Bereiche zu. Menüs können weitere Menüs enthalten. Ausblenden entfernt nur den Navigationseintrag – Gesten und Tastenkürzel bleiben aktiv.</p>
+        <form id="panelGroupForm" class="groupCreate"><input id="groupName" maxlength="60" placeholder="Zum Beispiel Arbeit oder Freizeit" aria-label="Name des neuen Menüs" required><button class="btn pri" type="submit">Menü erstellen</button></form>
+        <div class="bmlist">${allPanels().map((p, i, arr) => `<div class="bmrow"><i class="pico">${'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + p.icon + '</svg>'}</i><div class="t"><b>${esc(p.title)}</b><small>${esc(p.desc || (p.custom ? 'Eigenes Menü' : ''))}</small><label class="groupAssignment">In Menü<select data-panel-parent="${esc(p.id)}" aria-label="Menü für ${esc(p.title)}"><option value="">Hauptebene</option>${panelGroups().filter((g) => g.id !== p.id).map((g) => `<option value="${esc(g.id)}" ${p.parent === g.id ? 'selected' : ''}>${esc(g.title)}</option>`).join('')}</select></label>${p.custom ? `<div class="groupRename"><input data-group-name="${esc(p.id)}" aria-label="Menü umbenennen" maxlength="60" value="${esc(p.title)}"><button class="btn sm" data-act="group-rename" data-id="${esc(p.id)}">Speichern</button><button class="btn sm" data-act="group-delete" data-id="${esc(p.id)}">Auflösen</button></div>` : ''}</div>
+          <button class="ia" data-act="spp-up" data-id="${esc(p.id)}" aria-label="Nach oben" title="Nach oben" ${i === 0 ? 'disabled' : ''}>▲</button><button class="ia" data-act="spp-down" data-id="${esc(p.id)}" aria-label="Nach unten" title="Nach unten" ${i === arr.length - 1 ? 'disabled' : ''}>▼</button>
+          <button class="switch ${isPanelHidden(p.id) ? '' : 'on'}" role="switch" aria-checked="${!isPanelHidden(p.id)}" aria-label="${esc(p.title)} anzeigen" data-act="spp-toggle" data-id="${esc(p.id)}"><i></i></button></div>`).join('')}</div>
+        <div class="row"><button class="btn" data-act="spp-reset">Zurücksetzen</button></div>
       </section>
       <section id="set-start" class="sp-card"><h2>Start</h2>
         <div class="swrow"><div><b>Zuletzt geöffnete Seiten merken</b><span>${S.restore ? 'Beim nächsten Start öffnen sich die Tabs von zuletzt.' : 'Aus: Der Browser startet immer mit der Startseite.'}</span></div>
@@ -706,28 +888,33 @@ function settingsPageHTML() {
         <div class="swrow"><div><b>Mausgesten</b><span>${S.gesture ? 'Linke Maustaste halten und zeichnen – ○ Kreis: Notizzettel ein/aus · S: Screenshot in die Zwischenablage.' : 'Aus: Notizzettel (⌥⌘N) und Screenshot (⌥⌘S) gibt es weiter über das Menü.'}</span></div>
           <button class="switch ${S.gesture ? 'on' : ''}" role="switch" aria-checked="${S.gesture}" aria-label="Mausgesten" data-act="pref-gesture"><i></i></button></div>
       </section>
-      <section id="set-search" class="sp-card"><h2>Suche · Brave API</h2>
-        <p class="muted">Die Adressleiste sucht über die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
+      <section id="set-search" class="sp-card"><h2>Luna Search</h2>
+        <p class="muted">Luna Search nutzt die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
         <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
         <input id="keyIn" type="password" placeholder="${S.hasKey ? 'Neuen Schlüssel einfügen, um ihn zu ersetzen' : 'Brave-API-Schlüssel einfügen'}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Brave-API-Schlüssel">
         <div class="row"><button class="btn pri" data-act="key-save">Speichern</button><button class="btn" data-act="key-test" ${S.hasKey ? '' : 'disabled'}>Verbindung testen</button><button class="btn" data-act="key-clear" ${S.hasKey ? '' : 'disabled'}>Entfernen</button></div>
         <div id="keyMsg" class="kmsg ${setMsg.kind}">${esc(setMsg.text)}</div>
         <p class="muted small">Der Schlüssel liegt in einer Datei im App-Ordner, die nur dein Benutzer lesen kann (Rechte 0600). Er wird nie angezeigt und nur an Brave gesendet.</p>
       </section>
+      ${spotifySettingsHTML(spotifyAccount, S.autoNextAlways)}
+      ${sonosSettingsHTML(sonosState)}
+      ${mcpSettingsHTML(mcpStatus)}
       <section id="set-data" class="sp-card"><h2>Daten</h2>
         <div class="swrow"><div><b>Verlauf</b><span>Besuchte Seiten und Suchen auf diesem Gerät.</span></div><button class="btn" data-act="clear-history">Löschen</button></div>
         <div class="swrow"><div><b>Download-Liste</b><span>Entfernt nur die Liste, nicht die Dateien.</span></div><button class="btn" data-act="clear-dl">Leeren</button></div>
       </section>
     </div></div>`;
+  // Nur das gewählte Kapitel kommt in den DOM, kein Scrollen zu anderen Kapiteln.
+  return html.replace(/<section id="set-([^"]+)"[\s\S]*?<\/section>/g, (section, id) => (id === settingsSection || (id === 'sonos' && settingsSection === 'spotify')) ? section : '');
 }
 function renderSettingsView() {
   const t = cur(), el = $('#settingsView');
   const show = !!t && t.mode === 'settings';
   el.hidden = !show;
   if (!show) return;
-  const top = el.scrollTop, typed = $('#keyIn')?.value || '';
+  const top = el.scrollTop, typed = $('#keyIn')?.value || '', spotifyTyped = $('#spotifyClientID')?.value || ''; const spotifyFocused = document.activeElement?.id === 'spotifyClientID';
   el.innerHTML = settingsPageHTML();
-  el.scrollTop = top; if (typed) $('#keyIn').value = typed;
+  el.scrollTop = top; if ($('#spotifyClientID')) { $('#spotifyClientID').value = spotifyTyped; if (spotifyFocused) $('#spotifyClientID').focus(); } if (typed && $('#keyIn')) $('#keyIn').value = typed;
 }
 // Öffnet die Einstellungen in einem eigenen Tab (vorhandener Tab wird wiederverwendet).
 function openSettings(msg, kind) {
@@ -848,6 +1035,8 @@ async function runCmd(c) {
     case 'show-downloads': openSide('downloads'); break;
     case 'bookmark': toggleBookmark(); break;
     case 'toggle-notes': toggleNotes(); break;
+    case 'clear-history-now': await api.historyClear(); S.histN = null; renderSide(); startSig = ''; renderStart(); toast('Verlauf gelöscht'); break;
+    case 'clear-dl-now': S.downloads = []; await api.downloadsClear(); renderSide(); toast('Download-Liste geleert'); break;
     case 'screenshot': takeShot(); break;
     case 'settings': openSettings(); break;
     case 'toggle-theme': applyTheme(isDark() ? 'light' : 'dark', true); break;
@@ -882,7 +1071,6 @@ document.addEventListener('click', async (ev) => {
     case 'sv-filter': t.filter = d.k; renderSearchView(); break;
     case 'sv-alt': openSearch(t, d.q, 0); break;
     case 'sv-retry': loadEntry(t, true); break;
-    case 'side-tab': S.sideTab = d.k; renderSide(); break;
     case 'rm-bm': await deleteBm(d.url); break;
     case 'bm-add': openBmDialog(bmFromPage()); break;
     case 'note-del': { clearTimeout(noteT); const ta = $('#noteText'); if (ta) ta.value = ''; await saveNote(''); break; }
@@ -902,7 +1090,13 @@ document.addEventListener('click', async (ev) => {
       renderBar(); renderSettingsView(); break;
     }
     case 'rm-hist': await api.historyRemove(d.url); renderSide(); break;
-    case 'clear-history': await api.historyClear(); renderSide(); startSig = ''; renderStart(); toast('Verlauf gelöscht'); break;
+    case 'clear-history': if (!await confirmClearHistory()) break; await api.historyClear(); S.histN = null; renderSide(); startSig = ''; renderStart(); toast('Verlauf gelöscht'); break;
+    case 'spp-toggle': { const hide = !isPanelHidden(d.id); if (!setPanelHidden(d.id, hide)) toast('Mindestens ein Bereich muss sichtbar bleiben'); renderSettingsView(); renderSide(); break; }
+    case 'spp-up': movePanel(d.id, -1); renderSettingsView(); renderSide(); break;
+    case 'spp-down': movePanel(d.id, 1); renderSettingsView(); renderSide(); break;
+    case 'group-rename': renamePanelGroup(d.id, document.querySelector('[data-group-name="' + d.id + '"]').value); renderSettingsView(); renderSide(); break;
+    case 'group-delete': removePanelGroup(d.id); renderSettingsView(); renderSide(); break;
+    case 'spp-reset': resetPanels(); renderSettingsView(); renderSide(); break;
     case 'clear-dl': S.downloads = []; await api.downloadsClear(); renderSide(); toast('Download-Liste geleert'); break;
     case 'dl-open': api.openFile(d.path, false); break;
     case 'dl-reveal': api.openFile(d.path, true); break;
@@ -916,9 +1110,41 @@ document.addEventListener('click', async (ev) => {
       if (S.restore) { saveSession(); } else { clearTimeout(sessT); api.sessionSave(''); }
       renderSettingsView(); break;
     }
+    case 'color-theme': localStorage.removeItem(MCP_COLORS); applyMCPColors({}); applyColorTheme(d.color, true); renderSettingsView(); break;
     case 'theme': applyTheme(d.m, true); renderSettingsView(); renderTabs(); break;
     case 'settings': openSettings(); break;
-    case 'set-nav': { document.getElementById('set-' + d.s)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); document.querySelectorAll('.sp-nav button').forEach((b) => b.classList.toggle('on', b === a)); break; }
+    case 'mcp-toggle': {a.disabled=true;try{mcpStatus=await api.mcpConfigure(!mcpStatus.running);renderSettingsView()}catch(e){toast(String(e));await refreshMCPStatus()}finally{a.disabled=false}break;}
+    case 'mcp-copy': try{await api.mcpCopySetup();toast('Einrichtungsprompt kopiert')}catch(e){toast(String(e))}break;
+    case 'mcp-reset-colors':localStorage.removeItem(MCP_COLORS);applyMCPColors({});toast('Luna-Farben wiederhergestellt');break;
+    case 'tab-group-toggle': toggleTabGroup(d.group);break;
+    case 'sonos-toggle':
+    case 'sonos-select': {
+      const ids = [...(sonosState.selected || [])];
+      if (d.act === 'sonos-select') { const i = ids.indexOf(d.id); if (i >= 0) ids.splice(i, 1); else ids.push(d.id); }
+      a.disabled = true;
+      try { sonosState = await api.sonosConfigure(d.act === 'sonos-toggle' ? !sonosState.enabled : !!sonosState.enabled, ids); updateSonosSettings($('#set-sonos'), sonosState); }
+      catch (e) { toast(String(e)); } finally { a.disabled = false; }
+      break;
+    }
+    case 'pref-spotify-autonext': {
+      a.disabled = true;
+      try { const prefs = await api.setPref('spotifyAutoNextAlways', !S.autoNextAlways); S.autoNextAlways = !!prefs.spotifyAutoNextAlways; }
+      catch { toast('Die Einstellung konnte nicht gespeichert werden.'); }
+      finally { a.disabled = false; }
+      renderSettingsView(); break;
+    }
+    case 'spotify-settings': openSettingsAt('spotify'); break;
+    case 'spotify-dashboard': newTab('https://developer.spotify.com/dashboard'); break;
+    case 'spotify-save':
+    case 'spotify-connect':
+    case 'spotify-disconnect': {
+      a.disabled = true;
+      try { if (d.act === 'spotify-save') { await api.spotifyAPIConfigure($('#spotifyClientID').value); $('#spotifyClientID').value = ''; } else if (d.act === 'spotify-connect') await api.spotifyAPIConnect(); else await api.spotifyAPIDisconnect(); await refreshSpotifyAccount(); }
+      catch (e) { const msg = $('#spotifyAccountMessage'); if (msg) msg.textContent = String(e?.message || e); } finally { a.disabled = false; } break;
+    }
+    case 'spotify-open': { a.disabled = true; try { await api.spotifyCommand('open', 0); } catch (e) { toast('Spotify konnte nicht geöffnet werden: ' + String(e?.message || e)); } finally { a.disabled = false; } break; }
+    case 'music-play': { a.disabled = true; try { await api.spotifyPlay(d.uri); toast('Wiedergabe an Spotify übergeben'); } catch (e) { toast(String(e?.message || e)); } finally { a.disabled = false; } break; }
+    case 'set-nav': settingsSection = d.s; renderSettingsView(); $('#settingsView').scrollTop = 0; if (d.s === 'spotify') { refreshSonos(); refreshSpotifyAccount(); } if(d.s==='mcp') refreshMCPStatus(); break;
     case 'open-brave': newTab('https://brave.com/search/api/'); break;
     case 'key-save': saveKey(); break;
     case 'key-test': testKey(); break;
@@ -926,15 +1152,16 @@ document.addEventListener('click', async (ev) => {
   }
 });
 document.addEventListener('submit', (ev) => {
+  if (ev.target.id === 'panelGroupForm') { ev.preventDefault(); if (addPanelGroup($('#groupName').value)) { renderSettingsView(); renderSide(); } return; }
   if (ev.target.id !== 'startForm') return;
-  ev.preventDefault(); const q = $('#startQ').value; if (q.trim()) visit(cur(), q);
+  ev.preventDefault(); if ($('#startQ').dataset.spotifySearch === 'true') { $('#startQ')._spotifySearch.submit(); return; } const q = $('#startQ').value; if (q.trim()) visit(cur(), q);
 });
 document.addEventListener('input', (ev) => { if (ev.target.id === 'startQ') armQuickSite(ev.target, ev); });
 document.addEventListener('mousedown', (ev) => { if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu(); });
 document.addEventListener('keydown', (ev) => {
   if (bmDlg) { if (ev.key === 'Escape') { ev.preventDefault(); closeBmDialog(); return; } if (ev.key === 'Enter' && ['bmTitle', 'bmUrl'].includes(ev.target.id)) { ev.preventDefault(); saveBm(); return; } }
   const t = cur();
-  if (t?.mode === 'search' && t.data && !['INPUT', 'TEXTAREA'].includes(ev.target.tagName) && !ev.altKey) {
+  if (t?.mode === 'search' && t.provider !== 'spotify' && t.data && !['INPUT', 'TEXTAREA'].includes(ev.target.tagName) && !ev.altKey) {
     const n = (t.data.results || []).length;
     if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && n && t.filter === 'all') {
       ev.preventDefault(); t.sel = Math.max(0, Math.min(n - 1, t.sel + (ev.key === 'ArrowDown' ? 1 : -1)));
@@ -948,35 +1175,32 @@ document.addEventListener('keydown', (ev) => {
 
 /* ---------- Startbildschirm ---------- */
 const splash = $('#splash');
-let splashT0 = performance.now(), lastStatus = '';
-function splashStep(label, frac) {
-  const s = $('#spStatus'), bar = $('#spBar');
-  if (bar) bar.style.width = Math.round(frac * 100) + '%';
-  if (s && label !== lastStatus) { lastStatus = label; s.classList.remove('sw'); void s.offsetWidth; s.textContent = label; s.classList.add('sw'); }
-}
+const splashT0 = window.__browserSplashStarted ?? performance.now();
+let splashDismissal = null;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-async function waitLoaded(t, maxMs) {     // die aktive Seite lädt schon im Hintergrund; kurz warten, damit sie beim Öffnen fertig ist
-  const end = performance.now() + maxMs;
-  while (t && t.mode === 'web' && t.loading && performance.now() < end) await wait(80);
+async function waitLoaded(t) {     // die aktive Seite lädt schon im Hintergrund; kurz warten, damit sie beim Öffnen fertig ist
+  while (t && t.mode === 'web' && t.loading) await wait(80);
 }
-async function dismissSplash() {
-  if (!splashing) return;
-  const rest = Math.max(0, 1900 - (performance.now() - splashT0));   // Animation soll ausspielen können
-  if (rest) await wait(rest);
-  splashing = false; nativeShow(pendingShow);
-  splash.classList.add('out');
-  setTimeout(() => splash.classList.add('gone'), 760);
-  if (cur()?.mode === 'start') setTimeout(() => $('#url').focus(), 50);
+function dismissSplash() {
+  if (splashDismissal) return splashDismissal;
+  splashDismissal = (async () => {
+    await wait(Math.max(0, 3000 - (performance.now() - splashT0)));
+    splashing = false; nativeShow(pendingShow);
+    splash.setAttribute('aria-busy', 'false');
+    splash.classList.add('out');
+    setTimeout(() => splash.classList.add('gone'), 340);
+    if (cur()?.mode === 'start') setTimeout(() => $('#url').focus(), 50);
+  })();
+  return splashDismissal;
 }
 
 /* ---------- Start ---------- */
-setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie hängen bleiben
 (async function init() {
   applyTheme(themeMode());
-  // Jeder Schritt zeigt seine Meldung mindestens 320 ms, damit man das Hochfahren sieht – die echte Arbeit läuft währenddessen.
-  const step = (label, frac, work) => { splashStep(label, frac); return Promise.all([work ? work() : null, wait(320)]).then((r) => r[0]); };
+  // Die Icon-Sequenz läuft unabhängig; geschlossen wird erst nach dem tatsächlichen Start.
+  const step = (label, frac, work) => work ? work() : Promise.resolve();
   try {
-    [S.hasKey, S.restore, S.bar, S.gesture] = await step('Einstellungen laden …', 0.14, async () => { const p = await api.prefs(); return [await api.keyStatus(), !!p.restoreSession, p.showBookmarkBar !== false, p.circleGesture !== false]; });
+    [S.hasKey, S.restore, S.bar, S.gesture] = await step('Einstellungen laden …', 0.14, async () => { const p = await api.prefs(); S.autoNextAlways = !!p.spotifyAutoNextAlways; return [await api.keyStatus(), !!p.restoreSession, p.showBookmarkBar !== false, p.circleGesture !== false]; });
     let noteList;
     [S.bookmarks, S.downloads, noteList] = await step('Lesezeichen & Verlauf …', 0.36, () => Promise.all([api.bookmarks(), api.downloads(), api.notes()]));
     S.notes = Object.fromEntries((noteList || []).map((n) => [n.key, n]));
@@ -987,8 +1211,143 @@ setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie
     setHooks({ popOpen: () => cover(true), popClose: () => cover(false), open() { nativeShow(-1); }, close() { const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id); } });
     await step('Spotify verbinden …', 0.58, () => initSpotify());
     await step(S.restore ? 'Tabs wiederherstellen …' : 'Startseite vorbereiten …', 0.8, async () => { await restoreSession(); updateFrame(); });
-    await step('Seite wird geladen …', 0.94, () => waitLoaded(cur(), 2600));
-    splashStep('Bereit', 1);
+    await step('Seite wird geladen …', 0.94, () => waitLoaded(cur()));
   } catch (e) { console.error(e); }
   await dismissSplash();
 })();
+
+document.addEventListener('change', (ev) => { if (!ev.target.matches('[data-panel-parent]')) return; if (!assignPanel(ev.target.dataset.panelParent, ev.target.value)) toast('Ein Menü kann nicht in sich selbst liegen.'); renderSettingsView(); renderSide(); });
+
+/* ---------- MCP: explizite Browseraktionen, keine Ausführung fremden Codes ---------- */
+function mcpState() {
+ return {ready:!splashing,active_tab:S.active,tabs:S.tabs.map(t=>({id:t.id,title:t.title,url:t.url,mode:t.mode,loading:!!t.loading,group:t.group||''})),groups:S.groups,theme:themeMode(),color_theme:colorTheme(),colors:readMCPColors(),preferences:{showBookmarkBar:S.bar,restoreSession:S.restore,circleGesture:S.gesture},sidebar:{open:S.side,active:activePanel(),panels:allPanels().map(p=>({id:p.id,title:p.title,parent:p.parent||'',custom:!!p.custom,hidden:isPanelHidden(p.id)}))}};
+}
+function mcpTab(id) {const t=id===undefined?cur():S.tabs.find(t=>t.id===id);if(!t)throw Error('Tab nicht gefunden.');return t;}
+function mcpURL(url) {if(typeof url!=='string'||!url.trim())throw Error('URL ist erforderlich.');if(!/^(https?:\/\/|about:blank$|search:|spotify-search:)/i.test(url))throw Error('Nur HTTP(S), about:blank oder interne Suchadressen sind erlaubt.');return url;}
+const MCP_COLORS='luna-mcp-colors';
+function readMCPColors(){try{return JSON.parse(localStorage.getItem(MCP_COLORS)||'{}')}catch{return {}}}
+function applyMCPColors(colors){
+ const keys={accent:['--acc','--link'],background:['--desk','--body'],surface:['--panel','--card','--input'],text:['--ink','--ink2']};
+ for(const [key,names] of Object.entries(keys))for(const name of names){if(/^#[0-9a-f]{6}$/i.test(colors[key]||''))document.documentElement.style.setProperty(name,colors[key]);else document.documentElement.style.removeProperty(name)}
+}
+applyMCPColors(readMCPColors());
+async function runMCPCommand(name,a){
+ if(name==='browser_state')return mcpState();
+ if(splashing)throw Error('Luna startet noch. Bitte kurz warten.');
+ switch(name){
+ case 'browser_tab': {
+  if(a.action==='open'){newTab(a.url?mcpURL(a.url):'',{background:!!a.background});return mcpState()}
+  const t=mcpTab(a.tab_id);
+  switch(a.action){case 'navigate':activate(t.id);visit(t,mcpURL(a.url));break;case 'activate':activate(t.id);break;case 'close':await closeTab(t.id);break;case 'back':activate(t.id);goBack(t);break;case 'forward':activate(t.id);goForward(t);break;case 'reload':if(t.mode==='web')await api.reload(t.id);else if(t.mode==='search')await loadEntry(t,true);break;case 'stop':if(t.native)await api.stop(t.id);break;case 'zoom':if(!Number.isFinite(a.zoom))throw Error('zoom ist erforderlich.');t.zoom=Math.max(.5,Math.min(3,a.zoom));if(t.native)await api.zoom(t.id,t.zoom);break;default:throw Error('Unbekannte Tab-Aktion.')}
+  return mcpState();
+ }
+ case 'browser_tab_group':{
+  if(a.action==='create'){const id=createTabGroup(a.title,mcpTab(a.tab_id).id);return {group_id:id,...mcpState()}}
+  if(!S.groups[a.group_id])throw Error('Gruppe nicht gefunden.');
+  if(a.action==='rename'){if(!a.title?.trim())throw Error('Titel fehlt.');S.groups[a.group_id].title=a.title.trim().slice(0,40)}
+  else if(a.action==='remove')removeTabGroup(a.group_id);
+  else if(a.action==='assign')moveTab(mcpTab(a.tab_id).id,null,a.group_id);
+  else if(a.action==='toggle')toggleTabGroup(a.group_id);
+  renderTabs();saveSession();return mcpState();
+ }
+ case 'browser_tab_move':{moveTab(mcpTab(a.tab_id).id,a.before_tab_id??null,a.group_id??'');return mcpState();}
+ case 'browser_page':{
+  const t=mcpTab(a.tab_id);if(S.active!==t.id)activate(t.id);
+  if(a.action==='wait_ready'){const end=Date.now()+15000;while(t.loading&&Date.now()<end)await new Promise(r=>setTimeout(r,100));if(t.loading)throw Error('Seite lädt noch.');return mcpState()}
+  if(a.action==='find'){if(!t.native)throw Error('Textsuche ist für Webseiten verfügbar.');await api.find(t.id,String(a.text||''),true);return {ok:true}}
+  if(t.mode==='web'&&t.native)return api.mcpPage(t.id,a);
+  return lunaPageAction(a,$('#page'));
+ }
+ case 'capture_target': {const t=mcpTab(a.tab_id);if(S.active!==t.id)activate(t.id);return {id:t.native&&t.mode==='web'?t.id:-1}}
+ case 'browser_settings':openSettingsAt(a.section);return mcpState();
+ case 'browser_customize':{
+  if(a.colors)for(const value of Object.values(a.colors))if(!/^#[0-9a-f]{6}$/i.test(value))throw Error('Farben bitte als #RRGGBB angeben.');
+  if(a.theme)applyTheme(a.theme,true);
+  if(a.colors||a.reset_colors){const colors=a.reset_colors?{}:{...readMCPColors(),...a.colors};localStorage.setItem(MCP_COLORS,JSON.stringify(colors));applyMCPColors(colors)}
+  if(a.sidebar_width){document.documentElement.style.setProperty('--sidew',a.sidebar_width+'px');localStorage.setItem('fm-side-w',String(a.sidebar_width))}
+  if(a.preferences){for(const [key,value]of Object.entries(a.preferences)){await api.setPref(key,value);if(key==='showBookmarkBar')S.bar=value;if(key==='restoreSession')S.restore=value;if(key==='circleGesture'){S.gesture=value;await api.setGesture(value)}}saveSession()}
+  if(a.panel_action){
+   const p=allPanels().find(p=>p.id===a.id);
+   if(!['create_group','reset','close'].includes(a.panel_action)&&!p)throw Error('Menü-ID nicht gefunden.');
+   switch(a.panel_action){case 'create_group':if(!addPanelGroup(String(a.title||'')))throw Error('Menütitel ist erforderlich.');break;case 'rename_group':if(!p.custom||!a.title?.trim())throw Error('Eigenes Menü und Titel erforderlich.');renamePanelGroup(a.id,a.title);break;case 'delete_group':if(!p.custom)throw Error('Nur eigene Menüs können gelöscht werden.');removePanelGroup(a.id);break;case 'assign':if(!assignPanel(a.id,a.parent||''))throw Error('Ungültige Menüzuordnung.');break;case 'hide':if(!setPanelHidden(a.id,true))throw Error('Mindestens ein Menü muss sichtbar bleiben.');break;case 'show':setPanelHidden(a.id,false);break;case 'move':if(![-1,1].includes(a.direction))throw Error('direction muss -1 oder 1 sein.');movePanel(a.id,a.direction);break;case 'open':openSide(a.id);break;case 'close':closeSide();break;case 'reset':resetPanels();break}
+  }
+  renderAll();return mcpState();
+ }
+ case 'browser_bookmarks':{
+  if(a.action==='list')return api.bookmarks();
+  const url=mcpURL(a.url);if(a.action==='edit')S.bookmarks=await api.editBookmark(mcpURL(a.old_url),url,String(a.title||''));else S.bookmarks=await api.setBookmark(url,String(a.title||url),a.action==='add');refreshBookmarks();return S.bookmarks;
+ }
+ case 'browser_notes':{
+  if(a.action==='list')return api.notes();if(!a.key||typeof a.text!=='string')throw Error('key und text sind erforderlich.');const notes=await api.setNote(a.key,String(a.title||a.key),a.text);S.notes=Object.fromEntries(notes.map(n=>[n.key,n]));renderSide();return notes;
+ }
+ case 'browser_history':if(a.action==='clear')await api.historyClear();else if(a.action==='remove'){if(!a.url)throw Error('url ist erforderlich.');await api.historyRemove(a.url)}startSig='';renderStart();if(S.side)renderSide();return api.history(a.query||'',a.limit||50);
+ case 'browser_downloads':if(a.action==='clear'){await api.downloadsClear();S.downloads=[];renderSide()}return api.downloads();
+ case 'browser_search':{if(!a.query?.trim())throw Error('Suchbegriff fehlt.');if(a.open_results){newTab((a.provider==='spotify'?'spotify-search:':'search:')+encodeURIComponent(a.query));return mcpState()}return a.provider==='spotify'?api.spotifySearch(a.query):api.search(a.query,0)}
+ default:throw Error('Unbekanntes MCP-Werkzeug.');
+ }
+}
+let mcpCommandQueue=Promise.resolve();
+api.onMCP(command=>{
+ mcpCommandQueue=mcpCommandQueue.catch(()=>{}).then(async()=>{
+  try{if(!await api.mcpCommandActive(command.id))return;const result=await runMCPCommand(command.name,command.args||{});await api.mcpReply(command.id,result,'')}
+  catch(e){await api.mcpReply(command.id,null,String(e?.message||e))}
+ });
+});
+
+/* ---------- Tab-Gruppen und Drag & Drop ---------- */
+function normalizeTabOrder(){const seen=new Set();S.tabs=S.tabs.flatMap(t=>{if(!t.group)return [t];if(seen.has(t.group))return [];seen.add(t.group);return S.tabs.filter(x=>x.group===t.group)})}
+function createTabGroup(title,tabID){
+ title=String(title||'').trim().slice(0,40);if(!title)throw Error('Gruppenname fehlt.');
+ const t=mcpTab(tabID),id='tg-'+crypto.randomUUID();S.groups[id]={title,collapsed:false};t.group=id;normalizeTabOrder();renderTabs();saveSession();return id;
+}
+function removeTabGroup(id){for(const t of S.tabs)if(t.group===id)t.group='';delete S.groups[id];renderTabs();saveSession()}
+function toggleTabGroup(id){const g=S.groups[id];if(!g)return;g.collapsed=!g.collapsed;renderTabs();saveSession()}
+function moveTab(id,beforeID,group){
+ if(group&&!S.groups[group])throw Error('Gruppe nicht gefunden.');
+ const t=mcpTab(id);if(beforeID===id)return;
+ if(beforeID!==null)mcpTab(beforeID);
+ const old=t.group;t.group=group||'';S.tabs=S.tabs.filter(x=>x.id!==id);
+ let index=beforeID===null?S.tabs.length:S.tabs.findIndex(x=>x.id===beforeID);
+ if(beforeID===null&&group){const last=S.tabs.map(x=>x.group).lastIndexOf(group);if(last>=0)index=last+1}
+ S.tabs.splice(index,0,t);if(old&&!S.tabs.some(x=>x.group===old))delete S.groups[old];
+ normalizeTabOrder();renderTabs();saveSession();
+}
+function askTabGroup(initial=''){
+ return new Promise(resolve=>{
+  const dialog=document.createElement('dialog');dialog.className='tab-group-dialog';dialog.innerHTML=`<form method="dialog"><h2>${initial?'Gruppe umbenennen':'Neue Tab-Gruppe'}</h2><label>Gruppenname<input name="title" maxlength="40" value="${esc(initial)}" placeholder="Zum Beispiel Musik oder Arbeit" required autofocus></label><div><button class="btn" value="cancel" formnovalidate>Abbrechen</button><button class="btn pri" value="save">Speichern</button></div></form>`;
+  document.body.append(dialog);cover(true);dialog.addEventListener('close',()=>{const value=dialog.returnValue==='save'?dialog.querySelector('input').value.trim():null;dialog.remove();cover(false);resolve(value)},{once:true});dialog.showModal();
+ });
+}
+$('#tabs').addEventListener('contextmenu',ev=>{
+ const tab=ev.target.closest('[data-tab-id]'),group=ev.target.closest('[data-tab-group]');if(!tab&&!group)return;
+ ev.preventDefault();ev.stopPropagation();
+ const t=tab?tabById(+tab.dataset.tabId):null,gid=t?.group||group?.dataset.tabGroup;
+ const items=[];
+ if(t){items.push({label:'Neue Gruppe …',act:async()=>{const title=await askTabGroup();if(title)createTabGroup(title,t.id)}});
+  for(const [id,g]of Object.entries(S.groups))if(id!==t.group)items.push({label:'In „'+g.title+'“ verschieben',act:()=>moveTab(t.id,null,id)});
+  if(t.group)items.push({label:'Aus Gruppe lösen',act:()=>moveTab(t.id,null,'')});
+  const i=S.tabs.indexOf(t);if(i>0)items.push({label:'Nach links verschieben',act:()=>{const target=S.tabs[i-1];moveTab(t.id,target.id,target.group||'')}});
+  if(i<S.tabs.length-1)items.push({label:'Nach rechts verschieben',act:()=>{const next=S.tabs[i+1],after=S.tabs[i+2];moveTab(t.id,after?.id??null,next.group||'')}});
+ }
+ if(gid&&S.groups[gid])items.push('-', {label:'Gruppe umbenennen …',act:async()=>{const title=await askTabGroup(S.groups[gid].title);if(title){S.groups[gid].title=title;renderTabs();saveSession()}}},{label:S.groups[gid].collapsed?'Gruppe ausklappen':'Gruppe einklappen',act:()=>toggleTabGroup(gid)},{label:'Gruppe auflösen',act:()=>removeTabGroup(gid)});
+ if(t)items.push('-', {label:'Tab schließen',act:()=>closeTab(t.id)});
+ showCtx(items,ev.clientX,ev.clientY);
+});
+let draggedTab=null;
+$('#tabs').addEventListener('dragstart',ev=>{const tab=ev.target.closest('[data-tab-id]');if(!tab)return;draggedTab=+tab.dataset.tabId;ev.dataTransfer.setData('text/plain','luna-tab:'+draggedTab);ev.dataTransfer.effectAllowed='move';tab.classList.add('dragging')});
+$('#tabs').addEventListener('dragover',ev=>{if(draggedTab===null)return;ev.preventDefault();ev.dataTransfer.dropEffect='move';$('#tabs').querySelectorAll('.drop-before').forEach(x=>x.classList.remove('drop-before'));ev.target.closest('[data-tab-id],.tab-group-label')?.classList.add('drop-before')});
+$('#tabs').addEventListener('drop',ev=>{
+ if(draggedTab===null)return;ev.preventDefault();
+ const tab=ev.target.closest('[data-tab-id]'),group=ev.target.closest('[data-tab-group]');
+ const id=draggedTab;draggedTab=null;
+ if(tab){const target=tabById(+tab.dataset.tabId);moveTab(id,target.id,target.group||'')}
+ else moveTab(id,null,group?.dataset.tabGroup||'');
+ renderTabs();
+});
+$('#tabs').addEventListener('dragend',()=>{draggedTab=null;renderTabs()});
+$('#tabs').addEventListener('wheel',ev=>{if($('#tabs').scrollWidth>$('#tabs').clientWidth){ev.preventDefault();$('#tabs').scrollLeft+=ev.deltaX||ev.deltaY}},{passive:false});
+
+const enqueueMusic = initAutoNext({ cover, toast, notifications, onPreferenceChange: value => { S.autoNextAlways = value; if (cur()?.mode === 'settings') renderSettingsView(); } });
+initQueueDrop({ enqueue: enqueueMusic, toast });
+
+initMusicPanel({ enqueue: enqueueMusic, registerPanel, activePanel, isOpen: () => S.side, toast, settings: () => openSettingsAt("spotify") });

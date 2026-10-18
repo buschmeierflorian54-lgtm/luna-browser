@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -9,9 +10,13 @@ import (
 	"strings"
 	"time"
 
+	"browser-mac/internal/browsermcp"
+	"browser-mac/internal/musicqueue"
 	"browser-mac/internal/search"
 	"browser-mac/internal/secret"
+	"browser-mac/internal/sonos"
 	"browser-mac/internal/spotify"
+	"browser-mac/internal/spotifyapi"
 	"browser-mac/internal/store"
 	"browser-mac/internal/web"
 	wr "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -19,13 +24,20 @@ import (
 
 // App bündelt alle Methoden, die das Frontend aufrufen darf (nur über frontend/src/api.js).
 type App struct {
-	ctx context.Context
-	st  *store.Store
-	out chan [2]string // Ereignisse ans Frontend
+	queueRouter musicqueue.Router
+	autoNext    *spotify.AutoNext
+	mcpServer   *browsermcp.Manager
+	mcpBridge   mcpBridge
+	ctx         context.Context
+	stopSonos   context.CancelFunc
+	st          *store.Store
+	out         chan [2]string // Ereignisse ans Frontend
 
-	secrets *secret.Store
-	search  *search.Client
-	gesture string // Skript der Mausgeste (wird in jede Seite eingeschleust)
+	secrets    *secret.Store
+	search     *search.Client
+	spotifyAPI *spotifyapi.Client
+	sonosSync  *sonos.Manager
+	gesture    string // Skript der Mausgeste (wird in jede Seite eingeschleust)
 }
 
 const (
@@ -36,6 +48,7 @@ func NewApp() *App { return &App{} }
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	a.mcpBridge.pending = map[string]mcpPending{}
 	dir, err := os.UserConfigDir() // ~/Library/Application Support
 	if err != nil {
 		dir = os.TempDir()
@@ -58,10 +71,16 @@ func (a *App) startup(ctx context.Context) {
 
 	// Eigene Suchmaschine (Brave-API); der Schlüssel wird bei jeder Anfrage frisch aus der geschützten Datei gelesen.
 	a.secrets = secret.New(filepath.Join(dir, "browser-mac"))
+	a.spotifyAPI = spotifyapi.New(a.secrets)
+	a.autoNext = spotify.NewAutoNext(func(status spotify.NextStatus) { b, _ := json.Marshal(status); a.emit("spotify-next", string(b)) })
+	sonosContext, stopSonos := context.WithCancel(ctx)
+	a.stopSonos = stopSonos
+	a.sonosSync = sonos.New(sonosContext, a.secrets)
 	a.search = search.NewClient(func() (string, error) {
 		v, _, err := a.secrets.Get(keyFile)
 		return v, err
 	})
+	a.mcpServer = browsermcp.New(a.secrets, a.mcpDispatch)
 }
 
 func (a *App) emit(name, data string) {
@@ -90,8 +109,11 @@ func (a *App) SetGesture(on bool) { web.ConfigureGesture("", on) }
 // Screenshot kopiert die Seite in die Zwischenablage, spielt den Kamera-Sound und liefert eine Vorschau (Base64-JPEG).
 // tab < 0: der Seitenbereich der Oberfläche (Startseite, Suche, Einstellungen).
 func (a *App) Screenshot(tab int) (string, error) {
-	web.PlaySound(shutterSound)
-	return web.Screenshot(tab)
+	image, err := web.Screenshot(tab)
+	if err == nil {
+		web.PlaySound(shutterSound)
+	}
+	return image, err
 }
 func (a *App) SetAppearance(mode string)          { web.SetAppearance(mode) }
 func (a *App) WebFocusUI()                        { web.FocusUI() }
@@ -135,6 +157,9 @@ func (a *App) OpenFile(path string, reveal bool) error {
 
 func (a *App) SpotifyState() spotify.State { return spotify.Get() }
 func (a *App) SpotifyCommand(cmd string, arg float64) error {
+	if cmd == "next" && a.autoNext != nil {
+		return a.autoNext.Next(func() error { return spotify.Command(cmd, arg) })
+	}
 	return spotify.Command(cmd, arg)
 }
 
@@ -176,3 +201,63 @@ func hasPref(p map[string]bool, k string) bool { _, ok := p[k]; return ok }
 func pageGestureScript() string {
 	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onCircle:function(i){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'circle',dir:i.dir});}catch(e){}},onS:function(){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'s'});}catch(e){}}});\n})();"
 }
+
+func (a *App) SpotifyAPIStatus() spotifyapi.Status       { return a.spotifyAPI.Status() }
+func (a *App) SpotifyAPIConfigure(clientID string) error { return a.spotifyAPI.Configure(clientID) }
+func (a *App) SpotifyAPIConnect() error {
+	return a.spotifyAPI.Connect(func(u string) error { return exec.Command("open", u).Run() })
+}
+func (a *App) SpotifyAPIDisconnect() error { return a.spotifyAPI.Disconnect() }
+func (a *App) SpotifySearch(q string) (*spotifyapi.Results, error) {
+	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
+	defer cancel()
+	return a.spotifyAPI.Search(ctx, q)
+}
+func (a *App) SpotifyPlay(uri string) error { return spotify.PlayURI(uri) }
+
+func (a *App) SonosStatus() sonos.Status { return a.sonosSync.Status() }
+func (a *App) SonosScan() sonos.Status   { return a.sonosSync.Scan() }
+func (a *App) SonosConfigure(enabled bool, selected []string) (sonos.Status, error) {
+	return a.sonosSync.Configure(enabled, selected)
+}
+
+func (a *App) shutdown(ctx context.Context) {
+	if a.autoNext != nil {
+		a.autoNext.Cancel()
+	}
+	if a.mcpServer != nil {
+		a.mcpServer.Close()
+	}
+	if a.stopSonos != nil {
+		a.stopSonos()
+	}
+}
+
+func (a *App) SpotifyQueue(uri string) error {
+	return a.queueRouter.Add(a.ctx, uri, a.spotifyAPI.AddToQueue, func(ctx context.Context, uri string) error {
+		playback, err := a.spotifyAPI.Playback(ctx)
+		if err != nil {
+			return err
+		}
+		return a.sonosSync.AddToQueue(ctx, uri, playback)
+	})
+}
+
+func (a *App) SpotifyGetQueue() (*spotifyapi.Queue, error) {
+	ctx, cancel := context.WithTimeout(a.ctx, 20*time.Second)
+	defer cancel()
+	if a.queueRouter.UsesSonos() {
+		playback, err := a.spotifyAPI.Playback(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return a.sonosSync.Queue(ctx, playback)
+	}
+	return a.spotifyAPI.Queue(ctx)
+}
+
+func (a *App) SpotifyScheduleNext(uri, title string) error {
+	return a.autoNext.Schedule(a.ctx, uri, title)
+}
+func (a *App) SpotifyCancelNext()                    { a.autoNext.Cancel() }
+func (a *App) SpotifyNextStatus() spotify.NextStatus { return a.autoNext.Status() }

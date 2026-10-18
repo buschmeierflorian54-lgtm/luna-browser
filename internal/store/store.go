@@ -254,7 +254,7 @@ func (s *Store) SessionLoad() string {
 /* Einstellungen (Ein/Aus-Schalter) */
 
 // PrefKeys sind die erlaubten Schlüssel; unbekannte werden abgelehnt.
-var PrefKeys = map[string]bool{"restoreSession": true, "showBookmarkBar": true, "circleGesture": true}
+var PrefKeys = map[string]bool{"restoreSession": true, "showBookmarkBar": true, "circleGesture": true, "spotifyAutoNextAlways": true}
 
 func (s *Store) Prefs() map[string]bool {
 	s.mu.Lock()

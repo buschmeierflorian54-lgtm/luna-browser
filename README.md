@@ -66,3 +66,54 @@ Overlays (Menü, Vorschläge) über der Seite: kurz ein Foto der Seite zeigen un
   habe ich nie selbst gesehen; kein Screenshot-Zugriff). Optik und Positionierung der Seite im Fenster sind unbestätigt.
 - Ungetestet: Downloads, Popups (`window.open`), JS-Dialoge, Datei-Upload, Spotify-Overlay über einer geladenen Seite.
 - Fehlt: Privates Fenster, Druck, Lesezeichen-Ordner, Tabs verschieben, Passwörter, Erweiterungen, Kamera/Mikrofon.
+
+## Seitenleiste erweitern
+
+`frontend/src/sidepanel.js` verwaltet Navigation, Suche, Größenänderung und Inhalte.
+Neue Bereiche werden in `main.js` mit `registerPanel({ id, title, desc, icon, render })`
+registriert. `parent: 'bookmarks'` macht einen Bereich zum Untermenü der Lesezeichen.
+Den Elternbereich zuerst registrieren; IDs müssen eindeutig sein. Zurück-Navigation
+und Hervorhebung des Hauptbereichs entstehen automatisch. Ohne `render` kann ein
+Bereich ausschließlich weitere Untermenüs enthalten. `search`, `primary`, `menu`,
+`count` und `badge` ergänzen Suche, Aktionen und Status. Ausblenden eines Elternbereichs
+blendet auch dessen Untermenüs aus.
+
+Eigene Menüs lassen sich unter Einstellungen → Seitenpanel erstellen, umbenennen,
+verschachteln und auflösen. Beim Auflösen bleiben die enthaltenen Bereiche erhalten.
+Die Zuordnung und Reihenfolge werden lokal gespeichert. Ausblenden betrifft nur
+die Navigation; direkte Aktionen wie die Kreisgeste öffnen Notizen weiterhin.
+Die Einstellungen zeigen ausschließlich das gewählte Kapitel.
+
+## Spotify API und eigene Suche
+
+„spotify “ (oder weiterhin „open spotify “) aktiviert den Spotify-Chip. Suchanfragen laufen über die Spotify Web API
+und erscheinen direkt in Luna (Top-Treffer, Songs, Künstler, Alben). Play-Buttons steuern
+Spotify per AppleScript; es wird keine Web-API-Wiedergabe verwendet.
+
+Unter Einstellungen → Spotify die Client ID einer Spotify Developer-App speichern.
+Dort muss `http://127.0.0.1:8888/callback` als Redirect URI registriert sein.
+„Konto verknüpfen“ öffnet die OAuth-Freigabe im Standardbrowser. Der Desktop-Login
+verwendet PKCE, kein Client Secret. Access-/Refresh-Tokens bleiben im Go-Backend und
+liegen im bestehenden geschützten App-Ordner (`spotify-account.json`, 0600).
+„Verbindung trennen“ löscht die lokale Kontoverknüpfung; die Client ID bleibt erhalten.
+Spotify-Premium und die Nutzerfreigabe im Developer Dashboard können erforderlich sein.
+
+OAuth/Refresh/Suche wurden gegen einen lokalen Testserver geprüft; der UI-Ablauf mit
+Testantworten. Die Live-Verknüpfung und hörbare AppleScript-Wiedergabe erfordern die
+Client ID und die Anmeldung des Benutzers und sind noch nicht bestätigt.
+
+
+## Sonos Sync
+Unter Einstellungen → Spotify → Sonos Sync einschalten: Die Suche startet automatisch, danach Lautsprecher auswählen.
+Die Erkennung übernimmt den lokalen IPv4-/24-Scan auf Port 1400 aus SonosMacSync;
+Raumnamen werden zusätzlich über DeviceProperties abgefragt, Produktbilder stammen
+ aus den vorhandenen Sonos-Assets. Geräte werden über ihre UDN statt ihrer IP gespeichert.
+CoreAudio liest alle 180 ms die Systemlautstärke. Änderungen gehen per lokalem
+RenderingControl/SetVolume an die ausgewählten erreichbaren Geräte. Beim Einschalten
+oder Wechsel des Audioausgangs wird zuerst ein Ausgangswert übernommen, ohne die
+Sonos-Lautstärke zu ändern. Danach gilt derselbe Prozentwert wie am Mac.
+Sync läuft auch im Hintergrund, solange Luna geöffnet ist, und sucht alle 30 Sekunden
+nach neuen Geräten. Bekannte Geräte werden alle 5 Sekunden per HTTP auf Erreichbarkeit und Sonos-Identität geprüft; ausgeschaltet entfällt diese Prüfung. Audioausgänge ohne regelbare CoreAudio-Lautstärke werden angezeigt.
+Tests: SOAP/Begrenzung, Auswahl/Persistenz, Ausgangswechsel, deaktivierter Sync und
+unveränderte Lautstärke; Hardware-Erkennung und CoreAudio lesend lokal geprüft.
+Ein tatsächlicher Lautstärketasten-/Hörtest steht aus.

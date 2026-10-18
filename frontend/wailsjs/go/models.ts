@@ -1,14 +1,39 @@
+export namespace browsermcp {
+
+	export class Status {
+	    enabled: boolean;
+	    running: boolean;
+	    endpoint: string;
+	    message: string;
+	    command: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.running = source["running"];
+	        this.endpoint = source["endpoint"];
+	        this.message = source["message"];
+	        this.command = source["command"];
+	    }
+	}
+
+}
+
 export namespace search {
-	
+
 	export class FAQ {
 	    q: string;
 	    a: string;
 	    url: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new FAQ(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.q = source["q"];
@@ -23,11 +48,11 @@ export namespace search {
 	    host: string;
 	    desc: string;
 	    attrs: string[][];
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Info(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
@@ -45,11 +70,11 @@ export namespace search {
 	    age: string;
 	    thumb: string;
 	    favicon: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new News(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
@@ -67,11 +92,11 @@ export namespace search {
 	    age: string;
 	    thumb: string;
 	    duration: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Video(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
@@ -92,11 +117,11 @@ export namespace search {
 	    extra: string[];
 	    age: string;
 	    thumb: string;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Result(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.title = source["title"];
@@ -120,11 +145,11 @@ export namespace search {
 	    faq: FAQ[];
 	    more: boolean;
 	    millis: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Page(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.query = source["query"];
@@ -137,7 +162,7 @@ export namespace search {
 	        this.more = source["more"];
 	        this.millis = source["millis"];
 	    }
-	
+
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -156,13 +181,95 @@ export namespace search {
 		    return a;
 		}
 	}
-	
+
+
+}
+
+export namespace sonos {
+
+	export class Device {
+	    id: string;
+	    name: string;
+	    model: string;
+	    online: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new Device(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.model = source["model"];
+	        this.online = source["online"];
+	    }
+	}
+	export class Status {
+	    devices: Device[];
+	    selected: string[];
+	    enabled: boolean;
+	    scanning: boolean;
+	    supported: boolean;
+	    message: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.devices = this.convertValues(source["devices"], Device);
+	        this.selected = source["selected"];
+	        this.enabled = source["enabled"];
+	        this.scanning = source["scanning"];
+	        this.supported = source["supported"];
+	        this.message = source["message"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 
 }
 
 export namespace spotify {
-	
+
+	export class NextStatus {
+	    uri: string;
+	    title: string;
+	    status: string;
+	    message?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new NextStatus(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.uri = source["uri"];
+	        this.title = source["title"];
+	        this.status = source["status"];
+	        this.message = source["message"];
+	    }
+	}
 	export class State {
+	    uri?: string;
 	    status: string;
 	    message?: string;
 	    title?: string;
@@ -174,13 +281,14 @@ export namespace spotify {
 	    volume: number;
 	    shuffle: boolean;
 	    repeat: boolean;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new State(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.uri = source["uri"];
 	        this.status = source["status"];
 	        this.message = source["message"];
 	        this.title = source["title"];
@@ -197,17 +305,329 @@ export namespace spotify {
 
 }
 
+export namespace spotifyapi {
+
+	export class Artist {
+	    name: string;
+	    uri: string;
+	    images: Image[];
+
+	    static createFrom(source: any = {}) {
+	        return new Artist(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.uri = source["uri"];
+	        this.images = this.convertValues(source["images"], Image);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Image {
+	    url: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Image(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	    }
+	}
+	export class Album {
+	    name: string;
+	    uri: string;
+	    images: Image[];
+	    artists: Artist[];
+	    release_date: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Album(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.uri = source["uri"];
+	        this.images = this.convertValues(source["images"], Image);
+	        this.artists = this.convertValues(source["artists"], Artist);
+	        this.release_date = source["release_date"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AlbumPage {
+	    items: Album[];
+
+	    static createFrom(source: any = {}) {
+	        return new AlbumPage(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], Album);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+	export class ArtistPage {
+	    items: Artist[];
+
+	    static createFrom(source: any = {}) {
+	        return new ArtistPage(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], Artist);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+	export class Track {
+	    name: string;
+	    uri: string;
+	    artists: Artist[];
+	    album: Album;
+	    duration_ms: number;
+	    explicit: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new Track(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.uri = source["uri"];
+	        this.artists = this.convertValues(source["artists"], Artist);
+	        this.album = this.convertValues(source["album"], Album);
+	        this.duration_ms = source["duration_ms"];
+	        this.explicit = source["explicit"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Queue {
+	    currently_playing?: Track;
+	    queue: Track[];
+
+	    static createFrom(source: any = {}) {
+	        return new Queue(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currently_playing = this.convertValues(source["currently_playing"], Track);
+	        this.queue = this.convertValues(source["queue"], Track);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class TrackPage {
+	    items: Track[];
+	    next: string;
+
+	    static createFrom(source: any = {}) {
+	        return new TrackPage(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], Track);
+	        this.next = source["next"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Results {
+	    tracks: TrackPage;
+	    artists: ArtistPage;
+	    albums: AlbumPage;
+
+	    static createFrom(source: any = {}) {
+	        return new Results(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tracks = this.convertValues(source["tracks"], TrackPage);
+	        this.artists = this.convertValues(source["artists"], ArtistPage);
+	        this.albums = this.convertValues(source["albums"], AlbumPage);
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Status {
+	    configured: boolean;
+	    connected: boolean;
+	    pending: boolean;
+	    name: string;
+	    message: string;
+	    redirect: string;
+
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.configured = source["configured"];
+	        this.connected = source["connected"];
+	        this.pending = source["pending"];
+	        this.name = source["name"];
+	        this.message = source["message"];
+	        this.redirect = source["redirect"];
+	    }
+	}
+
+
+}
+
 export namespace store {
-	
+
 	export class Bookmark {
 	    url: string;
 	    title: string;
 	    added: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Bookmark(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];
@@ -219,11 +639,11 @@ export namespace store {
 	    name: string;
 	    path: string;
 	    time: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Download(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.name = source["name"];
@@ -236,11 +656,11 @@ export namespace store {
 	    title: string;
 	    text: string;
 	    updated: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Note(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.key = source["key"];
@@ -254,11 +674,11 @@ export namespace store {
 	    title: string;
 	    last: number;
 	    visits: number;
-	
+
 	    static createFrom(source: any = {}) {
 	        return new Visit(source);
 	    }
-	
+
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.url = source["url"];

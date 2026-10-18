@@ -31,9 +31,16 @@ static int gNextPopup = 100000;
 static int gDlSeq = 0;
 static char kDlId;
 
+static WKWebView *findWebView(NSView *root) {
+ if ([root isKindOfClass:[WKWebView class]]) return (WKWebView *)root;
+ for (NSView *child in root.subviews) { WKWebView *found = findWebView(child); if (found) return found; }
+ return nil;
+}
 static NSWindow *fmWindow(void) {
-	for (NSWindow *w in NSApp.windows) if (w.contentView && w.isVisible) return w;
-	return NSApp.windows.firstObject;
+ // Hilfsfenster (z.B. Bildschirmfreigabe) sind keine Browserfenster.
+ for (NSWindow *w in NSApp.windows) if (w.isVisible && findWebView(w.contentView)) return w;
+ for (NSWindow *w in NSApp.windows) if (findWebView(w.contentView)) return w;
+ return nil;
 }
 
 static NSString *gGestureSrc;
@@ -326,23 +333,72 @@ void fmwZoom(int id, double factor) {
 		FMTab *t = gTabs[@(id)]; if (t) t.view.pageZoom = factor;
 	});
 }
+// Snapshot pixel encoding runs off the AppKit thread. The clipboard gets the
+// original Retina PNG; only the UI preview is scaled down before crossing Go/JS.
+static NSData *fmPreviewJPEG(CGImageRef image) {
+ size_t width = CGImageGetWidth(image), height = CGImageGetHeight(image);
+ CGFloat ratio = MIN(1.0, 1600.0 / MAX(width, height));
+ CGImageRef preview = image;
+ if (ratio < 1.0) {
+  size_t w = MAX(1, (size_t)ceil(width * ratio)), h = MAX(1, (size_t)ceil(height * ratio));
+  CGColorSpaceRef colors = CGColorSpaceCreateDeviceRGB();
+  CGContextRef context = CGBitmapContextCreate(NULL, w, h, 8, 0, colors, (CGBitmapInfo)kCGImageAlphaPremultipliedLast);
+  CGColorSpaceRelease(colors);
+  if (!context) return nil;
+  CGContextSetInterpolationQuality(context, kCGInterpolationMedium);
+  CGContextDrawImage(context, CGRectMake(0, 0, w, h), image);
+  preview = CGBitmapContextCreateImage(context);
+  CGContextRelease(context);
+  if (!preview) return nil;
+ }
+ NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:preview];
+ NSData *data = [bitmap representationUsingType:NSBitmapImageFileTypeJPEG properties:@{NSImageCompressionFactor:@0.78}];
+ if (preview != image) CGImageRelease(preview);
+ return data;
+}
+
+static void fmEncodeSnapshot(NSImage *image, int req, BOOL clipboard) {
+ CGImageRef pixels = [image CGImageForProposedRect:NULL context:nil hints:nil];
+ if (!pixels) { goSnapshotDone(req, (char *)""); return; }
+ CGImageRetain(pixels);
+ NSSize logicalSize = image.size;
+ dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+  @autoreleasepool {
+   NSData *png = nil;
+   if (clipboard) {
+    NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:pixels];
+    bitmap.size = logicalSize;
+    png = [bitmap representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+   }
+   NSData *jpeg = fmPreviewJPEG(pixels);
+   CGImageRelease(pixels);
+   NSString *encoded = [jpeg base64EncodedStringWithOptions:0];
+   dispatch_async(dispatch_get_main_queue(), ^{
+    if (!encoded || (clipboard && !png)) { goSnapshotDone(req, (char *)""); return; }
+    if (clipboard) {
+     NSPasteboard *pb = [NSPasteboard generalPasteboard];
+     [pb clearContents];
+     if (![pb setData:png forType:NSPasteboardTypePNG]) { goSnapshotDone(req, (char *)""); return; }
+    }
+    char *out = strdup(encoded.UTF8String);
+    goSnapshotDone(req, out);
+    free(out);
+   });
+  }
+ });
+}
+
 void fmwSnapshot(int id, int req) {
-	dispatch_async(dispatch_get_main_queue(), ^{
-		FMTab *t = gTabs[@(id)];
-		if (!t) { goSnapshotDone(req, (char *)""); return; }
-		[t.view takeSnapshotWithConfiguration:nil completionHandler:^(NSImage *img, NSError *e) {
-			NSString *out = @"";
-			if (img) {
-				NSData *tiff = [img TIFFRepresentation];
-				NSBitmapImageRep *rep = [NSBitmapImageRep imageRepWithData:tiff];
-				NSData *jpg = [rep representationUsingType:NSBitmapImageFileTypeJPEG properties:@{NSImageCompressionFactor: @0.8}];
-				if (jpg) out = [jpg base64EncodedStringWithOptions:0];
-			}
-			char *c = strdup([out UTF8String]);
-			goSnapshotDone(req, c);
-			free(c);
-		}];
-	});
+ dispatch_async(dispatch_get_main_queue(), ^{
+  FMTab *t = gTabs[@(id)];
+  if (!t) { goSnapshotDone(req, (char *)""); return; }
+  WKSnapshotConfiguration *cfg = [WKSnapshotConfiguration new];
+  if (@available(macOS 10.15, *)) { cfg.afterScreenUpdates = NO; }
+  [t.view takeSnapshotWithConfiguration:cfg completionHandler:^(NSImage *img, NSError *error) {
+   if (!img) { goSnapshotDone(req, (char *)""); return; }
+   fmEncodeSnapshot(img, req, NO);
+  }];
+ });
 }
 void fmwFocusUI(void) {
 	dispatch_async(dispatch_get_main_queue(), ^{
@@ -387,18 +443,21 @@ void fmwPlaySound(const void *bytes, int len) {
 	});
 }
 
-// Screenshot der Seite in die Zwischenablage (PNG + TIFF). id >= 0: native Seite; id < 0: der Seitenbereich der Oberfläche.
+// Screenshot der Seite in die Zwischenablage (verlustfreies Retina-PNG). id >= 0: native Seite; id < 0: der Seitenbereich der Oberfläche.
 // Antwort (JPEG als Base64 für die Animation) kommt über goSnapshotDone; leer = Fehler.
 void fmwScreenshot(int id, int req) {
-	dispatch_async(dispatch_get_main_queue(), ^{
+ dispatch_async(dispatch_get_main_queue(), ^{
 		WKWebView *view = nil;
 		WKSnapshotConfiguration *cfg = [WKSnapshotConfiguration new];
+		if (@available(macOS 10.15, *)) { cfg.afterScreenUpdates = NO; } // Die Gestenspur ist bereits entfernt; keinen weiteren WebKit-Paint erzwingen.
 		FMTab *t = id >= 0 ? gTabs[@(id)] : nil;
+  if (id >= 0 && !t) { goSnapshotDone(req, (char *)""); return; }
 		CGFloat wpt = 0;
 		if (t) { view = t.view; wpt = view.bounds.size.width; }
 		else {
-			for (NSView *v in fmWindow().contentView.subviews) {
-				if (![v isKindOfClass:[WKWebView class]]) continue;
+			for (NSView *child in fmWindow().contentView.subviews) {
+                WKWebView *v = findWebView(child);
+                if (!v) continue;
 				BOOL ours = NO;
 				for (FMTab *x in gTabs.allValues) if (x.view == v) ours = YES;
 				if (!ours) { view = (WKWebView *)v; break; }
@@ -406,23 +465,40 @@ void fmwScreenshot(int id, int req) {
 			cfg.rect = NSMakeRect(gRect.origin.x, gRect.origin.y, gRect.size.width, gRect.size.height);
 			wpt = gRect.size.width;
 		}
-		if (!view || wpt < 1) { goSnapshotDone(req, (char *)""); return; }
-		CGFloat scale = view.window.backingScaleFactor ?: 2;
-		cfg.snapshotWidth = @(wpt * scale);          // scharf auf Retina-Displays
-		[view takeSnapshotWithConfiguration:cfg completionHandler:^(NSImage *img, NSError *e) {
-			if (!img) { goSnapshotDone(req, (char *)""); return; }
-			NSData *tiff = [img TIFFRepresentation];
-			NSBitmapImageRep *rep = [NSBitmapImageRep imageRepWithData:tiff];
-			NSData *png = [rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
-			NSPasteboard *pb = [NSPasteboard generalPasteboard];
-			[pb clearContents];
-			[pb declareTypes:@[NSPasteboardTypePNG, NSPasteboardTypeTIFF] owner:nil];
-			if (png) [pb setData:png forType:NSPasteboardTypePNG];
-			[pb setData:tiff forType:NSPasteboardTypeTIFF];
-			NSData *jpg = [rep representationUsingType:NSBitmapImageFileTypeJPEG properties:@{NSImageCompressionFactor: @0.85}];
-			char *c = strdup([[jpg base64EncodedStringWithOptions:0] UTF8String]);
-			goSnapshotDone(req, c);
-			free(c);
-		}];
+ if (!view || wpt < 1) { goSnapshotDone(req, (char *)""); return; }
+  // snapshotWidth is in points; WebKit applies the display scale itself.
+  cfg.snapshotWidth = @(wpt);
+  [view takeSnapshotWithConfiguration:cfg completionHandler:^(NSImage *img, NSError *error) {
+   if (!img) { goSnapshotDone(req, (char *)""); return; }
+   fmEncodeSnapshot(img, req, YES);
+  }];
 	});
+}
+
+// Bounded MCP page operations. JavaScript source is generated by trusted Go code.
+void fmwEvaluate(int tabID, const char *script, int req) {
+ NSString *source = [NSString stringWithUTF8String:script];
+ dispatch_async(dispatch_get_main_queue(), ^{
+  FMTab *t = gTabs[@(tabID)];
+  if (!t) { goSnapshotDone(req,(char *)""); return; }
+  [t.view evaluateJavaScript:source completionHandler:^(id result, NSError *error) {
+   NSString *value = [result isKindOfClass:[NSString class]] ? result : @"";
+   if (error) value = @"{\"error\":\"Seitenaktion nicht möglich. Selektor und Ladezustand prüfen.\"}";
+   char *out = strdup(value.UTF8String); goSnapshotDone(req,out); free(out);
+  }];
+ });
+}
+
+int fmwSetDockIcon(const void *bytes, int length) {
+ NSData *data = [NSData dataWithBytes:bytes length:length];
+ __block BOOL saved = NO;
+ void (^apply)(void) = ^{
+  NSImage *icon = [[NSImage alloc] initWithData:data];
+  if (!icon) return;
+  saved = [[NSWorkspace sharedWorkspace] setIcon:icon forFile:NSBundle.mainBundle.bundlePath options:0];
+  NSApp.applicationIconImage = icon;
+  [NSApp.dockTile display];
+ };
+ if (NSThread.isMainThread) apply(); else dispatch_sync(dispatch_get_main_queue(), apply);
+ return saved ? 1 : 0;
 }

@@ -14,6 +14,7 @@ import (
 
 // State ist der Wiedergabezustand für die Oberfläche.
 type State struct {
+	URI      string `json:"uri,omitempty"`
 	Status   string `json:"status"` // off | stopped | playing | paused | denied | error
 	Message  string `json:"message,omitempty"`
 	Title    string `json:"title,omitempty"`
@@ -40,6 +41,7 @@ tell application "Spotify"
 	set pState to (player state as text)
 	if pState is "stopped" then return "stopped"
 	set sep to (character id 31)
+	set trackID to ""
 	set nm to "" 
 	set ar to ""
 	set al to ""
@@ -51,6 +53,7 @@ tell application "Spotify"
 	set rp to "false"
 	try
 		set trk to current track
+		set trackID to (id of trk)
 		set nm to (name of trk)
 		set ar to (artist of trk)
 		set al to (album of trk)
@@ -67,7 +70,7 @@ tell application "Spotify"
 		set sh to (shuffling as text)
 		set rp to (repeating as text)
 	end try
-	return pState & sep & nm & sep & ar & sep & al & sep & du & sep & pos & sep & art & sep & vol & sep & sh & sep & rp
+	return pState & sep & nm & sep & ar & sep & al & sep & du & sep & pos & sep & art & sep & vol & sep & sh & sep & rp & sep & trackID
 end tell`
 
 // Get liest den aktuellen Zustand.
@@ -84,12 +87,12 @@ func Get() State {
 		return State{Status: out}
 	}
 	f := strings.Split(out, "\x1f")
-	if len(f) < 10 {
+	if len(f) < 11 {
 		return State{Status: "error", Message: "Unerwartete Antwort von Spotify."}
 	}
 	atoi := func(s string) int { n, _ := strconv.Atoi(strings.TrimSpace(s)); return n }
 	return State{
-		Status: f[0], Title: f[1], Artist: f[2], Album: f[3],
+		URI: f[10], Status: f[0], Title: f[1], Artist: f[2], Album: f[3],
 		Duration: atoi(f[4]) / 1000, Position: atoi(f[5]), Artwork: f[6],
 		Volume: atoi(f[7]), Shuffle: f[8] == "true", Repeat: f[9] == "true",
 	}
@@ -131,6 +134,43 @@ func Command(cmd string, arg float64) error {
 end if`)
 	if err != nil {
 		return errors.New(out)
+	}
+	return nil
+}
+
+// PlayURI nimmt ausschließlich geprüfte Spotify-IDs an; keine freie AppleScript-Eingabe.
+func PlayURI(uri string) error {
+	if !validURI(uri) {
+		return errors.New("Ungültiger Spotify-Titel.")
+	}
+	_, err := exec.LookPath("osascript")
+	if err != nil {
+		return errors.New("AppleScript ist nicht verfügbar.")
+	}
+	out, err := run(`tell application "Spotify"
+ activate
+ play track "` + uri + `"
+end tell`)
+	if err != nil {
+		if strings.Contains(out, "-1743") {
+			return errors.New("Bitte Luna Browser unter Systemeinstellungen → Datenschutz & Sicherheit → Automation den Zugriff auf Spotify erlauben.")
+		}
+		return errors.New("Wiedergabe nicht möglich. Prüfe, ob Spotify installiert und angemeldet ist.")
+	}
+	return nil
+}
+
+// PlayScheduledURI uses only the already-running local Spotify app and does not
+// bring its window to the foreground. It never searches or calls the Web API.
+func PlayScheduledURI(uri string) error {
+	if !strings.HasPrefix(uri, "spotify:track:") || !validURI(uri) {
+		return errors.New("Ungültiger Spotify-Titel.")
+	}
+	out, err := run(`if application "Spotify" is not running then return "off"
+tell application "Spotify" to play track "` + uri + `"
+return "ok"`)
+	if err != nil || out != "ok" {
+		return errors.New("Spotify konnte den vorgemerkten Song über AppleScript nicht starten.")
 	}
 	return nil
 }

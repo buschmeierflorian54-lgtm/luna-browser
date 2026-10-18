@@ -18,3 +18,6 @@ void fmwScreenshot(int id, int req); // Seite → Zwischenablage; Vorschau über
 void fmwConfigureGesture(const char *src, int on); // Mausgeste: Skript für jede Seite, Ein/Aus
 
 #endif
+void fmwEvaluate(int id, const char *script, int req);
+
+int fmwSetDockIcon(const void *bytes, int length);
