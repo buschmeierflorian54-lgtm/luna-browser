@@ -758,7 +758,7 @@ setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie
     S.bookmarks = S.bookmarks || [];
     renderBar();
     // Spotify-Overlay deckt das Fenster ab: native Seiten dafür kurz ausblenden.
-    setHooks({ open() { nativeShow(-1); }, close() { const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id); } });
+    setHooks({ popOpen: () => cover(true), popClose: () => cover(false), open() { nativeShow(-1); }, close() { const t = cur(); if (t && t.native && t.mode === 'web') nativeShow(t.id); } });
     await step('Spotify verbinden …', 0.58, () => initSpotify());
     await step(S.restore ? 'Tabs wiederherstellen …' : 'Startseite vorbereiten …', 0.8, async () => { await restoreSession(); updateFrame(); });
     await step('Seite wird geladen …', 0.94, () => waitLoaded(cur(), 2600));

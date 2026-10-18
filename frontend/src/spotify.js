@@ -60,6 +60,61 @@ function bannerHTML() {
     ${active() ? `<div style="display:flex;align-items:center;gap:8px;flex-shrink:0"><button class="spBtn" data-sp-act="prev" aria-label="Vorheriger Titel">${I.prev(16)}</button>${toggleBtn(18, 'spPlay')}<button class="spBtn" data-sp-act="next" aria-label="Nächster Titel">${I.next(16)}</button></div>` : ''}
   </div></div></div></div>`;
 }
+/* ---------- Mini-Player (Popover beim Überfahren des Chips) ---------- */
+const P = { open: false, covered: false, timer: 0, sig: '' };
+const EXPAND = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
+function popHTML() {
+  const s = M.st, bg = s.artwork ? `<div class="pBg" style="background-image:url('${esc(s.artwork)}')"></div>` : '';
+  if (!active()) {
+    const off = s.status === 'off', stop = s.status === 'stopped';
+    return `${bg}<div class="pMsg"><div class="pT">${esc(statusText())}</div><div class="pA">${esc(s.message || (off ? 'Starte Spotify, um hier Titel zu steuern.' : stop ? 'Wähle in Spotify einen Titel aus.' : ''))}</div>${off || stop ? `<button class="pBtn" data-sp-act="${off ? 'open-app' : 'toggle'}">${off ? 'Spotify starten' : 'Wiedergabe starten'}</button>` : ''}</div>`;
+  }
+  return `${bg}
+  <div class="pTop"><button class="pArt" data-sp-act="open-ov" aria-label="Vollbild öffnen" title="Vollbild">${art(66, 12, 22)}<span class="pExp">${EXPAND}</span></button>
+    <div class="pInfo"><div class="pT">${esc(s.title)}</div><div class="pA">${esc(s.artist)}</div><div class="pAl">${esc(s.album)}</div></div></div>
+  <div class="pSeek"><span data-sp="pos"></span><input type="range" min="0" max="${s.duration}" step="1" value="0" data-sp="seek" aria-label="Position"><span data-sp="dur"></span></div>
+  <div class="pCtl"><button class="pIc ${s.shuffle ? 'on' : ''}" data-sp-act="shuffle" aria-label="Zufall" aria-pressed="${s.shuffle}">${I.shuffle}</button>
+    <button class="pIc big" data-sp-act="prev" aria-label="Zurück">${I.prev(20)}</button>${toggleBtn(24, 'pPlay')}
+    <button class="pIc big" data-sp-act="next" aria-label="Weiter">${I.next(20)}</button>
+    <button class="pIc ${s.repeat ? 'on' : ''}" data-sp-act="repeat" aria-label="Wiederholen" aria-pressed="${s.repeat}">${I.repeat}</button></div>
+  <div class="pVol">${I.vol}<input type="range" min="0" max="100" step="1" value="${s.volume}" data-sp="vol" aria-label="Lautstärke"></div>`;
+}
+function placePop() {
+  const chip = $('#spChip'), el = $('#spPop'); if (!chip || !el) return;
+  const r = chip.getBoundingClientRect();
+  el.style.top = Math.round(r.bottom + 8) + 'px';
+  el.style.right = Math.max(10, Math.round(innerWidth - r.right)) + 'px';
+}
+async function openPop() {
+  if (P.open || M.ov) return;
+  P.open = true;
+  await hooks.popOpen();                       // nativ gerenderte Seite verbergen (Foto der Seite bleibt stehen)
+  if (!P.open) { hooks.popClose(); return; }   // inzwischen wieder zu
+  P.covered = true;
+  const el = $('#spPop'); el.innerHTML = popHTML(); P.sig = sigOf() + (playing() ? 1 : 0);
+  placePop(); el.hidden = false; void el.offsetWidth; el.classList.add('show'); tick();
+}
+function closePop(immediate) {
+  clearTimeout(P.timer);
+  if (!P.open) return;
+  P.open = false;
+  const el = $('#spPop'); el.classList.remove('show');
+  const done = () => { if (!P.open) { el.hidden = true; el.innerHTML = ''; } };
+  if (immediate) done(); else setTimeout(done, 260);
+  if (P.covered) { P.covered = false; setTimeout(() => { if (!P.open) hooks.popClose(); }, immediate ? 0 : 200); }
+}
+const popLater = (fn, ms) => { clearTimeout(P.timer); P.timer = setTimeout(fn, ms); };
+function wirePop() {
+  const chip = $('#spChip'), pop = $('#spPop'); if (!chip || !pop) return;
+  chip.addEventListener('mouseenter', () => popLater(openPop, 170));
+  chip.addEventListener('mouseleave', () => popLater(() => closePop(), 300));
+  pop.addEventListener('mouseenter', () => clearTimeout(P.timer));
+  pop.addEventListener('mouseleave', () => popLater(() => closePop(), 300));
+  chip.addEventListener('focusin', () => popLater(openPop, 60));
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && P.open) closePop(); });
+  window.addEventListener('resize', placePop);
+}
+
 function ovHTML() {
   const s = M.st;
   let body;
@@ -99,6 +154,7 @@ function render() {
   ov.hidden = !M.ov;
   if (M.ov && M.sig.ov !== sig) { ov.innerHTML = ovHTML(); M.sig.ov = sig; }
   if (!M.ov) M.sig.ov = '';
+  if (P.open && P.covered) { const ps = sigOf() + (playing() ? 1 : 0); if (P.sig !== ps) { P.sig = ps; $('#spPop').innerHTML = popHTML(); } }
   tick();
 }
 function tick() {
@@ -107,6 +163,7 @@ function tick() {
   document.querySelectorAll('[data-sp=pos]').forEach((e) => { e.textContent = mmss(p); });
   document.querySelectorAll('[data-sp=dur]').forEach((e) => { e.textContent = mmss(s.duration); });
   const seek = document.querySelector('[data-sp=seek]'); if (seek && !M.seeking) seek.value = Math.floor(p);
+  document.querySelectorAll('input[type=range][data-sp]').forEach((r) => r.style.setProperty('--p', ((r.value - r.min) / ((r.max - r.min) || 1) * 100).toFixed(1) + '%'));
   const vol = document.querySelector('[data-sp=vol]'); if (vol && !M.volDrag) { vol.value = s.volume; const v = document.querySelector('[data-sp=volv]'); if (v) v.textContent = s.volume; }
 }
 
@@ -126,8 +183,8 @@ async function cmd(name, arg) {
 }
 
 /* ---------- Ereignisse ---------- */
-const hooks = { open() {}, close() {} };
-function openOv() { M.ov = true; M.sig.ov = ''; hooks.open(); render(); poll(); }
+const hooks = { open() {}, close() {}, popOpen() {}, popClose() {} };
+function openOv() { closePop(true); M.ov = true; M.sig.ov = ''; hooks.open(); render(); poll(); }
 function closeOv() { if (!M.ov) return; M.ov = false; render(); hooks.close(); }
 document.addEventListener('click', (ev) => {
   const a = ev.target.closest('[data-sp-act]'); if (!a) return;
@@ -162,7 +219,7 @@ $('#spotify-ov').addEventListener('click', (ev) => { if (!ev.target.closest('but
 document.addEventListener('input', (ev) => {
   const t = ev.target;
   if (t.dataset?.sp === 'seek') { M.seeking = true; document.querySelectorAll('[data-sp=pos]').forEach((e) => { e.textContent = mmss(+t.value); }); }
-  if (t.dataset?.sp === 'vol') { M.volDrag = true; $('[data-sp=volv]').textContent = t.value; clearTimeout(M.volT); M.volT = setTimeout(() => api.spotifyCommand('volume', +t.value).catch(() => {}), 80); }
+  if (t.dataset?.sp === 'vol') { M.volDrag = true; const vv = $('[data-sp=volv]'); if (vv) vv.textContent = t.value; clearTimeout(M.volT); M.volT = setTimeout(() => api.spotifyCommand('volume', +t.value).catch(() => {}), 80); }
 });
 document.addEventListener('change', async (ev) => {
   const t = ev.target;
@@ -176,7 +233,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) poll
 export function setHooks(h) { Object.assign(hooks, h); }
 export function refresh() { M.sig.banner = ''; render(); }
 export function closeOverlay() { closeOv(); }
-export function initSpotify() { render(); setInterval(tick, 500); return poll(); }   // wartet auf die erste Abfrage
+export function initSpotify() { wirePop(); render(); setInterval(tick, 500); return poll(); }   // wartet auf die erste Abfrage
 // path: Ordner, in dem das Banner erscheinen soll (oder null)
 export function setBanner(path, label) {
   if (M.banner === path && M.bannerLabel === (label || '')) return;
