@@ -422,15 +422,19 @@ input{font-family:inherit}
 .spPop .pBody{position:relative;height:100%;overflow:hidden;box-sizing:border-box;background:#3a2433;border:1px solid transparent;border-radius:12px;
   -webkit-backdrop-filter:blur(30px) saturate(1.5);backdrop-filter:blur(30px) saturate(1.5);
   transition:border-radius .46s var(--E),background-color .4s,border-color .4s,box-shadow .46s}
-.spPop.show .pBody{background:var(--tint);border-radius:0 0 22px 22px;box-shadow:0 20px 36px -18px rgba(58,36,51,.34)}
-/* Randlinie erst ab der Kante zur Seite (J): im Bereich der Leiste verschmilzt die Karte lückenlos */
-.spPop .pBody:after{content:"";position:absolute;left:-1px;right:-1px;bottom:-1px;top:var(--J,56px);border:1px solid var(--line);border-top:0;border-radius:0 0 22px 22px;opacity:0;pointer-events:none;transition:opacity .2s}
+.spPop.show .pBody{background:var(--tint);border-radius:0 0 22px 22px;box-shadow:0 26px 48px -22px rgba(58,36,51,.3)}
+/* Sanfter Übergang: In der Leiste ist die Karte deckend in Leistenfarbe und läuft unterhalb der Kante über ~70px in das Glas aus */
+.spPop .pBody:before{content:"";position:absolute;left:0;right:0;top:0;height:calc(var(--J,56px) + 70px);background:linear-gradient(to bottom,var(--panel) 0,var(--panel) var(--J,56px),transparent 100%);opacity:0;pointer-events:none;transition:opacity .25s}
+.spPop.show .pBody:before{opacity:1;transition:opacity .5s .15s}
+.spPop .pBody>.pc{z-index:1}
+/* Randlinie: beginnt unter der Kante ganz zart und wird nach unten kräftiger (Naht hört früher auf) */
+.spPop .pBody:after{content:"";position:absolute;left:-1px;right:-1px;bottom:-1px;top:var(--J,56px);border:1px solid var(--line);border-top:0;border-radius:0 0 22px 22px;opacity:0;pointer-events:none;transition:opacity .2s;-webkit-mask-image:linear-gradient(to bottom,transparent 0,transparent 24px,#000 96px);mask-image:linear-gradient(to bottom,transparent 0,transparent 24px,#000 96px)}
 .spPop.show .pBody:after{opacity:1;transition:opacity .3s .3s}
 /* Hohlkehlen: weicher Anschluss an die Leiste, wo die Karte unter der Leiste sichtbar wird */
-.spPop .pFl,.spPop .pFr{position:absolute;top:var(--J,56px);width:16px;height:16px;opacity:0;pointer-events:none;transition:opacity .12s}
-.spPop .pFl{left:-16px;background:radial-gradient(circle at 0 100%,transparent 15.5px,var(--tint) 16px)}
-.spPop .pFr{right:-16px;background:radial-gradient(circle at 100% 100%,transparent 15.5px,var(--tint) 16px)}
-.spPop.show .pFl,.spPop.show .pFr{opacity:1;transition:opacity .25s .34s}
+.spPop .pFl,.spPop .pFr{position:absolute;top:var(--J,56px);width:36px;height:36px;opacity:0;pointer-events:none;transition:opacity .12s;-webkit-mask-image:linear-gradient(to bottom,#000 0,rgba(0,0,0,.0) 100%);mask-image:linear-gradient(to bottom,#000 0,rgba(0,0,0,.0) 100%)}
+.spPop .pFl{left:-36px;background:radial-gradient(circle at 0 100%,transparent 35.2px,var(--panel) 36px)}
+.spPop .pFr{right:-36px;background:radial-gradient(circle at 100% 100%,transparent 35.2px,var(--panel) 36px)}
+.spPop.show .pFl,.spPop.show .pFr{opacity:1;transition:opacity .45s .3s}
 .spPop .pc{position:relative;width:336px;padding:16px;opacity:0;transform:translateY(-6px);transition:opacity .16s ease,transform .2s ease}
 .spPop.show .pc{opacity:1;transform:none;transition:opacity .3s ease .16s,transform .42s cubic-bezier(.2,.9,.3,1) .16s}
 .pTop{display:flex;gap:14px;align-items:center}
