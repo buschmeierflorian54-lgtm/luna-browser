@@ -60,4 +60,19 @@ func TestStore(t *testing.T) {
 	if v, ok := e.Prefs()["showBookmarkBar"]; !ok || v {
 		t.Fatal("showBookmarkBar nicht speicherbar")
 	}
+	// Notizzettel
+	n, _ := New(t.TempDir())
+	n.SetNote("https://a.de/x", "A", "erste Notiz")
+	n.SetNote("https://b.de/", "B", "zweite")
+	list := n.SetNote("https://a.de/x", "A", "erste Notiz (neu)")
+	if len(list) != 2 || list[0].Key != "https://a.de/x" || list[0].Text != "erste Notiz (neu)" {
+		t.Fatalf("Notes: %+v", list)
+	}
+	if list = n.SetNote("https://b.de/", "B", "   "); len(list) != 1 {
+		t.Fatalf("leerer Text muss löschen: %+v", list)
+	}
+	n2, _ := New(n.dir)
+	if len(n2.Notes()) != 1 {
+		t.Fatal("nicht persistent")
+	}
 }

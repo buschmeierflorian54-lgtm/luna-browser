@@ -22,6 +22,13 @@ Daten: `~/Library/Application Support/browser-mac/`.
 Widget auf der Startseite, Klick öffnet ein Vollbild-Overlay im Fenster (Klick irgendwohin, Esc oder X schließt).
 Beim ersten Zugriff fragt macOS nach Automation-Rechten für Spotify.
 
+## Notizzettel und Mausgeste
+Linke Maustaste halten und einen Kreis zeichnen: öffnet das Seitenpanel „Notizen“ mit einem Notizzettel für die aktuelle
+Seite (Schlüssel = Adresse ohne #Anker; Suchen: Suchbegriff). Ein zweiter Kreis schließt das Panel wieder. Auf Webseiten
+läuft die Erkennung in einem eingeschleusten Skript (`frontend/src/gesture-core.js`, per `WKUserScript` in jede Seite,
+Nachricht über `fmGesture`), in der eigenen Oberfläche direkt. Ein/Aus in den Einstellungen (Bedienung); Notizen liegen
+in `notes.json`. Menü: Darstellung → Notizzettel ein/aus (⌥⌘N).
+
 ## Lesezeichen
 Hinzufügen (+ in der Leiste, auf der Startseite, in der Seitenleiste und in den Einstellungen), Bearbeiten und Löschen
 (Rechtsklick auf ein Lesezeichen, ✕ auf den Startseiten-Kacheln, Verwaltung in den Einstellungen). Die Lesezeichenleiste

@@ -25,6 +25,7 @@ type App struct {
 
 	secrets *secret.Store
 	search  *search.Client
+	gesture string // Skript der Mausgeste (wird in jede Seite eingeschleust)
 }
 
 const (
@@ -51,6 +52,9 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}()
 	web.SetEmitter(func(j string) { a.emit("web", j) })
+	// Mausgeste (Kreis): Skript in jede Seite, Ein/Aus aus den Einstellungen (Standard: an)
+	a.gesture = pageGestureScript()
+	web.ConfigureGesture(a.gesture, a.st.Prefs()["circleGesture"] || !hasPref(a.st.Prefs(), "circleGesture"))
 
 	// Eigene Suchmaschine (Brave-API); der Schlüssel wird bei jeder Anfrage frisch aus der geschützten Datei gelesen.
 	a.secrets = secret.New(filepath.Join(dir, "browser-mac"))
@@ -79,9 +83,12 @@ func (a *App) WebShow(id int)                            { web.Show(id) }
 func (a *App) WebClose(id int)                           { web.Close(id) }
 func (a *App) WebFind(id int, text string, forward bool) { web.Find(id, text, forward) }
 func (a *App) WebZoom(id int, factor float64)            { web.Zoom(id, factor) }
-func (a *App) SetAppearance(mode string)                 { web.SetAppearance(mode) }
-func (a *App) WebFocusUI()                               { web.FocusUI() }
-func (a *App) WebSnapshot(id int) (string, error)        { return web.Snapshot(id) }
+
+// SetGesture schaltet die Mausgeste (Kreis) in allen Seiten ein oder aus.
+func (a *App) SetGesture(on bool)                 { web.ConfigureGesture("", on) }
+func (a *App) SetAppearance(mode string)          { web.SetAppearance(mode) }
+func (a *App) WebFocusUI()                        { web.FocusUI() }
+func (a *App) WebSnapshot(id int) (string, error) { return web.Snapshot(id) }
 
 /* Lesezeichen, Verlauf, Downloads, Sitzung */
 
@@ -91,6 +98,10 @@ func (a *App) SetBookmark(url, title string, on bool) []store.Bookmark {
 }
 func (a *App) EditBookmark(oldURL, url, title string) []store.Bookmark {
 	return a.st.EditBookmark(oldURL, url, title)
+}
+func (a *App) Notes() []store.Note { return a.st.Notes() }
+func (a *App) SetNote(key, title, text string) []store.Note {
+	return a.st.SetNote(key, title, text)
 }
 func (a *App) HistoryAdd(url, title string)                  { a.st.HistoryAdd(url, title) }
 func (a *App) History(query string, limit int) []store.Visit { return a.st.History(query, limit) }
@@ -150,4 +161,11 @@ func (a *App) SearchKeyTest() error {
 	ctx, cancel := context.WithTimeout(a.ctx, 12*time.Second)
 	defer cancel()
 	return a.search.Test(ctx)
+}
+
+func hasPref(p map[string]bool, k string) bool { _, ok := p[k]; return ok }
+
+// pageGestureScript: gemeinsamer Kern + Anbindung an die App (Nachricht an window.webkit.messageHandlers.fmGesture).
+func pageGestureScript() string {
+	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onCircle:function(i){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'circle',dir:i.dir});}catch(e){}}});\n})();"
 }

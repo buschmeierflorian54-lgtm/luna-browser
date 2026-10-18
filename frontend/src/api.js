@@ -18,6 +18,7 @@ export const close = nat((id) => App.WebClose(id));
 export const find = nat((id, text, forward) => App.WebFind(id, text, forward));
 export const zoom = nat((id, f) => App.WebZoom(id, f));
 export const focusUI = nat(() => App.WebFocusUI());
+export const setGesture = nat((on) => App.SetGesture(on));
 export const setAppearance = nat((mode) => App.SetAppearance(mode));
 export const snapshot = nat((id) => App.WebSnapshot(id), '');
 
@@ -34,6 +35,8 @@ export const downloadAdd = (name, path) => App.DownloadAdd(name, path);
 export const downloadsClear = () => App.DownloadsClear();
 export const prefs = () => App.Prefs();
 export const setPref = (key, v) => App.SetPref(key, v);
+export const notes = () => App.Notes();
+export const setNote = (key, title, text) => App.SetNote(key, title, text);
 export const sessionSave = (js) => App.SessionSave(js);
 export const sessionLoad = () => App.SessionLoad();
 export const openFile = (path, reveal) => App.OpenFile(path, reveal);

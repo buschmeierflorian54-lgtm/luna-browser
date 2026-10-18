@@ -231,6 +231,24 @@ export namespace store {
 	        this.time = source["time"];
 	    }
 	}
+	export class Note {
+	    key: string;
+	    title: string;
+	    text: string;
+	    updated: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Note(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.title = source["title"];
+	        this.text = source["text"];
+	        this.updated = source["updated"];
+	    }
+	}
 	export class Visit {
 	    url: string;
 	    title: string;

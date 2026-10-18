@@ -15,6 +15,11 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// Kern der Mausgeste: dieselbe Datei läuft in der Oberfläche und – von hier eingeschleust – in jeder Webseite.
+//
+//go:embed frontend/src/gesture-core.js
+var gestureCore string
+
 // buildMenu: Tastenkürzel müssen im Menü liegen, damit sie auch gelten, wenn eine Webseite den Fokus hat.
 // Jeder Eintrag schickt ein "cmd"-Ereignis ans Frontend.
 func buildMenu(app *App) *menu.Menu {
@@ -53,6 +58,8 @@ func buildMenu(app *App) *menu.Menu {
 	hist.AddSeparator()
 	hist.AddText("Verlauf anzeigen", keys.CmdOrCtrl("y"), cmd("show-history"))
 	hist.AddText("Downloads anzeigen", keys.Combo("l", keys.CmdOrCtrlKey, keys.OptionOrAltKey), cmd("show-downloads"))
+
+	view.AddText("Notizzettel ein/aus", keys.Combo("n", keys.CmdOrCtrlKey, keys.OptionOrAltKey), cmd("toggle-notes"))
 
 	bm := m.AddSubmenu("Lesezeichen")
 	bm.AddText("Lesezeichen hinzufügen", keys.CmdOrCtrl("d"), cmd("bookmark"))

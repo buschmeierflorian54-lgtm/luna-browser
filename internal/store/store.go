@@ -25,6 +25,14 @@ type Visit struct {
 	Visits int    `json:"visits"`
 }
 
+// Note ist ein Notizzettel zu einer Seite (Schlüssel = Adresse ohne #Anker, bei Suchen "search:<Begriff>").
+type Note struct {
+	Key     string `json:"key"`
+	Title   string `json:"title"`
+	Text    string `json:"text"`
+	Updated int64  `json:"updated"`
+}
+
 type Download struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
@@ -38,6 +46,7 @@ type Store struct {
 	history   []Visit
 	downloads []Download
 	prefs     map[string]bool
+	notes     []Note
 }
 
 const maxHistory = 5000
@@ -51,6 +60,7 @@ func New(dir string) (*Store, error) {
 	s.read("history.json", &s.history)
 	s.read("downloads.json", &s.downloads)
 	s.read("prefs.json", &s.prefs)
+	s.read("notes.json", &s.notes)
 	if s.prefs == nil {
 		s.prefs = map[string]bool{}
 	}
@@ -244,7 +254,7 @@ func (s *Store) SessionLoad() string {
 /* Einstellungen (Ein/Aus-Schalter) */
 
 // PrefKeys sind die erlaubten Schlüssel; unbekannte werden abgelehnt.
-var PrefKeys = map[string]bool{"restoreSession": true, "showBookmarkBar": true}
+var PrefKeys = map[string]bool{"restoreSession": true, "showBookmarkBar": true, "circleGesture": true}
 
 func (s *Store) Prefs() map[string]bool {
 	s.mu.Lock()
@@ -265,4 +275,42 @@ func (s *Store) SetPref(key string, v bool) map[string]bool {
 		s.mu.Unlock()
 	}
 	return s.Prefs()
+}
+
+/* Notizzettel (seitenbasiert) */
+
+const maxNote = 20000
+
+func (s *Store) Notes() []Note {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]Note, 0, len(s.notes))
+	for i := len(s.notes) - 1; i >= 0; i-- { // neueste zuerst; bei gleicher Zeit gewinnt die später gespeicherte
+		out = append(out, s.notes[i])
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Updated > out[j].Updated })
+	return out
+}
+
+// SetNote speichert die Notiz zu key; leerer Text löscht sie. Gibt alle Notizen zurück (neueste zuerst).
+func (s *Store) SetNote(key, title, text string) []Note {
+	if key != "" {
+		if r := []rune(text); len(r) > maxNote {
+			text = string(r[:maxNote])
+		}
+		s.mu.Lock()
+		out := s.notes[:0:0]
+		for _, n := range s.notes {
+			if n.Key != key {
+				out = append(out, n)
+			}
+		}
+		if strings.TrimSpace(text) != "" {
+			out = append(out, Note{Key: key, Title: title, Text: text, Updated: time.Now().UnixMilli()})
+		}
+		s.notes = out
+		s.write("notes.json", s.notes)
+		s.mu.Unlock()
+	}
+	return s.Notes()
 }

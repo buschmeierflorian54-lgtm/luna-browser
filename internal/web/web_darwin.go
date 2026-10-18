@@ -103,3 +103,14 @@ func Snapshot(id int) (string, error) {
 		return "", errors.New("Zeitüberschreitung")
 	}
 }
+
+// ConfigureGesture schleust das Mausgesten-Skript in jede Seite ein (src leer = nur Ein/Aus ändern).
+func ConfigureGesture(src string, on bool) {
+	c := C.CString(src)
+	defer C.free(unsafe.Pointer(c))
+	v := 0
+	if on {
+		v = 1
+	}
+	C.fmwConfigureGesture(c, C.int(v))
+}

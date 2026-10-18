@@ -38,6 +38,10 @@ export function HistoryRemove(arg1) {
   return window['go']['main']['App']['HistoryRemove'](arg1);
 }
 
+export function Notes() {
+  return window['go']['main']['App']['Notes']();
+}
+
 export function OpenFile(arg1, arg2) {
   return window['go']['main']['App']['OpenFile'](arg1, arg2);
 }
@@ -80,6 +84,14 @@ export function SetAppearance(arg1) {
 
 export function SetBookmark(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetBookmark'](arg1, arg2, arg3);
+}
+
+export function SetGesture(arg1) {
+  return window['go']['main']['App']['SetGesture'](arg1);
+}
+
+export function SetNote(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetNote'](arg1, arg2, arg3);
 }
 
 export function SetPref(arg1, arg2) {

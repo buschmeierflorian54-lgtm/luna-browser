@@ -1,4 +1,5 @@
 import './style.css';
+import './gesture-core.js';
 import * as api from './api.js';
 import { searchHTML } from './searchview.js';
 import logoUrl from './assets/logo.png';
@@ -57,7 +58,7 @@ function nativeShow(id) { if (splashing) { pendingShow = id; return; } api.show(
 
 /* ---------- Zustand ---------- */
 const S = {
-  hasKey: false, restore: false, tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
+  hasKey: false, restore: false, gesture: true, notes: {}, tabs: [], active: 0, next: 1, bookmarks: [], downloads: [],
   side: false, sideTab: 'bookmarks', bar: true, cover: 0, sugg: [], suggSel: -1, findOpen: false,
 };
 const tabById = (id) => S.tabs.find((t) => t.id === id);
@@ -238,6 +239,7 @@ api.onWeb((e) => {
     case 'close': closeTab(e.tab); break;
     case 'find': $('#findStat').textContent = e.found ? '' : 'Nicht gefunden'; break;
     case 'dl': onDownload(e); break;
+    case 'gesture': if (t && t.id === S.active && S.gesture && t.mode === 'web') toggleNotes(); break;
   }
 });
 
@@ -455,7 +457,7 @@ function openMenu() {
     ['Neuer Tab', '⌘T', 'new-tab'], ['Auf der Seite suchen', '⌘F', 'find'], '-',
     ['Vergrößern', '⌘+', 'zoom-in'], ['Verkleinern', '⌘−', 'zoom-out'], ['Tatsächliche Größe (' + z + ' %)', '⌘0', 'zoom-reset'], '-',
     ['Einstellungen …', '⌘,', 'settings'], [isDark() ? 'Heller Modus' : 'Dunkelmodus', '⇧⌘D', 'toggle-theme'], '-',
-    ['Lesezeichen', '⌘⌥B', 'show-bookmarks'], ['Verlauf', '⌘Y', 'show-history'], ['Downloads', '⌘⌥L', 'show-downloads'], '-',
+    ['Notizzettel', '⌥⌘N', 'toggle-notes'], ['Lesezeichen', '⌘⌥B', 'show-bookmarks'], ['Verlauf', '⌘Y', 'show-history'], ['Downloads', '⌘⌥L', 'show-downloads'], '-',
     [S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', '⇧⌘B', 'toggle-bar'],
   ];
   const m = $('#menu'), r = $('#bMenu').getBoundingClientRect();
@@ -537,9 +539,16 @@ let histQ = '';
 async function renderSide() {
   const side = $('#side'); side.hidden = !S.side;
   if (!S.side) return;
-  const tabs = [['bookmarks', 'Lesezeichen'], ['history', 'Verlauf'], ['downloads', 'Downloads']];
+  const hasNote = !!S.notes[noteKeyOf(cur()) || ''];
+  const tabs = [['bookmarks', 'Lesezeichen'], ['history', 'Verlauf'], ['downloads', 'Downloads'], ['notes', 'Notizen' + (hasNote ? ' •' : '')]];
   let body = '';
-  if (S.sideTab === 'bookmarks') {
+  if (S.sideTab === 'notes') {
+    const key = noteKeyOf(cur());
+    // Wer gerade tippt und noch auf derselben Seite ist, wird nicht unterbrochen
+    if (document.activeElement?.id === 'noteText' && S.noteShown === key) return;
+    S.noteShown = key;
+    body = notesPanelHTML();
+  } else if (S.sideTab === 'bookmarks') {
     body = `<div class="shead"><span class="hint" style="padding:0">${S.bookmarks.length} ${S.bookmarks.length === 1 ? 'Eintrag' : 'Einträge'}</span><button class="link" data-act="bm-add">+ Hinzufügen</button></div><div class="slist">${S.bookmarks.length ? S.bookmarks.map((b) => `<div class="sitem" data-bm="${esc(b.url)}"><button class="go" data-act="open-url" data-url="${esc(b.url)}"><div class="t"><b>${esc(b.title)}</b><small>${esc(shownUrl(b.url))}</small></div></button><button class="rm" data-act="bm-edit" data-url="${esc(b.url)}" aria-label="Bearbeiten" title="Bearbeiten"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button><button class="rm" data-act="rm-bm" data-url="${esc(b.url)}" aria-label="Entfernen" title="Löschen">${ICON.x}</button></div>`).join('') : '<div class="hint">Mit dem Stern in der Adressleiste (⌘D) oder „Hinzufügen“ merkst du dir Seiten.</div>'}</div>`;
   } else if (S.sideTab === 'history') {
     const h = await api.history(histQ, 200);
@@ -554,6 +563,54 @@ async function renderSide() {
 }
 document.addEventListener('input', (ev) => { if (ev.target.id === 'histQ') { histQ = ev.target.value; renderSide(); } });
 function openSide(tab) { S.side = true; if (tab) S.sideTab = tab; renderToolbar(); renderSide(); }
+
+/* ---------- Notizzettel (seitenbasiert) + Mausgeste ---------- */
+// Schlüssel: Adresse der Seite ohne #Anker; Suchen: "search:<Begriff>". Startseite/Einstellungen haben keinen Zettel.
+function noteKeyOf(t) {
+  if (!t) return null;
+  if (t.mode === 'web' && t.webUrl) return t.webUrl.split('#')[0];
+  if (t.mode === 'search' && t.q) return 'search:' + encodeURIComponent(t.q);
+  return null;
+}
+const noteTitleOf = (t) => (t.mode === 'search' ? t.q + ' – Suche' : (t.webTitle || hostOf(t.webUrl) || ''));
+function notesPanelHTML() {
+  const t = cur(), key = noteKeyOf(t), note = key ? S.notes[key] : null;
+  const all = Object.values(S.notes).sort((a, b) => b.updated - a.updated);
+  return `<div class="notes">
+    <div class="npage">${key ? `<b>${esc(noteTitleOf(t) || hostOf(key))}</b><small>${esc(shownUrl(key))}</small>` : '<b>Keine Seite offen</b><small>Öffne eine Webseite oder Suche – dann erscheint hier der Notizzettel dieser Seite.</small>'}</div>
+    ${key ? `<div class="paper"><textarea id="noteText" placeholder="Notiz zu dieser Seite …" spellcheck="true">${esc(note ? note.text : '')}</textarea><i class="fold"></i></div>
+    <div class="nmeta"><span id="noteStat">${note ? 'Gespeichert · ' + esc(fmtTime(note.updated)) : 'Wird automatisch gespeichert'}</span><button class="link" data-act="note-del" ${note ? '' : 'disabled'}>Löschen</button></div>` : ''}
+    <h4 class="nh">Alle Notizen · ${all.length}</h4><div class="nlist" id="noteList">${noteListHTML(all)}</div></div>`;
+}
+function noteListHTML(all) {
+  return all.length ? all.map((n) => `<button class="nitem" data-act="open-url" data-url="${esc(n.key)}"><b>${esc(n.title || hostOf(n.key))}</b><span>${esc(n.text.replace(/\s+/g, ' ').slice(0, 90))}</span><small>${esc(fmtTime(n.updated))}</small></button>`).join('') : '<div class="hint">Noch keine Notizen. Zeichne mit gedrückter linker Maustaste einen Kreis – oder öffne den Zettel über das Menü.</div>';
+}
+function refreshNotesUI() {
+  const all = Object.values(S.notes).sort((a, b) => b.updated - a.updated);
+  const l = $('#noteList'); if (l) l.innerHTML = noteListHTML(all);
+  const h = document.querySelector('.nh'); if (h) h.textContent = 'Alle Notizen · ' + all.length;
+  const key = noteKeyOf(cur()), n = key ? S.notes[key] : null;
+  const st = $('#noteStat'); if (st) st.textContent = n ? 'Gespeichert · ' + fmtTime(n.updated) : 'Leer';
+  const del = document.querySelector('[data-act=note-del]'); if (del) del.disabled = !n;
+  const tabBtn = document.querySelector('.stabs [data-k=notes]'); if (tabBtn) tabBtn.textContent = 'Notizen' + (n ? ' •' : '');
+}
+let noteT = 0;
+async function saveNote(text) {
+  const t = cur(), key = noteKeyOf(t); if (!key) return;
+  const list = await api.setNote(key, noteTitleOf(t), text);
+  S.notes = Object.fromEntries(list.map((n) => [n.key, n])); refreshNotesUI();
+}
+document.addEventListener('input', (ev) => {
+  if (ev.target.id !== 'noteText') return;
+  const st = $('#noteStat'); if (st) st.textContent = 'Speichert …';
+  const v = ev.target.value; clearTimeout(noteT); noteT = setTimeout(() => saveNote(v), 450);
+});
+function toggleNotes() {
+  if (S.side && S.sideTab === 'notes') { S.side = false; renderToolbar(); renderSide(); return; }
+  openSide('notes'); setTimeout(() => $('#noteText')?.focus(), 120);
+}
+// Die Geste für Seiten ohne native Ansicht (Startseite, Suche, Einstellungen); Webseiten melden sie über ein eingeschleustes Skript.
+window.__fmCircle({ target: $('#page'), enabled: () => S.gesture, onCircle: () => { if (cur()?.mode !== 'web') toggleNotes(); } });
 
 /* ---------- Downloads ---------- */
 function onDownload(e) {
@@ -572,7 +629,7 @@ function onDownload(e) {
 /* ---------- Einstellungen: eigene Seite in eigenem Tab ---------- */
 let setMsg = { text: '', kind: '' };
 const GEAR = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2.2-1.3L14 3h-4l-.4 2.4a7 7 0 0 0-2.2 1.3l-2.3-.9-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-.9a7 7 0 0 0 2.2 1.3L10 21h4l.4-2.4a7 7 0 0 0 2.2-1.3l2.3.9 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>';
-const SET_SECTIONS = [['look', 'Darstellung'], ['bm', 'Lesezeichen'], ['start', 'Start'], ['search', 'Suche'], ['data', 'Daten']];
+const SET_SECTIONS = [['look', 'Darstellung'], ['bm', 'Lesezeichen'], ['start', 'Start'], ['input', 'Bedienung'], ['search', 'Suche'], ['data', 'Daten']];
 function settingsPageHTML() {
   const th = themeMode();
   return `<div class="sp">
@@ -591,6 +648,10 @@ function settingsPageHTML() {
       <section id="set-start" class="sp-card"><h2>Start</h2>
         <div class="swrow"><div><b>Zuletzt geöffnete Seiten merken</b><span>${S.restore ? 'Beim nächsten Start öffnen sich die Tabs von zuletzt.' : 'Aus: Der Browser startet immer mit der Startseite.'}</span></div>
           <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
+      </section>
+      <section id="set-input" class="sp-card"><h2>Bedienung</h2>
+        <div class="swrow"><div><b>Mausgeste: Kreis öffnet den Notizzettel</b><span>${S.gesture ? 'Halte die linke Maustaste gedrückt und zeichne einen Kreis – auf jeder Seite.' : 'Aus: Der Notizzettel öffnet sich nur über das Menü (⌥⌘N).'}</span></div>
+          <button class="switch ${S.gesture ? 'on' : ''}" role="switch" aria-checked="${S.gesture}" aria-label="Mausgeste Kreis" data-act="pref-gesture"><i></i></button></div>
       </section>
       <section id="set-search" class="sp-card"><h2>Suche · Brave API</h2>
         <p class="muted">Die Adressleiste sucht über die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
@@ -733,6 +794,7 @@ async function runCmd(c) {
     case 'show-bookmarks': openSide('bookmarks'); break;
     case 'show-downloads': openSide('downloads'); break;
     case 'bookmark': toggleBookmark(); break;
+    case 'toggle-notes': toggleNotes(); break;
     case 'settings': openSettings(); break;
     case 'toggle-theme': applyTheme(isDark() ? 'light' : 'dark', true); break;
     case 'next-tab': stepTab(1); break;
@@ -769,6 +831,12 @@ document.addEventListener('click', async (ev) => {
     case 'side-tab': S.sideTab = d.k; renderSide(); break;
     case 'rm-bm': await deleteBm(d.url); break;
     case 'bm-add': openBmDialog(bmFromPage()); break;
+    case 'note-del': { clearTimeout(noteT); const ta = $('#noteText'); if (ta) ta.value = ''; await saveNote(''); break; }
+    case 'pref-gesture': {
+      S.gesture = !S.gesture;
+      try { await api.setPref('circleGesture', S.gesture); api.setGesture(S.gesture); } catch { S.gesture = !S.gesture; toast('Konnte nicht gespeichert werden'); }
+      renderSettingsView(); break;
+    }
     case 'bm-edit': editBm(d.url); break;
     case 'bm-del': ev.stopPropagation(); await deleteBm(d.url); break;
     case 'bm-del-dlg': { const o = bmDlg?.oldUrl; closeBmDialog(); if (o) await deleteBm(o); break; }
@@ -854,8 +922,10 @@ setTimeout(() => { if (splashing) dismissSplash(); }, 9000);   // Sicherung: nie
   // Jeder Schritt zeigt seine Meldung mindestens 320 ms, damit man das Hochfahren sieht – die echte Arbeit läuft währenddessen.
   const step = (label, frac, work) => { splashStep(label, frac); return Promise.all([work ? work() : null, wait(320)]).then((r) => r[0]); };
   try {
-    [S.hasKey, S.restore, S.bar] = await step('Einstellungen laden …', 0.14, async () => { const p = await api.prefs(); return [await api.keyStatus(), !!p.restoreSession, p.showBookmarkBar !== false]; });
-    [S.bookmarks, S.downloads] = await step('Lesezeichen & Verlauf …', 0.36, () => Promise.all([api.bookmarks(), api.downloads()]));
+    [S.hasKey, S.restore, S.bar, S.gesture] = await step('Einstellungen laden …', 0.14, async () => { const p = await api.prefs(); return [await api.keyStatus(), !!p.restoreSession, p.showBookmarkBar !== false, p.circleGesture !== false]; });
+    let noteList;
+    [S.bookmarks, S.downloads, noteList] = await step('Lesezeichen & Verlauf …', 0.36, () => Promise.all([api.bookmarks(), api.downloads(), api.notes()]));
+    S.notes = Object.fromEntries((noteList || []).map((n) => [n.key, n]));
     S.downloads = (S.downloads || []).map((d, i) => ({ id: -i - 1, name: d.name, path: d.path, state: 'done', received: 0, total: 0 }));
     S.bookmarks = S.bookmarks || [];
     renderBar();

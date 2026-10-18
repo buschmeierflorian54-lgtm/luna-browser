@@ -36,12 +36,33 @@ static NSWindow *fmWindow(void) {
 	return NSApp.windows.firstObject;
 }
 
+static NSString *gGestureSrc;
+static int gGestureOn = 1;
+
+// Nachrichten der Mausgeste aus den Seiten (window.webkit.messageHandlers.fmGesture)
+@interface FMGestureHandler : NSObject <WKScriptMessageHandler>
+@end
+static FMGestureHandler *gGestureHandler;
+
+static void applyGesture(WKWebViewConfiguration *c) {
+	WKUserContentController *u = c.userContentController;
+	if (!gGestureHandler) gGestureHandler = [FMGestureHandler new];
+	@try { [u removeScriptMessageHandlerForName:@"fmGesture"]; } @catch (id x) {}
+	[u addScriptMessageHandler:gGestureHandler name:@"fmGesture"];
+	[u removeAllUserScripts];
+	if (gGestureSrc.length) {
+		NSString *src = [NSString stringWithFormat:@"window.__fmGesture=%d;\n%@", gGestureOn, gGestureSrc];
+		[u addUserScript:[[WKUserScript alloc] initWithSource:src injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES]];
+	}
+}
+
 static WKWebViewConfiguration *sharedConfig(void) {
 	static dispatch_once_t once;
 	dispatch_once(&once, ^{
 		gConfig = [WKWebViewConfiguration new];
 		// Als Safari ausgeben, sonst blocken manche Seiten (Google u. a.) unbekannte Browser.
 		gConfig.applicationNameForUserAgent = @"Version/17.4 Safari/605.1.15";
+		applyGesture(gConfig);
 	});
 	return gConfig;
 }
@@ -236,6 +257,16 @@ static FMTab *tabFor(int tid, WKWebViewConfiguration *cfg) {
 
 @end
 
+@implementation FMGestureHandler
+- (void)userContentController:(WKUserContentController *)ucc didReceiveScriptMessage:(WKScriptMessage *)msg {
+	if (![msg.name isEqualToString:@"fmGesture"]) return;
+	int tid = -1;
+	for (FMTab *t in gTabs.allValues) if (t.view == msg.webView) tid = t.tid;
+	NSDictionary *b = [msg.body isKindOfClass:[NSDictionary class]] ? msg.body : @{};
+	emit(@{@"t": @"gesture", @"tab": @(tid), @"kind": nn(b[@"kind"]), @"dir": nn(b[@"dir"])});
+}
+@end
+
 #pragma mark C-API
 
 void fmwLoad(int id, const char *url) {
@@ -330,5 +361,17 @@ void fmwSetAppearance(int mode) {
 	dispatch_async(dispatch_get_main_queue(), ^{
 		NSApp.appearance = mode == 1 ? [NSAppearance appearanceNamed:NSAppearanceNameAqua]
 		                 : mode == 2 ? [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua] : nil;
+	});
+}
+
+// Mausgeste: Skript (wird in jede Seite eingeschleust) und Ein/Aus.
+void fmwConfigureGesture(const char *src, int on) {
+	NSString *s = src ? [NSString stringWithUTF8String:src] : @"";
+	dispatch_async(dispatch_get_main_queue(), ^{
+		gGestureSrc = s.length ? s : gGestureSrc;
+		gGestureOn = on;
+		if (gConfig) applyGesture(gConfig);
+		for (FMTab *t in gTabs.allValues)
+			[t.view evaluateJavaScript:[NSString stringWithFormat:@"window.__fmGesture=%d", on] completionHandler:nil];
 	});
 }

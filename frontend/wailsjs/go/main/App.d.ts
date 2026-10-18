@@ -22,6 +22,8 @@ export function HistoryClear():Promise<void>;
 
 export function HistoryRemove(arg1:string):Promise<void>;
 
+export function Notes():Promise<Array<store.Note>>;
+
 export function OpenFile(arg1:string,arg2:boolean):Promise<void>;
 
 export function Prefs():Promise<Record<string, boolean>>;
@@ -43,6 +45,10 @@ export function SessionSave(arg1:string):Promise<void>;
 export function SetAppearance(arg1:string):Promise<void>;
 
 export function SetBookmark(arg1:string,arg2:string,arg3:boolean):Promise<Array<store.Bookmark>>;
+
+export function SetGesture(arg1:boolean):Promise<void>;
+
+export function SetNote(arg1:string,arg2:string,arg3:string):Promise<Array<store.Note>>;
 
 export function SetPref(arg1:string,arg2:boolean):Promise<Record<string, boolean>>;
 
