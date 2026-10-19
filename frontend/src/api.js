@@ -116,3 +116,7 @@ export const chatRemoveProviderKey = (provider) => App.ChatRemoveProviderKey(pro
 export const chatModels = (provider) => App.ChatModels(provider);
 export const chatSaveModel = (slot, provider, id) => App.ChatSaveModel(slot, provider, id);
 export const chatSelectModel = (slot) => App.ChatSelectModel(slot);
+
+export const updateStatus = () => App.UpdateStatus();
+export const checkUpdates = () => App.CheckUpdates();
+export const setAutomaticUpdates = (enabled) => App.SetAutomaticUpdates(enabled);

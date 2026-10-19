@@ -62,6 +62,10 @@ export function ChatStatus() {
   return window['go']['main']['App']['ChatStatus']();
 }
 
+export function CheckUpdates() {
+  return window['go']['main']['App']['CheckUpdates']();
+}
+
 export function DownloadAdd(arg1, arg2) {
   return window['go']['main']['App']['DownloadAdd'](arg1, arg2);
 }
@@ -178,6 +182,10 @@ export function SetAppearance(arg1) {
   return window['go']['main']['App']['SetAppearance'](arg1);
 }
 
+export function SetAutomaticUpdates(arg1) {
+  return window['go']['main']['App']['SetAutomaticUpdates'](arg1);
+}
+
 export function SetBookmark(arg1, arg2, arg3) {
   return window['go']['main']['App']['SetBookmark'](arg1, arg2, arg3);
 }
@@ -264,6 +272,10 @@ export function SpotifySearch(arg1) {
 
 export function SpotifyState() {
   return window['go']['main']['App']['SpotifyState']();
+}
+
+export function UpdateStatus() {
+  return window['go']['main']['App']['UpdateStatus']();
 }
 
 export function WebBack(arg1) {

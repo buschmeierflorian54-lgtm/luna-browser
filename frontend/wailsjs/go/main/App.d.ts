@@ -38,6 +38,8 @@ export function ChatSetKey(arg1:string):Promise<chat.Config>;
 
 export function ChatStatus():Promise<chat.Config>;
 
+export function CheckUpdates():Promise<void>;
+
 export function DownloadAdd(arg1:string,arg2:string):Promise<void>;
 
 export function Downloads():Promise<Array<store.Download>>;
@@ -96,6 +98,8 @@ export function SessionSave(arg1:string):Promise<void>;
 
 export function SetAppearance(arg1:string):Promise<void>;
 
+export function SetAutomaticUpdates(arg1:boolean):Promise<void>;
+
 export function SetBookmark(arg1:string,arg2:string,arg3:boolean):Promise<Array<store.Bookmark>>;
 
 export function SetDockIcon(arg1:string):Promise<void>;
@@ -139,6 +143,8 @@ export function SpotifyScheduleNext(arg1:string,arg2:string):Promise<void>;
 export function SpotifySearch(arg1:string):Promise<spotifyapi.Results>;
 
 export function SpotifyState():Promise<spotify.State>;
+
+export function UpdateStatus():Promise<Record<string, any>>;
 
 export function WebBack(arg1:number):Promise<void>;
 

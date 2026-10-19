@@ -69,6 +69,32 @@ export function createSettings({
   setInterval(() => {
     if (cur()?.mode === 'settings' && settingsSection === 'spotify') refreshSpotifyAccount();
   }, 2000);
+  let updateState = {};
+  async function refreshUpdates() {
+    try {
+      const next = await api.updateStatus();
+      if (JSON.stringify(next) !== JSON.stringify(updateState)) {
+        updateState = next;
+        if (settingsSection === 'updates' && cur()?.mode === 'settings') renderSettingsView();
+      }
+    } catch {
+      /* Native bridge is unavailable in preview. */
+    }
+  }
+  setInterval(() => {
+    if (settingsSection === 'updates' && cur()?.mode === 'settings') refreshUpdates();
+  }, 1000);
+  document.addEventListener('click', async (event) => {
+    const action = event.target.closest('[data-update-action]')?.dataset.updateAction;
+    if (!action) return;
+    try {
+      if (action === 'check') await api.checkUpdates();
+      if (action === 'automatic') await api.setAutomaticUpdates(!updateState.automatic);
+      await refreshUpdates();
+    } catch (error) {
+      toast(String(error));
+    }
+  });
   let settingsSection = 'look';
   const SET_SECTIONS = [
     ['look', 'Darstellung'],
@@ -79,6 +105,7 @@ export function createSettings({
     ['search', 'Suche'],
     ['spotify', 'Spotify'],
     ['mcp', 'KI & MCP'],
+    ['updates', 'Updates'],
     ['data', 'Daten'],
   ];
   function settingsPageHTML() {
@@ -147,6 +174,14 @@ export function createSettings({
       ${sonosSettingsHTML(sonosState)}
       ${chatSettingsHTML()}
       ${mcpSettingsHTML(mcpStatus)}
+      <section id="set-updates" class="sp-card"><h2>Updates</h2>
+        <div class="swrow"><div><b>Luna Browser ${esc(updateState.version || '')}</b><span>Updates direkt aus unseren GitHub Releases.</span></div><span class="muted">macOS</span></div>
+        <div class="swrow"><div><b>Automatische Updates</b><span>Alle vier Stunden prüfen und Updates automatisch laden. Für einen nötigen Neustart meldet sich Luna.</span></div><button class="btn" role="switch" aria-label="Automatische Updates" aria-checked="${!!updateState.automatic}" data-update-action="automatic" ${!updateState.ready ? 'disabled' : ''}>${updateState.automatic ? 'Ein' : 'Aus'}</button></div>
+        <p role="status">${esc(updateState.message || 'Update-Status wird geladen …')}</p>
+        <p class="muted small">${updateState.lastCheck ? 'Zuletzt geprüft: ' + esc(new Date(updateState.lastCheck * 1000).toLocaleString('de-DE')) : 'Noch keine Prüfung durchgeführt.'}</p>
+        <button class="btn pri" data-update-action="check" ${!updateState.canCheck ? 'disabled' : ''}>Nach Updates suchen</button>
+        <p class="muted small">Downloads werden vor der Installation anhand ihrer digitalen Update-Signatur geprüft.</p>
+      </section>
       <section id="set-data" class="sp-card"><h2>Daten</h2>
         <div class="swrow"><div><b>Verlauf</b><span>Besuchte Seiten und Suchen auf diesem Gerät.</span></div><button class="btn" data-act="clear-history">Löschen</button></div>
         <div class="swrow"><div><b>Download-Liste</b><span>Entfernt nur die Liste, nicht die Dateien.</span></div><button class="btn" data-act="clear-dl">Leeren</button></div>
@@ -260,6 +295,7 @@ export function createSettings({
     },
     set section(value) {
       settingsSection = value === 'chat' ? 'mcp' : value === 'input' ? 'gestures' : value;
+      if (settingsSection === 'updates') refreshUpdates();
     },
     get mcp() {
       return mcpStatus;

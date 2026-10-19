@@ -8,6 +8,11 @@ test('global-notifications', async ({ browser }) => {
   const src = fs.readFileSync(path.join(__dirname, '../src/api.js'), 'utf8');
   const names = [...src.matchAll(/export const (\w+)/g)].map((x) => x[1]);
   const mocks = {
+    updateStatus:
+      'async()=>({version:"1.1.1",ready:true,canCheck:true,automatic:window.autoUpdates!==false,message:window.updateChecked?"Du verwendest die neueste Version.":"Bereit",lastCheck:0})',
+    checkUpdates: 'async()=>{window.updateChecked=true}',
+    setAutomaticUpdates: 'async(on)=>{window.autoUpdates=on}',
+
     gestureBindings: 'async()=>window.gestures||{O:{action:"notes"},S:{action:"screenshot"}}',
     setGestureBinding:
       'async(letter,action,value)=>window.gestures={...(window.gestures||{O:{action:"notes"},S:{action:"screenshot"}}),[letter]:{action,value}}',
@@ -237,6 +242,12 @@ test('global-notifications', async ({ browser }) => {
     !remaining.some((t) => t.url === 'https://example.com.other.test')
   )
     throw Error('unrelated domain closed');
+  await call('browser_settings', { section: 'updates' });
+  await p.getByRole('button', { name: 'Nach Updates suchen', exact: true }).click();
+  await p.getByText('Du verwendest die neueste Version.', { exact: true }).waitFor();
+  await p.getByRole('switch', { name: 'Automatische Updates', exact: true }).click();
+  await p.waitForFunction(() => window.autoUpdates === false);
+  if (await p.locator('#set-look').count()) throw Error('updates chapter not isolated');
   if (errors.length) throw Error(errors.join('\n'));
   console.log(
     'PASS: music sidebar search, play, add, queue tab, query persistence, no overflow or JS errors.',
