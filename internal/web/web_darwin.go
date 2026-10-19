@@ -160,10 +160,10 @@ func SetErrorPalette(palette string) {
 	C.fmwSetErrorPalette(c)
 }
 
-func OnboardingClipboard(tab int, provider string) string {
+func OnboardingClipboard(tab int, provider string, previousCount int) string {
 	c := C.CString(provider)
 	defer C.free(unsafe.Pointer(c))
-	result := C.fmwOnboardingClipboard(C.int(tab), c)
+	result := C.fmwOnboardingClipboard(C.int(tab), c, C.int(previousCount))
 	defer C.free(unsafe.Pointer(result))
 	return C.GoString(result)
 }

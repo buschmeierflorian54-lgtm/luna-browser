@@ -53,20 +53,26 @@ test('Brave clipboard metadata, Enter, recovery split and preserved provider', a
   await page.waitForTimeout(650);
   await expect(page.locator('.setup.portal')).toBeVisible();
   await page.evaluate(() => {
-    window.clip = { count: 6, eligible: true };
+    window.clip = { count: 6, eligible: true, text: 'BSA-auto-first' };
   });
   await expect(page.locator('.setup.form')).toBeVisible();
-  await expect(page.locator('#setupKey')).toHaveValue('');
+  await expect(page.locator('#setupKey')).toHaveValue('BSA-auto-first');
+  expect(await page.evaluate(() => window.savedKeys.brave)).toBeUndefined();
   await expect(page.getByRole('button', { name: 'Hey, ich war noch nicht fertig' })).toBeVisible();
   await page.getByRole('button', { name: 'Hey, ich war noch nicht fertig' }).click();
   await expect(page.locator('.setup.split')).toBeVisible();
   await expect(page.getByText('Ich war zu aufgeregt.', { exact: false })).toBeVisible();
   expect(await page.evaluate(() => window.calls.filter((c) => c[0] === 'load').length)).toBe(1);
   await page.evaluate(() => {
-    window.clip = { count: 7, eligible: true };
+    window.clip = { count: 7, eligible: true, text: 'BSA-auto-split' };
   });
   await page.waitForTimeout(650);
   await expect(page.locator('.setup.split')).toBeVisible();
+  await expect(page.locator('#setupKey')).toHaveValue('BSA-auto-split');
+  await expect(
+    page.getByRole('button', { name: 'Anbieterseite wieder anzeigen', exact: true }),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => window.savedKeys.brave)).toBeUndefined();
   await page.locator('#setupKey').fill('BSA-test-only');
   await page.getByRole('button', { name: 'Fertig', exact: true }).click();
   expect(await page.evaluate(() => window.savedKeys.brave)).toBe('BSA-test-only');
@@ -116,7 +122,7 @@ test('Spotify login remains inside Luna and detects account connection', async (
   await setup(page, { prefs: { googleSearch: true }, resume: 1 });
   await page.locator('#setupKey').fill('client-id-test');
   await page.locator('#setupKey').press('Enter');
-  await expect(page.locator('#setupKey')).toHaveCount(0);
+  await expect(page.locator('#setupKey')).toHaveValue('');
   await page.getByRole('button', { name: 'Spotify-Konto verknüpfen' }).click();
   await expect(page.locator('.setup.split')).toBeVisible();
   await page.screenshot({ path: '/tmp/luna-setup-split.png', animations: 'disabled' });
@@ -131,7 +137,9 @@ for (const [provider, step] of [['groq', 3]])
   test(`${provider} optional key setup`, async ({ page }) => {
     await setup(page, { prefs: { googleSearch: true }, resume: step });
     await page.getByRole('button', { name: /öffnen & Key holen/ }).click();
-    await page.evaluate(() => (window.clip = { count: 8, eligible: true }));
+    await page.evaluate(
+      () => (window.clip = { count: 8, eligible: true, text: 'test-provider-key' }),
+    );
     await expect(page.locator('.setup.form')).toBeVisible();
     await page.locator('#setupKey').fill('test-provider-key');
     await page.locator('#setupKey').press('Enter');

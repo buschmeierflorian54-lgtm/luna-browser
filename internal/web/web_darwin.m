@@ -577,15 +577,19 @@ static BOOL setupKeyPage(NSURL *url, NSString *provider) {
  if ([provider isEqualToString:@"spotify"]) return [host isEqualToString:@"developer.spotify.com"] && [path hasPrefix:@"/dashboard/"];
  return NO;
 }
-char *fmwOnboardingClipboard(int tab, const char *provider) {
+char *fmwOnboardingClipboard(int tab, const char *provider, int previousCount) {
  NSString *service = [NSString stringWithUTF8String:provider ?: ""];
  __block NSString *result;
  void (^read)(void) = ^{
   FMTab *t = gTabs[@(tab)];
   NSURL *url = t.view.URL;
   BOOL eligible = NSApp.isActive && gActive == tab && !t.view.hidden && !t.isError && !t.view.loading && setupKeyPage(url, service);
-  // changeCount deliberately avoids stringForType/dataForType: no secrets leave the pasteboard.
-  NSDictionary *status = @{@"count": @(NSPasteboard.generalPasteboard.changeCount), @"eligible": @(eligible), @"host": url.host ?: @"", @"loading": @(t.view.loading), @"error": @(t.isError)};
+  // Read only a new copy on an active trusted key page, never the baseline clipboard.
+  NSMutableDictionary *status = [@{@"count": @(NSPasteboard.generalPasteboard.changeCount), @"eligible": @(eligible), @"host": url.host ?: @"", @"loading": @(t.view.loading), @"error": @(t.isError)} mutableCopy];
+  if (eligible && previousCount >= 0 && NSPasteboard.generalPasteboard.changeCount != previousCount) {
+   NSString *text = [NSPasteboard.generalPasteboard stringForType:NSPasteboardTypeString];
+   if (text.length > 0 && text.length <= 4096) status[@"text"] = text;
+  }
   NSData *data = [NSJSONSerialization dataWithJSONObject:status options:0 error:nil];
   result = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
  };

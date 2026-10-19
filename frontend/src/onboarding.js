@@ -50,6 +50,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     configured = {},
     connected = false,
     suspended = false;
+  const drafts = new Map();
   const tabs = new Map(),
     owned = new Set(),
     parents = new Map();
@@ -85,7 +86,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     const s = service();
     root.className = `setup ${view}`;
     root.innerHTML = `<header class="setup-head"><span class="setup-brand">${lunaWordmark}</span><span>DEIN START MIT LUNA</span>${btn('later', 'Später fortsetzen', 'setup-quiet')}</header><div class="setup-progress" aria-label="Einrichtungsschritte">${['Willkommen', 'Suche', 'Musik', 'Screenshot', 'Groq', 'Bereit'].map((name, i) => `<span class="${i === step + 1 ? 'current' : ''} ${i < step + 1 ? 'done' : ''}">${i + 1}<b>${name}</b></span>`).join('')}</div><div class="setup-layout">
-      ${view === 'portal' || view === 'split' ? `<section class="setup-provider"><div class="setup-webbar">${btn('webback', '←')}${btn('webreload', '↻')}<span data-host>${esc(new URL(s.url).host)}</span>${btn('form', 'Key eingeben')}</div><div class="setup-web" aria-label="Anbieterseite in Luna"></div><p class="setup-webhint">${esc(s.name)} ist in Luna geöffnet. Kopiere deinen ${esc(s.label)}. Luna erkennt nur die Kopieraktion – nicht den Inhalt.</p></section>` : ''}
+      ${view === 'portal' || view === 'split' ? `<section class="setup-provider"><div class="setup-webbar">${btn('webback', '←')}${btn('webreload', '↻')}<span data-host>${esc(new URL(s.url).host)}</span>${btn('form', 'Key eingeben')}</div><div class="setup-web" aria-label="Anbieterseite in Luna"></div><p class="setup-webhint">${esc(s.name)} ist in Luna geöffnet. Kopiere deinen ${esc(s.label)}. Ein frisch kopierter Key wird ins Eingabefeld übernommen. Du entscheidest, wann es weitergeht.</p></section>` : ''}
       <section class="setup-card">${
         step === -1
           ? `<span class="setup-eyebrow">HALLO. ICH BIN LUNA.</span><h1>Mach es dir<br>im Web gemütlich.</h1><p>Deine Farben, deine Musik und deine Werkzeuge. Lass uns Luna kurz auf dich einstellen.</p><div class="setup-features"><article><b>Dein Look</b><span>Zehn Farbwelten, flexible Seitenmenüs und Mausgesten.</span></article><article><b>Deine Suche & Musik</b><span>Luna Search oder Google. Spotify-Suche, Wiedergabe und Warteschlange.</span></article><article><b>Deine KI</b><span>Luna Chat mit OpenRouter oder Groq. Sira nutzt Apple Intelligence auf unterstützten Macs, ohne API-Key.</span></article></div><p class="setup-note">Du entscheidest, was du verbindest. Dienste sind optional; alle Einstellungen kannst du später ändern.</p>${btn('next', 'Luna kennenlernen →', 'setup-primary')}`
@@ -93,7 +94,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
             ? `<span class="setup-eyebrow">ALLES AN DEINEM PLATZ</span><h1>Deine Luna<br>ist bereit.</h1><p>${configured.google ? 'Google ist deine Standardsuche.' : 'Luna Search ist eingerichtet.'} Musik und KI kannst du jederzeit in den Einstellungen ergänzen.</p><div class="setup-features"><article><b>Musik</b><span>Tippe „spotify“ für Luna Music oder „play“ mit einem Songtitel.</span></article><article><b>Chat & Modelle</b><span>Tippe „chat“. Modelle wählst du in KI & MCP. Browser-Werkzeuge aktivierst du dort ausdrücklich über MCP.</span></article></div><p class="setup-note">Zugangsdaten bleiben im geschützten App-Speicher. Sie werden nur für den jeweiligen Dienst verwendet.</p>${btn('finish', 'Los geht’s', 'setup-primary')}`
             : step === 2
               ? `<span class="setup-eyebrow">EINE GESTE. EIN BILD.</span><h1>Zeichne ein S.<br>Halte den Moment fest.</h1><div class="setup-gesture-demo"><svg viewBox="0 0 160 160" role="img" aria-label="S-Geste: oben rechts beginnen und ein S bis unten links zeichnen"><path class="setup-gesture-guide" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><path class="setup-gesture-line" pathLength="1" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><circle cx="125" cy="35" r="5"/></svg><span>Hier starten · oben rechts</span></div><ol class="setup-gesture-steps"><li><b>Linke Maustaste halten</b><span>Beginne auf einer freien Stelle der Seite, außerhalb eines Eingabefelds.</span></li><li><b>Ein großes S zeichnen</b><span>Zeichne den Buchstaben in einem Zug – wie in der Vorlage.</span></li><li><b>Loslassen. Screenshot kopiert.</b><span>Die Zeichnung verschwindet vor der Aufnahme. Luna bestätigt den Screenshot; mit ⌘ V fügst du ihn ein.</span></li></ol><p class="setup-note">Das ist die Standardbelegung. Unter Einstellungen → Mausgesten kannst du Gesten einschalten und die Belegung ändern. Bestehende Anpassungen bleiben erhalten.</p><p class="setup-note">OpenRouter kannst du später unter Einstellungen → KI & MCP verbinden.</p>${btn('next', 'Weiter →', 'setup-primary')}`
-              : `<span class="setup-eyebrow">${step === 0 ? 'DEINE STANDARDSUCHE' : 'FREIWILLIG · ' + esc(s.name.toUpperCase())}</span><h1>${view === 'split' && copied ? 'Oh, Entschuldigung!' : copied ? 'Schon kopiert?' : esc(s.title)}</h1><p>${view === 'split' && copied ? 'Ich war zu aufgeregt. Mach links in Ruhe weiter. Gib hier deinen Key ein und klicke dann auf „Fertig“.' : copied ? 'Ich habe eine Kopieraktion bemerkt. Füge deinen Key selbst in das Feld ein und drücke Enter. Deine Anbieterseite bleibt im Hintergrund geöffnet.' : esc(s.text)}</p>
+              : `<span class="setup-eyebrow">${step === 0 ? 'DEINE STANDARDSUCHE' : 'FREIWILLIG · ' + esc(s.name.toUpperCase())}</span><h1>${view === 'split' && copied ? 'Oh, Entschuldigung!' : copied ? 'Schon kopiert?' : esc(s.title)}</h1><p>${view === 'split' && copied ? 'Ich war zu aufgeregt. Mach links in Ruhe weiter. Gib hier deinen Key ein und klicke dann auf „Fertig“.' : copied ? 'Ich habe eine Kopieraktion bemerkt. Dein kopierter Key steht im Feld. Prüfe ihn und klicke auf „Speichern & weiter“. Deine Anbieterseite bleibt im Hintergrund geöffnet.' : esc(s.text)}</p>
       ${step === 0 ? `<div class="setup-choice">${btn('luna', 'Luna Search', !configured.google ? 'selected' : '')}${btn('google', 'Google · ohne Key', configured.google ? 'selected' : '')}</div>` : ''}
       ${
         step === 0 && configured.google
@@ -101,16 +102,21 @@ export function createOnboarding({ onFinish, refreshSearch }) {
           : `
       ${step === 1 ? '<p class="setup-note">Trage bei Spotify diese Redirect URI ein: <code>http://127.0.0.1:8888/callback</code>. Für die Wiedergabe muss die Spotify-App installiert sein. Spotify kann zusätzliche Kontovoraussetzungen verlangen.</p>' : ''}
       ${configured[s.id] || saved ? `<p class="setup-saved">✓ ${step === 1 ? 'Client ID' : 'Key'} ist gespeichert${step === 1 && connected ? ' · Konto verbunden' : ''}.</p>` : ''}
-      <div class="setup-actions">${btn('portal', tabs.has(s.id) ? 'Anbieterseite wieder anzeigen' : `${esc(s.name)} öffnen & ${step === 1 ? 'Client ID' : 'Key'} holen`)}${step !== 0 ? btn('skip', 'Überspringen', 'setup-quiet') : ''}</div>
-      ${configured[s.id] || saved ? btn('editkey', 'Gespeicherten Key ersetzen', 'setup-quiet') : `<form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' ? 'Fertig' : 'Speichern ↵'}</button></div></form>`}
-      ${copied ? btn('notdone', 'Hey, ich war noch nicht fertig', 'setup-quiet') : ''}
+      <div class="setup-actions">${view === 'form' ? btn('portal', tabs.has(s.id) ? 'Anbieterseite wieder anzeigen' : `${esc(s.name)} öffnen & ${step === 1 ? 'Client ID' : 'Key'} holen`) : ''}${step !== 0 ? btn('skip', 'Überspringen', 'setup-quiet') : ''}</div>
+      <form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' ? 'Fertig' : 'Speichern & weiter'}</button></div></form>
+      ${copied && view === 'form' ? btn('notdone', 'Hey, ich war noch nicht fertig', 'setup-quiet') : ''}
       ${step === 1 && (configured.spotify || saved) ? `<div class="setup-actions">${btn('connect', connected ? 'Konto erneut verbinden' : 'Spotify-Konto verknüpfen', 'setup-primary')}${btn('next', 'Weiter →')}</div><p data-connection class="setup-note">${connected ? 'Dein Konto ist verbunden.' : 'Die Anmeldung öffnet sich ebenfalls hier in Luna. Alternativ später verbinden.'}</p>` : configured[s.id] || saved ? btn('next', 'Weiter →', 'setup-primary') : ''}
       ${step === 0 && !configured.google ? '<p class="setup-note">Keinen Brave-Key? Wähle oben Google – damit geht es sofort weiter.</p>' : ''}`
       }
-      <p class="setup-note">Keys werden nicht aus der Zwischenablage ausgelesen. Einfügen und Speichern entscheidest du selbst.</p>`
+      <p class="setup-note">Nur neue Kopien auf der geöffneten Key-Seite werden ins Feld übernommen. Gespeichert wird erst mit deinem Klick oder Enter.</p>`
       }
       <p data-message role="status" class="setup-message"></p>${step >= 0 ? btn('back', '← Zurück', 'setup-quiet') : ''}</section></div>`;
     root.querySelector('.setup-keyform')?.addEventListener('submit', saveKey);
+    const field = root.querySelector('#setupKey');
+    if (field) {
+      field.value = drafts.get(s.id) || '';
+      field.addEventListener('input', () => drafts.set(s.id, field.value));
+    }
     requestAnimationFrame(() => {
       showNative();
       if (view === 'form') api.focusUI();
@@ -192,6 +198,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       } catch {}
     }
     active = false;
+    drafts.clear();
     generation++;
     clearInterval(timer);
     for (const id of owned) await api.close(id);
@@ -250,6 +257,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         connected = !!(await api.spotifyAPIStatus()).connected;
       } else await api.chatProviderKey(s.id, key);
       input.value = '';
+      drafts.delete(s.id);
       configured[s.id] = true;
       saved = true;
       view = 'form';
@@ -301,16 +309,14 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       render();
       return;
     }
-    if (action === 'editkey') {
-      configured[service().id] = false;
-      saved = false;
-      render();
-      return;
-    }
     if (action === 'connect') {
       await openPortal(true);
       await api.onboardingSpotifyConnect(currentID);
       message('Schließe die Spotify-Anmeldung links ab.');
+      return;
+    }
+    if (action === 'next' && service() && drafts.get(service().id)?.trim()) {
+      await saveKey({ preventDefault() {} });
       return;
     }
     if (action === 'next' || action === 'skip' || action === 'back') {
@@ -334,7 +340,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     const token = generation,
       s = service();
     try {
-      const state = await api.onboardingClipboard(currentID, s.id);
+      const state = await api.onboardingClipboard(currentID, s.id, lastCount ?? -1);
       if (!active || token !== generation) return;
       const host = root.querySelector('[data-host]');
       if (host && state.host) host.textContent = state.host;
@@ -342,11 +348,20 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         message(
           'Die Anbieterseite konnte nicht geladen werden. Du kannst erneut laden oder deinen vorhandenen Key eingeben.',
         );
-      if (view === 'portal' && state.eligible && lastCount !== null && state.count !== lastCount) {
+      if (
+        !busy &&
+        state.eligible &&
+        lastCount !== null &&
+        state.count !== lastCount &&
+        typeof state.text === 'string' &&
+        state.text.trim()
+      ) {
+        drafts.set(s.id, state.text.trim());
         copied = true;
-        view = 'form';
+        if (view === 'portal') view = 'form';
         generation++;
         render();
+        message('Key eingefügt. Prüfe ihn – erst dein Klick speichert ihn.');
       }
       lastCount = state.count;
       if (s.id === 'spotify' && (configured.spotify || saved)) {
