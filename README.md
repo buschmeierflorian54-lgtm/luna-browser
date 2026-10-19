@@ -87,7 +87,7 @@ Programme-Ordner, ganz ohne Administrator-Passwort.
 
 > **Gut zu wissen:** Luna ist noch nicht von Apple notarisiert. Falls macOS den ersten Start blockiert,
 > erlaubst du ihn unter *Systemeinstellungen → Datenschutz & Sicherheit*. Hilft das nicht, steht
-> [weiter unten](#luna-startet-nicht) ein Terminal-Befehl dafür. Danach bleibt Luna von selbst
+> [ganz unten](#luna-startet-nicht) der Befehl, der das Problem von vornherein vermeidet. Danach bleibt Luna von selbst
 > aktuell: Updates kommen signiert direkt in der App an.
 
 ## Beim ersten Start
@@ -114,24 +114,18 @@ Alles Technische, vom Bauen bis zum Veröffentlichen, steht in der
 
 <a id="luna-startet-nicht"></a>
 
-## Luna startet nicht? Der Gatekeeper-Befehl
+## ⚠️ Wichtig: Bevor du Luna installierst
 
-Weil Luna noch nicht von Apple notarisiert ist, markiert macOS die heruntergeladene App als
-„unbekannt“ und blockiert manchmal den ersten Start. Mit diesem Befehl im Terminal nimmst du Luna
-die Download-Markierung ab (nur für Apps, denen du vertraust, und nur für diese eine App):
-
-```sh
-xattr -dr com.apple.quarantine "/Applications/Luna Browser.app"
-```
-
-Lag Luna in `~/Applications` (so installiert es das Skript), nimm diesen Pfad:
+Führe diesen Befehl im Terminal aus. Er lädt Luna, prüft die Prüfsumme und installiert die App so,
+dass macOS sie ohne Gatekeeper-Warnung startet:
 
 ```sh
-xattr -dr com.apple.quarantine "$HOME/Applications/Luna Browser.app"
+( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://lunaai.dev/install.sh -o "$installer" && /bin/bash "$installer" )
 ```
 
-Danach lässt sich Luna ganz normal öffnen. Die Gatekeeper-Prüfung deines Macs bleibt für alle
-anderen Apps unverändert.
+Das Terminal öffnest du mit <kbd>⌘</kbd> + <kbd>Leertaste</kbd>, dann „Terminal“ tippen und Enter.
+Danach lässt sich Luna ganz normal öffnen. Es ist nichts weiter nötig, und die Einstellungen deines
+Macs bleiben unverändert.
 
 <br>
 
