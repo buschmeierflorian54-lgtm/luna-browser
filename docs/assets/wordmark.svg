@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="luna-wordmark" viewBox="-8 0 420 96" fill="none" stroke="#e8b9ce" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="luna browser">
+      <path transform="translate(0 0)" d="M5 65 C17 54 34 26 29 15 C24 4 15 23 14 44 C12 61 12 77 23 72 L32 64"/>
+      <path transform="translate(31 0)" d="M0 64 Q9 52 12 45 L6 64 C0 81 16 76 25 48 L19 66 Q16 80 31 64"/>
+      <path transform="translate(61 0)" d="M0 64 L10 45 L5 67 C13 45 29 36 25 53 L21 66 Q18 79 34 64"/>
+      <path transform="translate(94 0)" d="M25 49 C13 36 -2 57 3 69 C8 81 22 62 25 47 L21 66 Q19 80 35 65"/>
+      <path transform="translate(149 0)" d="M0 65 C13 53 30 23 23 14 C17 7 10 26 9 46 L6 66 C4 82 26 73 27 55 C28 42 16 44 11 54 Q20 67 36 56"/>
+      <path transform="translate(184 0)" d="M0 64 L9 46 Q7 58 19 47 Q26 44 23 51 L18 65 Q15 78 29 64"/>
+      <path transform="translate(213 0)" d="M25 49 C12 36 -1 55 3 67 C8 81 28 66 25 51 Q28 60 36 54"/>
+      <path transform="translate(247 0)" d="M0 58 L8 46 C-1 74 5 81 16 61 L23 47 C15 76 23 80 34 62 Q43 46 36 45 Q31 46 37 55 L44 56"/>
+      <path transform="translate(291 0)" d="M0 64 Q13 52 18 44 C9 52 31 64 18 72 Q8 78 5 69 Q16 75 30 64"/>
+      <path transform="translate(322 0)" d="M0 64 C23 61 29 44 17 45 C3 46 -1 72 12 74 Q24 76 34 64"/>
+      <path transform="translate(355 0)" d="M0 64 L9 46 Q7 58 19 47 Q26 44 23 51 L18 65 Q15 81 37 66"/>
+    </svg>
