@@ -356,7 +356,7 @@
 }
 @media (prefers-reduced-motion: no-preference) {
   .setup-gesture-line {
-    animation: setup-draw-s 4s ease infinite;
+    animation: setup-draw-s 4s ease 2 forwards;
   }
   @keyframes setup-draw-s {
     0%,
@@ -399,4 +399,40 @@
 .setup-spotify-guide code {
   overflow-wrap: anywhere;
   user-select: text;
+}
+
+.setup-practice-prompt {
+  position: fixed;
+  z-index: 10;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-4deg);
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: 'Snell Roundhand', 'Apple Chancery', cursive;
+  font-size: clamp(38px, 7vw, 110px);
+  line-height: 1.4;
+  color: var(--acc);
+  text-shadow:
+    0 0 18px var(--panel),
+    0 0 36px var(--panel);
+  animation: setup-write-prompt 900ms ease-out both;
+}
+.setup-practice-prompt[hidden] {
+  display: none;
+}
+@keyframes setup-write-prompt {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-practice-prompt {
+    animation: none;
+  }
 }

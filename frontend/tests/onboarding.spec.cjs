@@ -127,7 +127,9 @@ test('Spotify login remains inside Luna and detects account connection', async (
   await page.locator('#setupKey').fill('client-id-test');
   await page.locator('#setupKey').press('Enter');
   await expect(page.locator('#setupKey')).toHaveValue('');
-  await expect(page.getByRole('button', {name: /Konto erneut verbinden|Spotify-Konto verknüpfen|Weiter →/})).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: /Konto erneut verbinden|Spotify-Konto verknüpfen|Weiter →/ }),
+  ).toHaveCount(0);
   await expect(page.locator('.setup.split')).toBeVisible();
   await page.screenshot({ path: '/tmp/luna-setup-split.png', animations: 'disabled' });
   expect(await page.evaluate(() => window.calls.some((c) => c[0] === 'connect'))).toBe(true);
@@ -166,3 +168,23 @@ for (const [provider, step] of [['groq', 3]])
     await expect(page.getByRole('heading', { name: 'Deine Luna ist bereit.' })).toBeVisible();
     expect(await page.evaluate((p) => window.savedKeys[p], provider)).toBe('test-provider-key');
   });
+
+test('S demonstration runs twice, then invitation disappears on drawing start', async ({
+  page,
+}) => {
+  await setup(page, { prefs: { googleSearch: true }, resume: 2 });
+  const prompt = page.locator('.setup-practice-prompt');
+  await expect(prompt).toBeHidden();
+  expect(
+    await page
+      .locator('.setup-gesture-line')
+      .evaluate((el) => getComputedStyle(el).animationIterationCount),
+  ).toBe('2');
+  await expect(prompt).toBeVisible({ timeout: 10000 });
+  const area = await page.locator('.setup-gesture-demo').boundingBox();
+  await page.mouse.move(area.x + 30, area.y + 30);
+  await page.mouse.down();
+  await expect(prompt).toBeHidden();
+  await page.mouse.move(area.x + 80, area.y + 60);
+  await page.mouse.up();
+});
