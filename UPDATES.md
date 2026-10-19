@@ -38,3 +38,5 @@ Notarisierung ergänzen. Alte Versionen ohne Sparkle benötigen einmal die neue 
 GitHub Pages veröffentlicht `docs/` von `main`. Der Download-Dialog erklärt die Terminal-Installation; alternativ gibt es den direkten DMG-Download. `docs/install.sh` lädt die neueste Release-Version, prüft SHA-256 und die App-Signatur und öffnet das Installationsfenster (Luna-Symbol und Ordner „Programme“ zum Hineinziehen); mit `--auto` kopiert es Luna ohne sudo selbst in `/Applications` (ersatzweise `~/Applications`) und legt eine ältere Installation in den Papierkorb. `--verify-only` prüft den vollständigen Download ohne Installation. Bestehende Installationen werden gesichert.
 
 `scripts/release.sh` veröffentlicht auch DMG und SHA256SUMS. `scripts/make-dmg.sh` benötigt eine unveränderte, signierte App. Für bereits laufende Builds die App aus dem Release-ZIP extrahieren, da das dynamische Dock-Icon die lokale Bundle-Signatur verändern kann.
+
+Der Text jedes GitHub-Releases (mit dem Installationsbefehl) steht in `scripts/release-notes.md`; `scripts/release.sh` übernimmt ihn. Die DMG soll nicht einzeln aus dem Browser geladen werden, solange Luna nicht notarisiert ist.

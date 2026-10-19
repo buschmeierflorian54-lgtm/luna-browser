@@ -9,7 +9,7 @@
 Ein Browser für den Mac, der sich nach dir richtet: mit deinen Farben, deiner Musik,
 Mausgesten und einer KI, die auf Wunsch mitdenkt.
 
-[**⬇️ Luna herunterladen**](https://github.com/buschmeierflorian54-lgtm/luna-browser/releases/latest/download/Luna-Browser-macos-arm64.dmg) &nbsp;·&nbsp; [Webseite](https://lunaai.dev) &nbsp;·&nbsp; [Alle Versionen](https://github.com/buschmeierflorian54-lgtm/luna-browser/releases)
+[**⬇️ Luna installieren**](#so-kommt-luna-auf-deinen-mac) &nbsp;·&nbsp; [Webseite](https://lunaai.dev) &nbsp;·&nbsp; [Alle Versionen](https://github.com/buschmeierflorian54-lgtm/luna-browser/releases)
 
 <sub>Für Apple-Silicon-Macs (M1 oder neuer) mit macOS 13 oder neuer</sub>
 
@@ -78,18 +78,25 @@ Sitzung, die auf Wunsch beim nächsten Start wieder da ist.
 
 ## So kommt Luna auf deinen Mac
 
-**Am einfachsten:** [DMG laden](https://github.com/buschmeierflorian54-lgtm/luna-browser/releases/latest/download/Luna-Browser-macos-arm64.dmg),
-öffnen und Luna in den Ordner „Programme“ ziehen.
+**Ein Befehl, fertig.** Öffne das Terminal (<kbd>⌘</kbd> + <kbd>Leertaste</kbd>, „Terminal“ tippen, Enter),
+füge diesen Befehl ein und drücke Enter:
 
-**Oder mit einem Befehl:** Auf der [Webseite](https://lunaai.dev) steht eine Schritt-für-Schritt-Anleitung.
-Das Skript lädt die aktuelle Version, prüft sie und öffnet zwei Fenster: den Ordner „Programme“
-und ein Fenster mit dem Luna-Symbol. Ziehe Luna einfach hinüber und lass das Terminal offen: Sobald
-Luna kopiert ist, räumt das Skript auf und startet sie. Ein Administrator-Passwort brauchst du nicht.
+```sh
+( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/buschmeierflorian54-lgtm/luna-browser/main/docs/install.sh -o "$installer" && /bin/bash "$installer" )
+```
 
-> **Gut zu wissen:** Luna ist noch nicht von Apple notarisiert. Falls macOS den ersten Start blockiert,
-> erlaubst du ihn unter *Systemeinstellungen → Datenschutz & Sicherheit*. Hilft das nicht, steht
-> [ganz unten](#luna-startet-nicht) der Befehl, der das Problem von vornherein vermeidet. Danach bleibt Luna von selbst
-> aktuell: Updates kommen signiert direkt in der App an.
+Das passiert dann:
+1. Luna wird geladen und geprüft (Prüfsumme und Signatur).
+2. Es öffnen sich der Ordner „Programme“ und ein Fenster mit dem Luna-Symbol.
+3. Du ziehst Luna in „Programme“ und lässt das Terminal offen.
+4. Sobald Luna kopiert ist, räumt das Skript auf und startet sie. Ein Administrator-Passwort brauchst du nicht.
+
+> **Bitte nicht die DMG-Datei einzeln aus dem Browser laden.** Luna ist noch nicht von Apple notarisiert.
+> Eine im Browser geladene DMG markiert macOS als „aus dem Internet“, und beim Start kommt eine Meldung, Luna
+> sei nicht geprüft. Der Befehl oben umgeht das, weil er Luna ohne diese Markierung lädt. Falls du die DMG
+> doch selbst geladen hast, hilft [der Notfall-Abschnitt](#luna-startet-nicht) ganz unten.
+
+Danach bleibt Luna von selbst aktuell: Updates kommen signiert direkt in der App an.
 
 ## Beim ersten Start
 
@@ -115,19 +122,22 @@ Alles Technische, vom Bauen bis zum Veröffentlichen, steht in der
 
 <a id="luna-startet-nicht"></a>
 
-## ⚠️ Wichtig: Bevor du Luna installierst
+## Luna startet nicht? Die Notlösung
 
-Führe diesen Befehl im Terminal aus. Er lädt Luna, prüft die Prüfsumme und öffnet dir das Installationsfenster.
-Du ziehst Luna in den Ordner „Programme“, und das Skript nimmt ihr danach die Download-Markierung ab.
-So startet die App ohne die Meldung von macOS:
+Hast du Luna trotzdem als DMG aus dem Browser geladen oder meldet macOS „Apple konnte nicht überprüfen,
+ob Luna frei von Schadsoftware ist“? Das ist die Standardmeldung für Apps ohne Apple-Notarisierung.
+Luna selbst ist nicht betroffen. Zwei Wege:
+
+- **Am einfachsten:** Führe den Installationsbefehl [oben](#so-kommt-luna-auf-deinen-mac) aus. Er ersetzt die
+  vorhandene Luna und startet sie ohne Meldung.
+- **Für die schon installierte Luna:** Gib im Terminal diesen Befehl ein. Er nimmt nur dieser einen App die
+  Download-Markierung ab:
 
 ```sh
-( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/buschmeierflorian54-lgtm/luna-browser/main/docs/install.sh -o "$installer" && /bin/bash "$installer" )
+xattr -dr com.apple.quarantine "/Applications/Luna Browser.app"
 ```
 
-Das Terminal öffnest du mit <kbd>⌘</kbd> + <kbd>Leertaste</kbd>, dann „Terminal“ tippen und Enter.
-Danach lässt sich Luna ganz normal öffnen. Es ist nichts weiter nötig, und die Einstellungen deines
-Macs bleiben unverändert.
+  Oder öffne *Systemeinstellungen → Datenschutz & Sicherheit* und klicke bei Luna auf „Dennoch öffnen“.
 
 <br>
 
