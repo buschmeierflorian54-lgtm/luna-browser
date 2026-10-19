@@ -1,5 +1,5 @@
 const modal = document.querySelector('#downloadDialog');
-const command = `( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://buschmeierflorian54-lgtm.github.io/luna-browser/install.sh -o "$installer" && /bin/bash "$installer" )`;
+const command = `( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://lunaai.dev/install.sh -o "$installer" && /bin/bash "$installer" )`;
 document.querySelector('#installCommand').textContent = command;
 for (const button of document.querySelectorAll('.download')) button.addEventListener('click', () => modal.showModal());
 document.querySelector('.close').addEventListener('click', () => modal.close());
