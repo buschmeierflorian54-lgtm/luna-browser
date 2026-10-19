@@ -8,6 +8,11 @@ test('global-notifications', async ({ browser }) => {
   const src = fs.readFileSync(path.join(__dirname, '../src/api.js'), 'utf8');
   const names = [...src.matchAll(/export const (\w+)/g)].map((x) => x[1]);
   const mocks = {
+    gestureBindings: 'async()=>window.gestures||{O:{action:"notes"},S:{action:"screenshot"}}',
+    setGestureBinding:
+      'async(letter,action,value)=>window.gestures={...(window.gestures||{O:{action:"notes"},S:{action:"screenshot"}}),[letter]:{action,value}}',
+    resetGestureBindings: 'async()=>window.gestures={O:{action:"notes"},S:{action:"screenshot"}}',
+
     prefs: 'async()=>({restoreSession:true,...window.preferences})',
     setPref: 'async(k,v)=>window.preferences={...window.preferences,[k]:v}',
     spotifyNextStatus: 'async()=>window.pendingNext||{}',
@@ -15,14 +20,17 @@ test('global-notifications', async ({ browser }) => {
     spotifyCancelNext: 'async()=>window.pendingNext={}',
     onSpotifyNext: 'cb=>window.nextEvent=cb',
     spotifySearch:
-      'async(q)=>({tracks:{items:[{name:q,uri:"spotify:track:1234567890123456789012",artists:[{name:"Artist"}],album:{images:[],name:"Album"}}]},artists:{items:[]},albums:{items:[]}})',
+      'async(q)=>(window.lastSpotifyQuery=q,{tracks:{items:[{name:q,uri:"spotify:track:1234567890123456789012",artists:[{name:"Artist"}],album:{images:[],name:"Album"}}]},artists:{items:[]},albums:{items:[]}})',
     spotifyGetQueue:
       'async()=>({queue:[{name:"Next Song",uri:"spotify:track:1234567890123456789012",album:{images:[]}}]})',
     spotifyQueue:
       'async(uri)=>{if(window.queueFail)throw Error("Both queues failed");window.queued=uri}',
     spotifyPlay: 'async(uri)=>window.played=uri',
     IS_NATIVE: 'false',
-    keyStatus: 'async()=>false',
+    keyStatus: 'async()=>true',
+    search:
+      'async()=>({results:[{title:"Luna Browser",url:"https://example.com",host:"example.com",path:"/",desc:"Ein Suchergebnis zum Prüfen der Lesbarkeit auf dem animierten Hintergrund."}],news:[],videos:[]})',
+
     bookmarks: 'async()=>[]',
     downloads: 'async()=>[]',
     notes: 'async()=>[]',
@@ -129,6 +137,106 @@ test('global-notifications', async ({ browser }) => {
     title: 'Testgruppe',
   });
   if (!(await call('browser_state')).tabs.some((t) => t.group)) throw Error('tab grouping failed');
+  await p.getByRole('button', { name: 'Luna Music öffnen', exact: true }).click();
+  await p.getByRole('heading', { name: 'Was möchtest du hören?' }).waitFor();
+  const welcomeLayout = await p.locator('.music-welcome').evaluate((el) => ({
+    background: getComputedStyle(el).backgroundColor,
+    height: el.getBoundingClientRect().height,
+    viewport: document.querySelector('#searchView').clientHeight,
+  }));
+  if (welcomeLayout.background !== 'rgba(0, 0, 0, 0)')
+    throw Error('music welcome covers the shared wave background');
+  if (welcomeLayout.height < welcomeLayout.viewport)
+    throw Error('music welcome does not fill the search viewport');
+  await p.screenshot({ path: test.info().outputPath('music-welcome.png') });
+  const address = p.locator('#url');
+  if (!(await address.evaluate((el) => el === document.activeElement)))
+    throw Error('music entry lost focus');
+  await address.fill('First');
+  await p.waitForTimeout(550);
+  if ((await p.locator('#searchView .music-head h1').textContent()) !== 'Was möchtest du hören?')
+    throw Error('search started too early');
+  await address.fill('Second');
+  await p.waitForTimeout(550);
+  if ((await p.locator('#searchView .music-head h1').textContent()) !== 'Was möchtest du hören?')
+    throw Error('debounce did not reset');
+  await p.locator('#searchView .music-head h1').filter({ hasText: 'Second' }).waitFor();
+  if (!(await address.evaluate((el) => el === document.activeElement)))
+    throw Error('live search lost focus');
+  await address.fill('Cancelled');
+  await call('browser_tab', { action: 'open', url: 'about:blank' });
+  await p.waitForTimeout(1150);
+  const afterSwitch = await call('browser_state');
+  if (afterSwitch.tabs.find((t) => t.id === afterSwitch.active_tab).url !== 'about:blank')
+    throw Error('pending search changed another tab');
+  await address.focus();
+  await address.fill('spotify');
+  await p.getByRole('heading', { name: 'Was möchtest du hören?' }).waitFor();
+  if ((await address.inputValue()) !== '') throw Error('Spotify command not consumed');
+  await address.fill('Hello again');
+  await p.locator('#searchView .music-head h1').filter({ hasText: 'Hello again' }).waitFor();
+
+  await p.screenshot({ path: test.info().outputPath('spotify-results.png') });
+  await call('browser_tab', { action: 'open', url: 'search:Luna' });
+  await p.locator('#searchView .sr').waitFor();
+  await p.screenshot({ animations: 'disabled', path: test.info().outputPath('luna-results.png') });
+  await call('browser_gestures', { action: 'set', letter: 'V', binding: 'music' });
+  await call('browser_settings', { section: 'gestures' });
+  const gesture = p.locator('[data-gesture-letter="V"]');
+  if ((await gesture.locator('select').inputValue()) !== 'music')
+    throw Error('MCP gesture not in settings');
+  await gesture.locator('select').selectOption('bookmarks');
+  await gesture.getByRole('button', { name: 'Speichern' }).click();
+  await p.waitForFunction(() => window.gestures.V.action === 'bookmarks');
+  if ((await call('browser_gestures', { action: 'list' })).bindings.V.action !== 'bookmarks')
+    throw Error('settings gesture not visible to MCP');
+  await p.evaluate(() => {
+    window.played = '';
+    window.lastSpotifyQuery = '';
+  });
+  await address.fill('play Nobody’s Home Avril Lavigne');
+  await p.waitForTimeout(1100);
+  if (await p.evaluate(() => window.played || window.lastSpotifyQuery))
+    throw Error('play ran before Enter');
+  await address.press('Enter');
+  await p.waitForFunction(() => window.played === 'spotify:track:1234567890123456789012');
+  if ((await p.evaluate(() => window.lastSpotifyQuery)) !== 'Nobody’s Home Avril Lavigne')
+    throw Error('play query was not stripped');
+  // Explicit tab commands also override the play chip mode.
+  const beforeTabs = (await call('browser_state', {})).tabs.length;
+  await address.fill('tab open youtube.com');
+  await address.press('Enter');
+  await p.waitForFunction(() => document.querySelector('#url').value.includes('youtube.com'));
+  const openedState = await call('browser_state', {});
+  if (
+    openedState.tabs.length !== beforeTabs + 1 ||
+    !openedState.tabs.some((t) => t.url === 'https://youtube.com')
+  )
+    throw Error('tab open failed');
+  await address.fill('tab close');
+  await address.press('Enter');
+  await p.waitForTimeout(500);
+  if ((await call('browser_state', {})).tabs.length !== beforeTabs) throw Error('tab close failed');
+  for (const target of [
+    'https://example.com/one',
+    'https://www.example.com/two',
+    'https://m.example.com/three',
+    'https://notexample.com',
+    'https://example.com.other.test',
+  ]) {
+    await call('browser_tab', { action: 'open', url: target });
+  }
+  await address.fill('tab close example.com');
+  await address.press('Enter');
+  await p.waitForTimeout(1000);
+  const remaining = (await call('browser_state', {})).tabs;
+  if (remaining.some((t) => /^https:\/\/(?:www\.|m\.)?example\.com(?:\/|$)/.test(t.url)))
+    throw Error('domain tabs remain');
+  if (
+    !remaining.some((t) => t.url === 'https://notexample.com') ||
+    !remaining.some((t) => t.url === 'https://example.com.other.test')
+  )
+    throw Error('unrelated domain closed');
   if (errors.length) throw Error(errors.join('\n'));
   console.log(
     'PASS: music sidebar search, play, add, queue tab, query persistence, no overflow or JS errors.',

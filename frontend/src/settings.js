@@ -1,3 +1,5 @@
+import { chatSettingsHTML } from './chat.js';
+import { gesturesHTML } from './gestures.js';
 import * as api from './api.js';
 import { $, esc, hueOf, initial, shownUrl } from './ui.js';
 import { colorThemesHTML } from './color-themes.js';
@@ -73,7 +75,7 @@ export function createSettings({
     ['bm', 'Lesezeichen'],
     ['panels', 'Seitenpanel'],
     ['start', 'Start'],
-    ['input', 'Bedienung'],
+    ['gestures', 'Mausgesten'],
     ['search', 'Suche'],
     ['spotify', 'Spotify'],
     ['mcp', 'KI & MCP'],
@@ -132,10 +134,7 @@ export function createSettings({
         <div class="swrow"><div><b>Zuletzt geöffnete Seiten merken</b><span>${S.restore ? 'Beim nächsten Start öffnen sich die Tabs von zuletzt.' : 'Aus: Der Browser startet immer mit der Startseite.'}</span></div>
           <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
       </section>
-      <section id="set-input" class="sp-card"><h2>Bedienung</h2>
-        <div class="swrow"><div><b>Mausgesten</b><span>${S.gesture ? 'Linke Maustaste halten und zeichnen – ○ Kreis: Notizzettel ein/aus · S: Screenshot in die Zwischenablage.' : 'Aus: Notizzettel (⌥⌘N) und Screenshot (⌥⌘S) gibt es weiter über das Menü.'}</span></div>
-          <button class="switch ${S.gesture ? 'on' : ''}" role="switch" aria-checked="${S.gesture}" aria-label="Mausgesten" data-act="pref-gesture"><i></i></button></div>
-      </section>
+      ${gesturesHTML(S.gesture)}
       <section id="set-search" class="sp-card"><h2>Luna Search</h2>
         <p class="muted">Luna Search nutzt die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
         <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
@@ -146,6 +145,7 @@ export function createSettings({
       </section>
       ${spotifySettingsHTML(spotifyAccount, S.autoNextAlways)}
       ${sonosSettingsHTML(sonosState)}
+      ${chatSettingsHTML()}
       ${mcpSettingsHTML(mcpStatus)}
       <section id="set-data" class="sp-card"><h2>Daten</h2>
         <div class="swrow"><div><b>Verlauf</b><span>Besuchte Seiten und Suchen auf diesem Gerät.</span></div><button class="btn" data-act="clear-history">Löschen</button></div>
@@ -154,7 +154,11 @@ export function createSettings({
     </div></div>`;
     // Nur das gewählte Kapitel kommt in den DOM, kein Scrollen zu anderen Kapiteln.
     return html.replace(/<section id="set-([^"]+)"[\s\S]*?<\/section>/g, (section, id) =>
-      id === settingsSection || (id === 'sonos' && settingsSection === 'spotify') ? section : '',
+      id === settingsSection ||
+      (id === 'sonos' && settingsSection === 'spotify') ||
+      (id === 'chat' && settingsSection === 'mcp')
+        ? section
+        : '',
     );
   }
   function renderSettingsView() {
@@ -165,13 +169,29 @@ export function createSettings({
     if (!show) return;
     const top = el.scrollTop,
       typed = $('#keyIn')?.value || '',
-      spotifyTyped = $('#spotifyClientID')?.value || '';
+      spotifyTyped = $('#spotifyClientID')?.value || '',
+      chatTyped = $('#chatAPIKey')?.value || '';
+    const chatFocused = document.activeElement?.id === 'chatAPIKey';
     const spotifyFocused = document.activeElement?.id === 'spotifyClientID';
     el.innerHTML = settingsPageHTML();
+    el.querySelectorAll('select').forEach((select) => {
+      const shell = document.createElement('span');
+      shell.className = 'settings-select';
+      select.before(shell);
+      shell.append(select);
+      shell.insertAdjacentHTML(
+        'beforeend',
+        '<svg class="settings-select-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg>',
+      );
+    });
     el.scrollTop = top;
     if ($('#spotifyClientID')) {
       $('#spotifyClientID').value = spotifyTyped;
       if (spotifyFocused) $('#spotifyClientID').focus();
+    }
+    if ($('#chatAPIKey')) {
+      $('#chatAPIKey').value = chatTyped;
+      if (chatFocused) $('#chatAPIKey').focus();
     }
     if (typed && $('#keyIn')) $('#keyIn').value = typed;
   }
@@ -239,7 +259,7 @@ export function createSettings({
       return settingsSection;
     },
     set section(value) {
-      settingsSection = value;
+      settingsSection = value === 'chat' ? 'mcp' : value === 'input' ? 'gestures' : value;
     },
     get mcp() {
       return mcpStatus;

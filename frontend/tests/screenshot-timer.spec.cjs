@@ -15,7 +15,8 @@ test('screenshot-timer', async ({ browser }) => {
     }
     requestAnimationFrame(frame);
     window.detach = window.__fmCircle({
-      onS: () => {
+      onLetter: (letter) => {
+        if (letter !== 'S') throw Error('Expected S');
         window.calls++;
         window.canvasAtShot = !!document.querySelector('canvas');
         window.shotFrame = window.frames;

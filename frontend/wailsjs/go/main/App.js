@@ -6,6 +6,62 @@ export function Bookmarks() {
   return window['go']['main']['App']['Bookmarks']();
 }
 
+export function ChatCancel(arg1) {
+  return window['go']['main']['App']['ChatCancel'](arg1);
+}
+
+export function ChatClearKey() {
+  return window['go']['main']['App']['ChatClearKey']();
+}
+
+export function ChatCreate() {
+  return window['go']['main']['App']['ChatCreate']();
+}
+
+export function ChatDelete(arg1) {
+  return window['go']['main']['App']['ChatDelete'](arg1);
+}
+
+export function ChatGet(arg1) {
+  return window['go']['main']['App']['ChatGet'](arg1);
+}
+
+export function ChatList() {
+  return window['go']['main']['App']['ChatList']();
+}
+
+export function ChatModels(arg1) {
+  return window['go']['main']['App']['ChatModels'](arg1);
+}
+
+export function ChatProviderKey(arg1, arg2) {
+  return window['go']['main']['App']['ChatProviderKey'](arg1, arg2);
+}
+
+export function ChatRemoveProviderKey(arg1) {
+  return window['go']['main']['App']['ChatRemoveProviderKey'](arg1);
+}
+
+export function ChatSaveModel(arg1, arg2, arg3) {
+  return window['go']['main']['App']['ChatSaveModel'](arg1, arg2, arg3);
+}
+
+export function ChatSelectModel(arg1) {
+  return window['go']['main']['App']['ChatSelectModel'](arg1);
+}
+
+export function ChatSend(arg1, arg2) {
+  return window['go']['main']['App']['ChatSend'](arg1, arg2);
+}
+
+export function ChatSetKey(arg1) {
+  return window['go']['main']['App']['ChatSetKey'](arg1);
+}
+
+export function ChatStatus() {
+  return window['go']['main']['App']['ChatStatus']();
+}
+
 export function DownloadAdd(arg1, arg2) {
   return window['go']['main']['App']['DownloadAdd'](arg1, arg2);
 }
@@ -20,6 +76,10 @@ export function DownloadsClear() {
 
 export function EditBookmark(arg1, arg2, arg3) {
   return window['go']['main']['App']['EditBookmark'](arg1, arg2, arg3);
+}
+
+export function GestureBindings() {
+  return window['go']['main']['App']['GestureBindings']();
 }
 
 export function History(arg1, arg2) {
@@ -78,6 +138,10 @@ export function Prefs() {
   return window['go']['main']['App']['Prefs']();
 }
 
+export function ResetGestureBindings() {
+  return window['go']['main']['App']['ResetGestureBindings']();
+}
+
 export function Screenshot(arg1) {
   return window['go']['main']['App']['Screenshot'](arg1);
 }
@@ -124,6 +188,10 @@ export function SetDockIcon(arg1) {
 
 export function SetGesture(arg1) {
   return window['go']['main']['App']['SetGesture'](arg1);
+}
+
+export function SetGestureBinding(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SetGestureBinding'](arg1, arg2, arg3);
 }
 
 export function SetNote(arg1, arg2, arg3) {

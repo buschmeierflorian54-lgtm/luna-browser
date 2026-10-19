@@ -565,3 +565,40 @@
 .seg3 button {
   padding: 0 14px;
 }
+
+/* One shared start-page backdrop for Luna Search and Luna Music, including long result lists. */
+.search-scene {
+  position: relative;
+  min-height: 100%;
+  isolation: isolate;
+  --mx: 0;
+  --my: 0;
+}
+.search-backdrop {
+  position: sticky;
+  top: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+.search-backdrop > .st-bg {
+  height: var(--search-viewport-height);
+  bottom: auto;
+}
+.search-content {
+  min-height: var(--search-viewport-height);
+}
+.search-content > .music-view {
+  background: transparent;
+}
+.search-content > .music-welcome {
+  min-height: var(--search-viewport-height);
+}
+.search-content .sr {
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  border-radius: 16px;
+}
+.search-content .sr:hover,
+.search-content .sr.sel {
+  background: var(--card);
+}

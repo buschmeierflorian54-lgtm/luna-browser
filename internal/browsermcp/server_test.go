@@ -3,6 +3,7 @@ package browsermcp
 import (
 	"browser-mac/internal/secret"
 	"context"
+	"encoding/json"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"net/http"
 	"net/http/httptest"
@@ -43,8 +44,29 @@ func TestMCPProtocolAndValidation(t *testing.T) {
 	}
 	defer session.Close()
 	list, err := session.ListTools(ctx, nil)
-	if err != nil || len(list.Tools) != 15 {
+	if err != nil || len(list.Tools) != 17 {
 		t.Fatalf("tools: %v %v", list, err)
+	}
+
+	for _, tool := range list.Tools {
+		if !strings.Contains(tool.Description, "Beispiel:") {
+			t.Errorf("missing example: %s", tool.Name)
+		}
+		if !json.Valid([]byte(toolExamples[tool.Name])) {
+			t.Errorf("invalid example: %s", tool.Name)
+		}
+		raw, _ := json.Marshal(tool.InputSchema)
+		var schema struct {
+			Properties map[string]struct {
+				Description string `json:"description"`
+			} `json:"properties"`
+		}
+		json.Unmarshal(raw, &schema)
+		for field, prop := range schema.Properties {
+			if prop.Description == "" {
+				t.Errorf("missing parameter help: %s.%s", tool.Name, field)
+			}
+		}
 	}
 	r, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "browser_state", Arguments: map[string]any{}})
 	if err != nil || r.IsError {
@@ -58,6 +80,19 @@ func TestMCPProtocolAndValidation(t *testing.T) {
 	if err != nil || !r.IsError || calls.Load() != 1 {
 		t.Fatal("extra properties allowed", r, err)
 	}
+	for _, args := range []map[string]any{{"colors": map[string]any{"accent": "#123456"}}, {"color_theme": "custom"}, {"color_theme": "#ff0000"}} {
+		r, err = session.CallTool(ctx, &mcp.CallToolParams{Name: "browser_customize", Arguments: args})
+		if err != nil || !r.IsError || calls.Load() != 1 {
+			t.Fatal("custom colors reached dispatcher", r, err)
+		}
+	}
+	for _, id := range []string{"luna", "lavender", "ocean", "mint", "forest", "sand", "peach", "cherry", "arctic", "graphite"} {
+		r, err = session.CallTool(ctx, &mcp.CallToolParams{Name: "browser_customize", Arguments: map[string]any{"color_theme": id}})
+		if err != nil || r.IsError {
+			t.Fatal("built-in palette rejected", id, r, err)
+		}
+	}
+
 }
 func TestLocalAuth(t *testing.T) {
 	handler := Protect("test-token", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(204) }))

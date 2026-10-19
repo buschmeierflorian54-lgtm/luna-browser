@@ -9,5 +9,8 @@
   "author": {
     "name": "Florian Buschmeier",
     "email": "buschmeierflorian449@gmail.com"
+  },
+  "postBuildHooks": {
+    "darwin/*": "sh ../../native/applemodel/build.sh"
   }
 }

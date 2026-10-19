@@ -1,6 +1,6 @@
 import iconSVG from './assets/luna-icon.svg?raw';
 import { setDockIcon } from './api.js';
-// Farbwelten bleiben unabhängig von Hell/Dunkel und eigenen MCP-Farben.
+// Farbwelten bleiben unabhängig von Hell/Dunkel ; KI und MCP wählen aus derselben Liste.
 export const COLOR_THEMES = [
   ['luna', 'Luna Rosé', 325, 38],
   ['lavender', 'Lavendel', 265, 42],

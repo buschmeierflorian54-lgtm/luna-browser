@@ -4,9 +4,221 @@
 (function () {
   if (window.__fmCircle) return;
 
+  var letterPaths = {
+    A: [
+      [0, 1],
+      [0.5, 0],
+      [1, 1],
+      [0.75, 0.5],
+      [0.25, 0.5],
+    ],
+    B: [
+      [0, 1],
+      [0, 0],
+      [0.7, 0],
+      [1, 0.2],
+      [0.7, 0.5],
+      [0, 0.5],
+      [0.7, 0.5],
+      [1, 0.75],
+      [0.7, 1],
+      [0, 1],
+    ],
+    C: [
+      [1, 0.1],
+      [0.7, 0],
+      [0.2, 0.1],
+      [0, 0.5],
+      [0.2, 0.9],
+      [0.7, 1],
+      [1, 0.9],
+    ],
+    D: [
+      [0, 1],
+      [0, 0],
+      [0.5, 0],
+      [1, 0.3],
+      [1, 0.7],
+      [0.5, 1],
+      [0, 1],
+    ],
+    E: [
+      [1, 0],
+      [0, 0],
+      [0, 0.5],
+      [0.8, 0.5],
+      [0, 0.5],
+      [0, 1],
+      [1, 1],
+    ],
+    F: [
+      [1, 0],
+      [0, 0],
+      [0, 0.5],
+      [0.8, 0.5],
+      [0, 0.5],
+      [0, 1],
+    ],
+    G: [
+      [1, 0.1],
+      [0.7, 0],
+      [0.2, 0.1],
+      [0, 0.5],
+      [0.2, 0.9],
+      [0.7, 1],
+      [1, 0.8],
+      [1, 0.5],
+      [0.5, 0.5],
+    ],
+    H: [
+      [0, 0],
+      [0, 1],
+      [0, 0.5],
+      [1, 0.5],
+      [1, 0],
+      [1, 1],
+    ],
+    I: [
+      [0, 0],
+      [1, 0],
+      [0.5, 0],
+      [0.5, 1],
+      [0, 1],
+      [1, 1],
+    ],
+    J: [
+      [1, 0],
+      [1, 0.8],
+      [0.7, 1],
+      [0.3, 1],
+      [0, 0.8],
+    ],
+    K: [
+      [0, 0],
+      [0, 1],
+      [0, 0.5],
+      [1, 0],
+      [0, 0.5],
+      [1, 1],
+    ],
+    L: [
+      [0, 0],
+      [0, 1],
+      [1, 1],
+    ],
+    M: [
+      [0, 1],
+      [0, 0],
+      [0.5, 0.6],
+      [1, 0],
+      [1, 1],
+    ],
+    N: [
+      [0, 1],
+      [0, 0],
+      [1, 1],
+      [1, 0],
+    ],
+    O: [
+      [0.5, 0],
+      [0.15, 0.1],
+      [0, 0.5],
+      [0.15, 0.9],
+      [0.5, 1],
+      [0.85, 0.9],
+      [1, 0.5],
+      [0.85, 0.1],
+      [0.5, 0],
+    ],
+    P: [
+      [0, 1],
+      [0, 0],
+      [0.7, 0],
+      [1, 0.25],
+      [0.7, 0.5],
+      [0, 0.5],
+    ],
+    Q: [
+      [0.5, 0],
+      [0.15, 0.1],
+      [0, 0.5],
+      [0.15, 0.9],
+      [0.5, 1],
+      [0.85, 0.9],
+      [1, 0.5],
+      [0.85, 0.1],
+      [0.5, 0],
+      [0.85, 0.9],
+      [1, 1],
+    ],
+    R: [
+      [0, 1],
+      [0, 0],
+      [0.7, 0],
+      [1, 0.25],
+      [0.7, 0.5],
+      [0, 0.5],
+      [1, 1],
+    ],
+    T: [
+      [0, 0],
+      [1, 0],
+      [0.5, 0],
+      [0.5, 1],
+    ],
+    U: [
+      [0, 0],
+      [0, 0.8],
+      [0.2, 1],
+      [0.8, 1],
+      [1, 0.8],
+      [1, 0],
+    ],
+    V: [
+      [0, 0],
+      [0.5, 1],
+      [1, 0],
+    ],
+    W: [
+      [0, 0],
+      [0.25, 1],
+      [0.5, 0.4],
+      [0.75, 1],
+      [1, 0],
+    ],
+    X: [
+      [0, 0],
+      [1, 1],
+      [0.5, 0.5],
+      [1, 0],
+      [0, 1],
+    ],
+    Y: [
+      [0, 0],
+      [0.5, 0.5],
+      [1, 0],
+      [0.5, 0.5],
+      [0.5, 1],
+    ],
+    Z: [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ],
+  };
+
+  var allowedLetters = 'CDHIJLOPQSVWZ';
+  window.__lunaLetterPaths = Object.fromEntries(
+    Object.entries(letterPaths).filter(function (entry) {
+      return allowedLetters.includes(entry[0]);
+    }),
+  );
+  // Excluded shapes stay only as negative matches so they do not become another gesture.
   window.__fmCircle = function (opts) {
     var target = opts.target || window;
     var onCircle = opts.onCircle || function () {};
+    var onLetter = opts.onLetter;
     var onS = opts.onS || function () {};
     var enabled =
       opts.enabled ||
@@ -27,7 +239,7 @@
     function skip(el) {
       if (!el || !el.closest) return false;
       return !!el.closest(
-        'input,textarea,select,option,[contenteditable],video,audio,object,embed',
+        'input,textarea,select,option,[contenteditable],video,audio,object,embed,[data-gesture-preview]',
       );
     }
 
@@ -247,14 +459,73 @@
       return d <= S_MAX ? { d: d } : null;
     }
     var S_MAX = opts.sThreshold || 0.2;
+    var templates = Object.entries(letterPaths).map(function (entry) {
+      return {
+        letter: entry[0],
+        points: normalize(
+          resample(
+            entry[1].map(function (p) {
+              return { x: p[0], y: p[1] };
+            }),
+            N,
+          ),
+        ),
+      };
+    });
+    function recognize(path) {
+      if (path.length < 14) return null;
+      var w =
+        Math.max.apply(
+          null,
+          path.map(function (p) {
+            return p.x;
+          }),
+        ) -
+        Math.min.apply(
+          null,
+          path.map(function (p) {
+            return p.x;
+          }),
+        );
+      var h =
+        Math.max.apply(
+          null,
+          path.map(function (p) {
+            return p.y;
+          }),
+        ) -
+        Math.min.apply(
+          null,
+          path.map(function (p) {
+            return p.y;
+          }),
+        );
+      if (w < 28 || h < 60) return null;
+      var sample = normalize(resample(path, N));
+      var scores = templates.map(function (t) {
+        return {
+          letter: t.letter,
+          d: Math.min(meanDist(sample, t.points), meanDist(sample, t.points.slice().reverse())),
+        };
+      });
+      scores.push({ letter: 'S', d: Math.min(meanDist(sample, TPL), meanDist(sample, TPL_REV)) });
+      scores.sort(function (a, b) {
+        return a.d - b.d;
+      });
+      if (scores[0].d > 0.16 || scores[1].d - scores[0].d < 0.025) return null;
+      return allowedLetters.includes(scores[0].letter) ? scores[0].letter : false;
+    }
 
     /* ---------- Ereignisse ---------- */
     function end() {
       var had = pts && pts.length > 1;
       if (pts && !fired && pts.length >= 18 && enabled()) {
         // beim Loslassen: war es ein S?
-        var s = analyzeS(pts);
-        if (s) {
+        var letter = onLetter ? recognize(pts) : null;
+        // A circular O can start at any angle. Defer until release so Q/B are not cut short.
+        if (onLetter && letter === null && analyze()) letter = 'O';
+        var s = !onLetter && analyzeS(pts);
+        if (letter || s) {
           fired = true;
           try {
             var sel = window.getSelection && window.getSelection();
@@ -275,7 +546,8 @@
           shotTimer = setTimeout(function () {
             shotTimer = 0;
             try {
-              onS(shotPoint);
+              if (onLetter) onLetter(letter);
+              else onS(shotPoint);
             } catch (x) {
               /* nie die Seite stören */
             }
@@ -326,7 +598,7 @@
         ensureCanvas();
         drawTrail(1, null);
       } // erst bei echter Bewegung: einfache Klicks bleiben unberührt
-      if (pts.length >= 14 && pts.length % 2 === 0) {
+      if (!onLetter && pts.length >= 14 && pts.length % 2 === 0) {
         var res = analyze();
         if (res) {
           fired = true;

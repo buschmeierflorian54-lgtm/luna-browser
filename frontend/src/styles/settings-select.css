@@ -1,0 +1,79 @@
+/* Native selects retain keyboard navigation and macOS accessibility. */
+#settingsView .settings-select {
+  position: relative;
+  display: block;
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border-radius: 14px;
+  color: var(--acc);
+}
+#settingsView .settings-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 42px 12px 15px;
+  border: 1px solid color-mix(in srgb, var(--acc) 16%, var(--line));
+  border-radius: inherit;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--card) 94%, var(--acc)),
+    color-mix(in srgb, var(--card) 86%, var(--panel))
+  );
+  color: var(--ink);
+  font:
+    650 12px/1.45 Manrope,
+    sans-serif;
+  text-overflow: ellipsis;
+  box-shadow:
+    0 2px 5px color-mix(in srgb, var(--ink) 4%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--card) 80%, transparent);
+  cursor: pointer;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s,
+    background 0.18s;
+}
+#settingsView .settings-select select:hover {
+  border-color: color-mix(in srgb, var(--acc) 48%, var(--line));
+  background: color-mix(in srgb, var(--card) 90%, var(--acc));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--acc) 10%, transparent);
+}
+#settingsView .settings-select select:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+  border-color: var(--acc);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--acc) 10%, transparent);
+}
+#settingsView .settings-select-chevron {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.8;
+}
+#settingsView .settings-select option {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 500;
+}
+#settingsView .settings-select select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (prefers-reduced-motion: reduce) {
+  #settingsView .settings-select select {
+    transition: none;
+  }
+}

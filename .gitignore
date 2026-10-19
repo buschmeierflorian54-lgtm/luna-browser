@@ -6,3 +6,9 @@ build/bin/
 # Local browser test output
 frontend/test-results/
 frontend/playwright-report/
+
+# Local configuration and macOS metadata
+.DS_Store
+.env
+.env.*
+!.env.example

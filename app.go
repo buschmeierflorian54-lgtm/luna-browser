@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"browser-mac/internal/browsermcp"
+	"browser-mac/internal/chat"
 	"browser-mac/internal/musicqueue"
 	"browser-mac/internal/search"
 	"browser-mac/internal/secret"
@@ -24,6 +26,7 @@ import (
 
 // App bündelt alle Methoden, die das Frontend aufrufen darf (nur über frontend/src/api.js).
 type App struct {
+	chat        *chat.Service
 	queueRouter musicqueue.Router
 	autoNext    *spotify.AutoNext
 	mcpServer   *browsermcp.Manager
@@ -71,6 +74,7 @@ func (a *App) startup(ctx context.Context) {
 
 	// Eigene Suchmaschine (Brave-API); der Schlüssel wird bei jeder Anfrage frisch aus der geschützten Datei gelesen.
 	a.secrets = secret.New(filepath.Join(dir, "browser-mac"))
+	a.chat = chat.New(filepath.Join(dir, "browser-mac"), a.secrets, func(c chat.Conversation) { b, _ := json.Marshal(c); a.emit("chat-update", string(b)) })
 	a.spotifyAPI = spotifyapi.New(a.secrets)
 	a.autoNext = spotify.NewAutoNext(func(status spotify.NextStatus) { b, _ := json.Marshal(status); a.emit("spotify-next", string(b)) })
 	sonosContext, stopSonos := context.WithCancel(ctx)
@@ -81,6 +85,20 @@ func (a *App) startup(ctx context.Context) {
 		return v, err
 	})
 	a.mcpServer = browsermcp.New(a.secrets, a.mcpDispatch)
+	a.chat.ToolFactory = func(ctx context.Context) (*chat.BrowserTools, error) {
+		if !a.mcpServer.Status().Enabled {
+			return nil, nil
+		}
+		return chat.ConnectTools(ctx, func(ctx context.Context, name string, args map[string]any) (any, error) {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			if !a.mcpServer.Status().Enabled {
+				return nil, fmt.Errorf("MCP-Zugriff wurde ausgeschaltet.")
+			}
+			return a.mcpDispatch(ctx, name, args)
+		})
+	}
 }
 
 func (a *App) emit(name, data string) {
@@ -199,7 +217,7 @@ func hasPref(p map[string]bool, k string) bool { _, ok := p[k]; return ok }
 
 // pageGestureScript: gemeinsamer Kern + Anbindung an die App (Nachricht an window.webkit.messageHandlers.fmGesture).
 func pageGestureScript() string {
-	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onCircle:function(i){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'circle',dir:i.dir});}catch(e){}},onS:function(){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'s'});}catch(e){}}});\n})();"
+	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onLetter:function(letter){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'letter',letter:letter});}catch(e){}}});\n})();"
 }
 
 func (a *App) SpotifyAPIStatus() spotifyapi.Status       { return a.spotifyAPI.Status() }
@@ -222,6 +240,9 @@ func (a *App) SonosConfigure(enabled bool, selected []string) (sonos.Status, err
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	if a.chat != nil {
+		a.chat.Close()
+	}
 	if a.autoNext != nil {
 		a.autoNext.Cancel()
 	}

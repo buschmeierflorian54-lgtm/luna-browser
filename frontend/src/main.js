@@ -1,3 +1,7 @@
+import { parseTabCommand, tabDomain, tabMatchesDomain } from './tab-command.js';
+import { initChat, refreshChatStatus } from './chat.js';
+import { startBackgroundHTML, startWaves } from './start-background.js';
+import { initGestures, loadGestures, gestureState } from './gestures.js';
 import { initTabGroups } from './tab-groups.js';
 import { createSettings } from './settings.js';
 const GEAR =
@@ -8,7 +12,7 @@ import { createBrowserNotifications } from './notifications.js';
 import { initMusicPanel } from './music-panel.js';
 import { initAutoNext } from './music-autonext.js';
 import { initQueueDrop } from './spotify-queue.js';
-import { applyColorTheme, colorTheme, themeIconURL, COLOR_THEMES } from './color-themes.js';
+import { COLOR_THEMES, applyColorTheme, colorTheme, themeIconURL } from './color-themes.js';
 import { lunaPageAction } from './page-control.js';
 import { updateSonosSettings } from './sonos-view.js';
 import './style.css';
@@ -212,10 +216,14 @@ function adoptPopup(id) {
   activate(id);
 }
 /* ---------- Navigation: Startseite · Suche · Web ---------- */
-function visit(t, input) {
+function visit(t, input, options = {}) {
+  if (/^chat:?$/i.test(String(input).trim())) {
+    openChatPage(t);
+    return;
+  }
   if (String(input).startsWith('spotify-search:')) {
     try {
-      openSearch(t, decodeURIComponent(input.slice(15)), 0, { provider: 'spotify' });
+      openSearch(t, decodeURIComponent(input.slice(15)), 0, { provider: 'spotify', ...options });
     } catch {
       toast('Ungültiger Suchbegriff');
     }
@@ -223,7 +231,7 @@ function visit(t, input) {
   }
   const spotifyQuery = spotifyCommand(String(input));
   if (spotifyQuery !== null) {
-    if (spotifyQuery) openSearch(t, spotifyQuery, 0, { provider: 'spotify' });
+    openSearch(t, spotifyQuery, 0, { provider: 'spotify', ...options });
     return;
   }
   if (String(input).trim().toLowerCase() === 'einstellungen') {
@@ -235,6 +243,29 @@ function visit(t, input) {
   if (r.q !== undefined) openSearch(t, r.q, 0);
   else openWeb(t, r.url);
 }
+function openChatPage(t) {
+  clearTimeout(quickT);
+  closeSugg();
+  $('#url').blur();
+  t.under = t.mode === 'web' && t.native;
+  t.mode = 'chat';
+  t.fwdWeb = false;
+  t.fwdSearch = false;
+  t.cameFromSearch = false;
+  t.url = 'chat:';
+  t.title = 'Luna Chat';
+  t.icon = '';
+  t.loading = false;
+  t.sLoading = false;
+  t.lazy = false;
+  t.sTok++;
+  t.error = false;
+  if (t.id === S.active) {
+    nativeShow(-1);
+    renderAll();
+  }
+  saveSession();
+}
 function openWeb(t, url) {
   if (t.id === S.active) $('#url').blur();
   if (t.mode === 'search') {
@@ -244,7 +275,8 @@ function openWeb(t, url) {
       t.native = false;
     }
   } // frische Verlaufskette: Zurück führt zur Suche
-  else if (t.mode === 'start' || t.mode === 'settings') t.cameFromSearch = false;
+  else if (t.mode === 'start' || t.mode === 'settings' || t.mode === 'chat')
+    t.cameFromSearch = false;
   t.sTok++;
   t.sLoading = false;
   t.mode = 'web';
@@ -266,10 +298,10 @@ function openWeb(t, url) {
 }
 function openSearch(t, q, page = 0, opts = {}) {
   q = q.trim();
-  if (!q) return;
-  if (t.id === S.active) $('#url').blur();
+  if (!q && opts.provider !== 'spotify') return;
+  if (t.id === S.active && !opts.preserveInput) $('#url').blur();
   if (t.mode === 'web' && t.native) t.under = true; // Webseite bleibt (verborgen) darunter, Zurück kehrt zu ihr zurück
-  if (t.mode === 'start' || t.mode === 'settings') t.under = false;
+  if (t.mode === 'start' || t.mode === 'settings' || t.mode === 'chat') t.under = false;
   if (!opts.noPush) {
     if (t.mode !== 'search') {
       t.sHist = [];
@@ -296,7 +328,10 @@ async function loadEntry(t, force) {
   t.q = e.q;
   t.page = e.page;
   t.url = (t.provider === 'spotify' ? 'spotify-search:' : 'search:') + encodeURIComponent(e.q);
-  t.title = e.q + (t.provider === 'spotify' ? ' – Spotify' : ' – Luna Search');
+  t.title =
+    !e.q && t.provider === 'spotify'
+      ? 'Luna Music'
+      : e.q + (t.provider === 'spotify' ? ' – Spotify' : ' – Luna Search');
   t.sel = 0;
   t.sErr = '';
   const tok = ++t.sTok;
@@ -308,6 +343,12 @@ async function loadEntry(t, force) {
     return;
   }
   t.data = null;
+  if (t.provider === 'spotify' && !e.q) {
+    t.sLoading = false;
+    t.loading = false;
+    if (t.id === S.active) renderAll();
+    return;
+  }
   if (t.provider !== 'spotify' && !S.hasKey) {
     t.sErr = 'NOKEY';
     t.sLoading = false;
@@ -336,7 +377,8 @@ async function loadEntry(t, force) {
     $('#searchView').scrollTop = 0;
   }
 }
-const canBack = (t) => (t.mode === 'web' ? t.back || t.cameFromSearch : t.mode === 'search'); // start/settings: nichts davor
+const canBack = (t) =>
+  t.mode === 'web' ? t.back || t.cameFromSearch : t.mode === 'search' || t.mode === 'chat'; // start/settings: nichts davor
 const canFwd = (t) =>
   t.mode === 'web'
     ? t.fwd || t.fwdSearch
@@ -361,6 +403,17 @@ function showSearchMode(t) {
   loadEntry(t);
 }
 function goBack(t) {
+  if (t.mode === 'chat') {
+    if (t.under) showWeb(t);
+    else {
+      t.mode = 'start';
+      t.url = '';
+      t.title = '';
+      renderAll();
+    }
+    saveSession();
+    return;
+  }
   if (t.mode === 'web') {
     if (t.back) api.back(t.id);
     else if (t.cameFromSearch) {
@@ -596,8 +649,7 @@ api.onWeb((e) => {
       break;
     case 'gesture':
       if (!IS_NATIVE || !t || t.id !== S.active || !S.gesture || t.mode !== 'web') break; // nur das App-Fenster reagiert (nicht der Entwicklungs-Browserzugang)
-      if (e.kind === 's') takeShot();
-      else toggleNotes();
+      gestures.run(e.kind === 'letter' ? e.letter : e.kind === 's' ? 'S' : 'O');
       break;
   }
 });
@@ -643,18 +695,26 @@ function renderToolbar() {
   $('#bBack').classList.toggle('off', !canBack(t));
   $('#bFwd').classList.toggle('off', !canFwd(t));
   $('#bReload').innerHTML = t.loading ? ICON.stop : ICON.reload;
-  $('#bReload').classList.toggle('off', t.mode === 'start' || t.mode === 'settings');
+  $('#bReload').classList.toggle(
+    'off',
+    t.mode === 'start' || t.mode === 'settings' || t.mode === 'chat',
+  );
   const input = $('#url');
   if (document.activeElement !== input)
     input.value =
-      t.mode === 'settings' ? 'Einstellungen' : shownUrl(t.mode === 'start' ? '' : t.url);
+      t.mode === 'settings'
+        ? 'Einstellungen'
+        : t.mode === 'chat'
+          ? 'chat'
+          : shownUrl(t.mode === 'start' ? '' : t.url);
   bindSpotifySearch(
     input,
-    (target) => visit(cur(), target),
+    (target, options) => visit(cur(), target, options),
     () => {
       clearTimeout(quickT);
       closeSugg();
     },
+    playFirstSpotifyResult,
   );
   syncSpotifySearch(input, t.url);
   $('#lock').innerHTML =
@@ -667,7 +727,10 @@ function renderToolbar() {
           : '';
   const bm = !!t.url && isBookmarked(t.url);
   $('#bStar').innerHTML = bm ? ICON.starOn : ICON.star;
-  $('#bStar').classList.toggle('off', t.mode === 'start' || t.mode === 'settings');
+  $('#bStar').classList.toggle(
+    'off',
+    t.mode === 'start' || t.mode === 'settings' || t.mode === 'chat',
+  );
   $('#bSide').classList.toggle('on', S.side);
   const p = $('#progress div');
   p.style.opacity = t.loading ? 1 : 0;
@@ -718,7 +781,7 @@ function startHTML() {
   const d = new Date();
   const date = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   const delay = (i) => `style="--d:${120 + i * 55}ms"`;
-  return `<div class="st-bg"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><canvas class="st-waves" aria-hidden="true"></canvas></div>
+  return `${startBackgroundHTML}
   <div class="st-scroll"><div class="st-wrap">
     <header class="st-hero">
       <div class="st-logo-w"><img class="st-logo" src="${themeIconURL()}" alt="" draggable="false"><span class="st-halo"></span></div>
@@ -754,92 +817,11 @@ function stopStartMotion() {
 }
 
 // Wabernde Wellen: mehrere übereinanderliegende Sinus-Bänder, die langsam fließen und auf die Maus reagieren.
-function startWaves(canvas, host, still) {
-  const ctx = canvas.getContext('2d');
-  let w = 0,
-    h = 0,
-    raf = 0,
-    mx = 0,
-    my = 0,
-    tx = 0,
-    ty = 0;
-  const L = [
-    { b: 0.58, a: 38, k: 1.0, s: 0.16, p: 0.0, l: ['255,159,207', 0.34], d: ['196,72,152', 0.3] },
-    { b: 0.67, a: 46, k: 0.7, s: -0.12, p: 2.1, l: ['183,156,242', 0.34], d: ['96,76,214', 0.32] },
-    { b: 0.76, a: 34, k: 1.3, s: 0.2, p: 4.0, l: ['255,208,166', 0.38], d: ['160,70,104', 0.3] },
-    { b: 0.85, a: 28, k: 0.9, s: -0.18, p: 1.2, l: ['159,216,255', 0.32], d: ['54,116,190', 0.3] },
-    { b: 0.93, a: 22, k: 1.6, s: 0.24, p: 3.1, l: ['255,176,214', 0.34], d: ['140,60,130', 0.3] },
-  ];
-  const resize = () => {
-    const r = host.getBoundingClientRect(),
-      dpr = Math.min(2, devicePixelRatio || 1);
-    w = Math.max(1, r.width);
-    h = Math.max(1, r.height);
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (still) draw(0);
-  };
-  const draw = (t) => {
-    const dark = document.documentElement.dataset.theme === 'dark';
-    mx += (tx - mx) * 0.04;
-    my += (ty - my) * 0.04; // weiches Nachziehen der Mausposition
-    ctx.clearRect(0, 0, w, h);
-    L.forEach((ly, i) => {
-      const [rgb, al] = dark ? ly.d : ly.l;
-      const palette = COLOR_THEMES.find((p) => p[0] === colorTheme());
-      const waveColor = (alpha) =>
-        palette[0] === 'luna'
-          ? `rgba(${rgb},${alpha})`
-          : `hsla(${palette[2] + i * 10},${palette[3]}%,${dark ? 40 : 72}%,${alpha})`;
-      const base = h * ly.b + my * 22 * (i + 1) * 0.5;
-      const ph = ly.p + t * ly.s * 6.283 + mx * 1.4 * (i % 2 ? -1 : 1);
-      ctx.beginPath();
-      ctx.moveTo(0, h);
-      for (let x = 0; x <= w + 8; x += 8) {
-        const u = (x / w) * 6.283;
-        const y =
-          base +
-          Math.sin(u * ly.k * 1.3 + ph) * ly.a +
-          Math.sin(u * ly.k * 2.7 - t * 0.55 + i * 1.7) * ly.a * 0.38 +
-          Math.sin(u * 0.6 + t * 0.2 + i) * ly.a * 0.5;
-        ctx.lineTo(x, y);
-      }
-      ctx.lineTo(w, h);
-      ctx.closePath();
-      const g = ctx.createLinearGradient(0, base - ly.a, 0, h);
-      g.addColorStop(0, waveColor(al));
-      g.addColorStop(1, waveColor(al * 0.15));
-      ctx.fillStyle = g;
-      ctx.fill();
-    });
-  };
-  const t0 = performance.now();
-  const loop = (now) => {
-    draw((now - t0) / 1000);
-    raf = requestAnimationFrame(loop);
-  };
-  const ro = new ResizeObserver(resize);
-  ro.observe(host);
-  resize();
-  const onMove = (e) => {
-    const r = host.getBoundingClientRect();
-    tx = ((e.clientX - r.left) / r.width - 0.5) * 2;
-    ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
-  };
-  host.parentElement.addEventListener('pointermove', onMove);
-  if (!still) raf = requestAnimationFrame(loop);
-  startStop.push(() => {
-    cancelAnimationFrame(raf);
-    ro.disconnect();
-    host.parentElement?.removeEventListener('pointermove', onMove);
-  });
-}
 function startMotion(el) {
   stopStartMotion();
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const cv = el.querySelector('.st-waves');
-  if (cv) startWaves(cv, cv.parentElement, reduce);
+  if (cv) startStop.push(startWaves(cv, cv.parentElement, reduce));
   const clock = $('#stClock');
   const tick = () => {
     const n = new Date(),
@@ -907,8 +889,9 @@ async function renderStart() {
   el.innerHTML = startHTML();
   bindSpotifySearch(
     $('#startQ'),
-    (target) => visit(cur(), target),
+    (target, options) => visit(cur(), target, options),
     () => clearTimeout(quickT),
+    playFirstSpotifyResult,
   );
   el.style.setProperty('--mx', 0);
   el.style.setProperty('--my', 0);
@@ -944,7 +927,10 @@ async function renderStart() {
         .join('')
     : '<div class="hint">Noch nichts besucht – leg einfach los.</div>';
 }
+let stopSearchBackground;
 function renderSearchView() {
+  stopSearchBackground?.();
+  stopSearchBackground = null;
   const t = cur(),
     el = $('#searchView');
   const show = !!t && t.mode === 'search';
@@ -952,7 +938,23 @@ function renderSearchView() {
   if (!show) return;
   const top = el.scrollTop;
   el.classList.toggle('spotify-results-page', t.provider === 'spotify');
-  el.innerHTML = t.provider === 'spotify' ? spotifyResultsHTML(t) : searchHTML(t, isBookmarked);
+  const content = t.provider === 'spotify' ? spotifyResultsHTML(t) : searchHTML(t, isBookmarked);
+  el.innerHTML = `<div class="search-scene"><div class="search-backdrop">${startBackgroundHTML}</div><div class="search-content">${content}</div></div>`;
+  const resizeBackground = () =>
+    el.style.setProperty('--search-viewport-height', el.clientHeight + 'px');
+  resizeBackground();
+  const observer = new ResizeObserver(resizeBackground);
+  observer.observe(el);
+  const waves = el.querySelector('.st-waves');
+  const stopWaves = startWaves(
+    waves,
+    waves.parentElement,
+    matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  stopSearchBackground = () => {
+    observer.disconnect();
+    stopWaves();
+  };
   el.scrollTop = t.sLoading ? 0 : top;
 }
 function renderAll() {
@@ -962,6 +964,7 @@ function renderAll() {
   renderStart();
   renderSearchView();
   renderSettingsView();
+  chatUI.show(cur()?.mode === 'chat');
   renderSide();
   updateFrame();
 }
@@ -1150,6 +1153,29 @@ $('#sugg').addEventListener('mousedown', (ev) => {
   const b = ev.target.closest('.sg');
   if (b) commitAddress(S.sugg[+b.dataset.i].url);
 });
+let playCommandBusy = false;
+async function playFirstSpotifyResult(query) {
+  if (!query) {
+    toast('Gib nach play einen Song oder Künstler ein.');
+    return;
+  }
+  if (playCommandBusy) return;
+  playCommandBusy = true;
+  try {
+    const results = await api.spotifySearch(query);
+    const track = results?.tracks?.items?.[0];
+    if (!track?.uri) {
+      toast('Kein Song bei Spotify gefunden.');
+      return;
+    }
+    await api.spotifyPlay(track.uri);
+    toast('Wiedergabe an Spotify übergeben: ' + track.name);
+  } catch (error) {
+    toast('Spotify: ' + String(error?.message || error));
+  } finally {
+    playCommandBusy = false;
+  }
+}
 function commitAddress(text) {
   closeSugg();
   url.blur();
@@ -1164,6 +1190,12 @@ function armQuickSite(input, ev) {
   clearTimeout(quickT);
   if (ev && ev.inputType && !ev.inputType.startsWith('insert')) return;
   const key = input.value.trim().toLowerCase();
+  if (key === 'chat' && !ev?.isComposing) {
+    closeSugg();
+    input.blur();
+    visit(cur(), 'chat:');
+    return;
+  }
   const target = QUICK_SITES[key];
   if (!target && key !== 'einstellungen') return;
   quickT = setTimeout(() => {
@@ -1177,6 +1209,49 @@ function armQuickSite(input, ev) {
     visit(cur(), target);
   }, 350);
 }
+// Capture before the music search handlers so explicit tab commands work in every mode.
+document.addEventListener(
+  'input',
+  (ev) => {
+    if (ev.target !== url || !/^\s*tab(?:\s|$)/i.test(url.value)) return;
+    url._spotifySearch?.setMode(false);
+    clearTimeout(quickT);
+    closeSugg();
+    ev.stopImmediatePropagation();
+  },
+  true,
+);
+document.addEventListener(
+  'keydown',
+  async (ev) => {
+    if (
+      ev.target !== url ||
+      ev.key !== 'Enter' ||
+      ev.isComposing ||
+      !/^\s*tab(?:\s|$)/i.test(url.value)
+    )
+      return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    clearTimeout(quickT);
+    closeSugg();
+    try {
+      const command = parseTabCommand(url.value);
+      url._spotifySearch?.setMode(false);
+      url.blur();
+      const result = await runMCPCommand(command.name, command.args);
+      if (command.name === 'browser_state') {
+        toast(result.tabs.map((tab) => `${tab.id}: ${tab.title || 'Neuer Tab'}`).join(' · '));
+      }
+      if (result.closed_domain)
+        toast(`${result.closed_tabs} Tabs von ${result.closed_domain} geschlossen.`);
+      renderToolbar();
+    } catch (error) {
+      toast(String(error?.message || error));
+    }
+  },
+  true,
+);
 url.addEventListener('input', (ev) => {
   openSugg(url.value);
   armQuickSite(url, ev);
@@ -1338,8 +1413,13 @@ const EXT_COL = {
   pptx: '#c4632f',
 };
 function openSettingsAt(section) {
+  if (section === 'chat') section = 'mcp';
   settings.section = section;
   openSettings();
+  if (section === 'mcp')
+    refreshChatStatus()
+      .then(renderSettingsView)
+      .catch((e) => toast(String(e)));
   if (section === 'spotify') refreshSpotifyAccount();
   if (section === 'spotify') refreshSonos();
   if (section === 'mcp') refreshMCPStatus();
@@ -1582,11 +1662,8 @@ function toggleNotes() {
 window.__fmCircle({
   target: $('#page'),
   enabled: () => S.gesture,
-  onCircle: () => {
-    if (cur()?.mode !== 'web') toggleNotes();
-  },
-  onS: () => {
-    if (cur()?.mode !== 'web') takeShot();
+  onLetter: (letter) => {
+    if (cur()?.mode !== 'web') gestures.run(letter);
   },
 });
 
@@ -1797,7 +1874,7 @@ function setZoom(f) {
 }
 async function toggleBookmark() {
   const t = cur();
-  if (!t || t.mode === 'start' || t.mode === 'settings' || !t.url) return;
+  if (!t || t.mode === 'start' || t.mode === 'settings' || t.mode === 'chat' || !t.url) return;
   const on = !isBookmarked(t.url);
   S.bookmarks = await api.setBookmark(
     t.url,
@@ -2134,7 +2211,7 @@ document.addEventListener('click', async (ev) => {
     }
     case 'color-theme':
       localStorage.removeItem(MCP_COLORS);
-      applyMCPColors({});
+      clearLegacyMCPColors();
       applyColorTheme(d.color, true);
       renderSettingsView();
       break;
@@ -2168,8 +2245,9 @@ document.addEventListener('click', async (ev) => {
       }
       break;
     case 'mcp-reset-colors':
-      localStorage.removeItem(MCP_COLORS);
-      applyMCPColors({});
+      clearLegacyMCPColors();
+      applyColorTheme('luna', true);
+      renderSettingsView();
       toast('Luna-Farben wiederhergestellt');
       break;
     case 'tab-group-toggle':
@@ -2210,6 +2288,9 @@ document.addEventListener('click', async (ev) => {
       renderSettingsView();
       break;
     }
+    case 'music-search-open':
+      $('#url')._spotifySearch.open();
+      break;
     case 'spotify-settings':
       openSettingsAt('spotify');
       break;
@@ -2262,6 +2343,10 @@ document.addEventListener('click', async (ev) => {
       settings.section = d.s;
       renderSettingsView();
       $('#settingsView').scrollTop = 0;
+      if (d.s === 'mcp')
+        refreshChatStatus()
+          .then(renderSettingsView)
+          .catch((e) => toast(String(e)));
       if (d.s === 'spotify') {
         refreshSonos();
         refreshSpotifyAccount();
@@ -2400,6 +2485,7 @@ function dismissSplash() {
       'Einstellungen laden …',
       0.14,
       async () => {
+        await loadGestures();
         const p = await api.prefs();
         S.autoNextAlways = !!p.spotifyAutoNextAlways;
         return [
@@ -2465,6 +2551,7 @@ document.addEventListener('change', (ev) => {
 function mcpState() {
   return {
     ready: !splashing,
+    gestures: gestureState(),
     active_tab: S.active,
     tabs: S.tabs.map((t) => ({
       id: t.id,
@@ -2477,7 +2564,7 @@ function mcpState() {
     groups: S.groups,
     theme: themeMode(),
     color_theme: colorTheme(),
-    colors: readMCPColors(),
+    color_themes: COLOR_THEMES.map(([id, name]) => ({ id, name })),
     preferences: { showBookmarkBar: S.bar, restoreSession: S.restore, circleGesture: S.gesture },
     sidebar: {
       open: S.side,
@@ -2499,38 +2586,42 @@ function mcpTab(id) {
 }
 function mcpURL(url) {
   if (typeof url !== 'string' || !url.trim()) throw Error('URL ist erforderlich.');
-  if (!/^(https?:\/\/|about:blank$|search:|spotify-search:)/i.test(url))
+  if (!/^(https?:\/\/|about:blank$|chat:$|search:|spotify-search:)/i.test(url))
     throw Error('Nur HTTP(S), about:blank oder interne Suchadressen sind erlaubt.');
   return url;
 }
 const MCP_COLORS = 'luna-mcp-colors';
-function readMCPColors() {
-  try {
-    return JSON.parse(localStorage.getItem(MCP_COLORS) || '{}');
-  } catch {
-    return {};
-  }
+function clearLegacyMCPColors() {
+  localStorage.removeItem(MCP_COLORS);
+  for (const name of [
+    '--acc',
+    '--link',
+    '--desk',
+    '--body',
+    '--panel',
+    '--card',
+    '--input',
+    '--ink',
+    '--ink2',
+  ])
+    document.documentElement.style.removeProperty(name);
 }
-function applyMCPColors(colors) {
-  const keys = {
-    accent: ['--acc', '--link'],
-    background: ['--desk', '--body'],
-    surface: ['--panel', '--card', '--input'],
-    text: ['--ink', '--ink2'],
-  };
-  for (const [key, names] of Object.entries(keys))
-    for (const name of names) {
-      if (/^#[0-9a-f]{6}$/i.test(colors[key] || ''))
-        document.documentElement.style.setProperty(name, colors[key]);
-      else document.documentElement.style.removeProperty(name);
-    }
-}
-applyMCPColors(readMCPColors());
+clearLegacyMCPColors();
 async function runMCPCommand(name, a) {
   if (name === 'browser_state') return mcpState();
   if (splashing) throw Error('Luna startet noch. Bitte kurz warten.');
   switch (name) {
     case 'browser_tab': {
+      if (a.domain !== undefined) {
+        if (a.action !== 'close' || a.tab_id !== undefined)
+          throw Error('Domain nur zum Schließen ohne Tab-ID angeben.');
+        const domain = tabDomain(a.domain);
+        const targets = S.tabs.filter((t) => tabMatchesDomain(t.url, domain)).map((t) => t.id);
+        for (const id of targets) {
+          if (S.tabs.some((t) => t.id === id)) await closeTab(id);
+        }
+        return { ...mcpState(), closed_tabs: targets.length, closed_domain: domain };
+      }
       if (a.action === 'open') {
         newTab(a.url ? mcpURL(a.url) : '', { background: !!a.background });
         return mcpState();
@@ -2617,15 +2708,19 @@ async function runMCPCommand(name, a) {
     case 'browser_settings':
       openSettingsAt(a.section);
       return mcpState();
+    case 'browser_gestures':
+      return gestures.configure(a);
     case 'browser_customize': {
-      if (a.colors)
-        for (const value of Object.values(a.colors))
-          if (!/^#[0-9a-f]{6}$/i.test(value)) throw Error('Farben bitte als #RRGGBB angeben.');
+      if ('colors' in a)
+        throw Error(
+          'Freie Farben sind nicht erlaubt. Bitte color_theme aus den eingebauten Farbthemen wählen.',
+        );
+      if (a.color_theme !== undefined && !COLOR_THEMES.some(([id]) => id === a.color_theme))
+        throw Error('Unbekanntes Farbthema. Bitte eine eingebaute Farbwelt wählen.');
       if (a.theme) applyTheme(a.theme, true);
-      if (a.colors || a.reset_colors) {
-        const colors = a.reset_colors ? {} : { ...readMCPColors(), ...a.colors };
-        localStorage.setItem(MCP_COLORS, JSON.stringify(colors));
-        applyMCPColors(colors);
+      if (a.color_theme !== undefined || a.reset_colors) {
+        clearLegacyMCPColors();
+        applyColorTheme(a.color_theme ?? 'luna', true);
       }
       if (a.sidebar_width) {
         document.documentElement.style.setProperty('--sidew', a.sidebar_width + 'px');
@@ -2781,4 +2876,32 @@ initMusicPanel({
   isOpen: () => S.side,
   toast,
   settings: () => openSettingsAt('spotify'),
+});
+
+const gestures = initGestures({
+  toast,
+  render: renderSettingsView,
+  actions: {
+    notes: toggleNotes,
+    screenshot: takeShot,
+    music: () => $('#url')._spotifySearch.open(),
+    settings: () => openSettingsAt('gestures'),
+    new_tab: () => newTab(),
+    close_tab: () => cur() && closeTab(cur().id),
+    back: () => cur() && goBack(cur()),
+    forward: () => cur() && goForward(cur()),
+    reload: () => $('#bReload').click(),
+    bookmarks: () => openSide('bookmarks'),
+    history: () => openSide('history'),
+    downloads: () => openSide('downloads'),
+    open_url: (value) => newTab(value),
+  },
+});
+
+const chatUI = initChat({
+  openSettings: () => openSettingsAt('mcp'),
+  renderSettings: renderSettingsView,
+  toast,
+  notifications,
+  openURL: (url) => newTab(url),
 });

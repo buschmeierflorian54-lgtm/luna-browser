@@ -1,0 +1,71 @@
+.gesture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.gesture-card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gesture-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.gesture-card header b {
+  font-size: 32px;
+  color: var(--acc);
+}
+.gesture-card svg {
+  width: 64px;
+  height: 64px;
+  color: var(--acc);
+}
+.gesture-card svg polyline,
+.gesture-card svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gesture-card svg circle {
+  fill: currentColor;
+}
+.gesture-card label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.gesture-card select,
+.gesture-card input {
+  width: 100%;
+  min-width: 0;
+  padding: 9px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .gesture-card:hover svg polyline,
+  .gesture-card:hover svg path {
+    stroke-dasharray: 1;
+    animation: gesture-demo 3s ease-in-out infinite;
+  }
+}
+@keyframes gesture-demo {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  75%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}

@@ -270,7 +270,7 @@ static FMTab *tabFor(int tid, WKWebViewConfiguration *cfg) {
 	int tid = -1;
 	for (FMTab *t in gTabs.allValues) if (t.view == msg.webView) tid = t.tid;
 	NSDictionary *b = [msg.body isKindOfClass:[NSDictionary class]] ? msg.body : @{};
-	emit(@{@"t": @"gesture", @"tab": @(tid), @"kind": nn(b[@"kind"]), @"dir": nn(b[@"dir"])});
+	emit(@{@"t": @"gesture", @"tab": @(tid), @"kind": nn(b[@"kind"]), @"dir": nn(b[@"dir"]), @"letter": nn(b[@"letter"])});
 }
 @end
 

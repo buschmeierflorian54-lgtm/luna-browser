@@ -12,9 +12,11 @@ import (
 	"sync/atomic"
 
 	"browser-mac/internal/browsermcp"
+	"browser-mac/internal/spotifyapi"
 	"browser-mac/internal/web"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	wr "github.com/wailsapp/wails/v2/pkg/runtime"
+	"time"
 )
 
 type mcpResponse struct {
@@ -34,6 +36,9 @@ type mcpBridge struct {
 func (a *App) MCPStatus() browsermcp.Status { return a.mcpServer.Status() }
 func (a *App) MCPConfigure(on bool) (browsermcp.Status, error) {
 	err := a.mcpServer.Configure(on)
+	if err == nil && !on && a.chat != nil {
+		a.chat.CancelAll()
+	}
 	return a.mcpServer.Status(), err
 }
 func (a *App) MCPCopySetup() error {
@@ -87,6 +92,16 @@ func (a *App) mcpUI(ctx context.Context, name string, args map[string]any) (any,
 }
 func (a *App) mcpDispatch(ctx context.Context, name string, args map[string]any) (any, error) {
 	switch name {
+	case "browser_play_song":
+		song, _ := args["song"].(string)
+		artist, _ := args["artist"].(string)
+		ctx, cancel := context.WithTimeout(ctx, 25*time.Second)
+		defer cancel()
+		track, err := spotifyapi.PlaySong(ctx, song, artist, a.spotifyAPI.Search, a.SpotifyPlay)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"playback_requested": true, "track": track}, nil
 	case "browser_spotify":
 		action, _ := args["action"].(string)
 		value, _ := args["value"].(float64)

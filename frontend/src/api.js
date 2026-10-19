@@ -94,3 +94,25 @@ export const spotifyScheduleNext = (uri, title) => App.SpotifyScheduleNext(uri, 
 export const spotifyCancelNext = () => App.SpotifyCancelNext();
 export const spotifyNextStatus = () => App.SpotifyNextStatus();
 export const onSpotifyNext = (cb) => EventsOn('spotify-next', (j) => cb(JSON.parse(j)));
+
+export const gestureBindings = () => App.GestureBindings();
+export const setGestureBinding = (letter, action, value = '') =>
+  App.SetGestureBinding(letter, action, value);
+export const resetGestureBindings = () => App.ResetGestureBindings();
+
+export const chatStatus = () => App.ChatStatus();
+export const chatSetKey = (key) => App.ChatSetKey(key);
+export const chatClearKey = () => App.ChatClearKey();
+export const chatList = () => App.ChatList();
+export const chatGet = (id) => App.ChatGet(id);
+export const chatCreate = () => App.ChatCreate();
+export const chatSend = (id, text) => App.ChatSend(id, text);
+export const chatCancel = (id) => App.ChatCancel(id);
+export const chatDelete = (id) => App.ChatDelete(id);
+export const onChat = (cb) => EventsOn('chat-update', (j) => cb(JSON.parse(j)));
+
+export const chatProviderKey = (provider, key) => App.ChatProviderKey(provider, key);
+export const chatRemoveProviderKey = (provider) => App.ChatRemoveProviderKey(provider);
+export const chatModels = (provider) => App.ChatModels(provider);
+export const chatSaveModel = (slot, provider, id) => App.ChatSaveModel(slot, provider, id);
+export const chatSelectModel = (slot) => App.ChatSelectModel(slot);

@@ -18,3 +18,9 @@
 @import './styles/music-theme.css';
 @import './styles/music-panel.css';
 @import './styles/notifications.css';
+
+@import './styles/gestures.css';
+
+@import './styles/settings-select.css';
+
+@import './styles/chat.css';
