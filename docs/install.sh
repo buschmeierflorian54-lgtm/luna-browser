@@ -1,5 +1,7 @@
 #!/bin/bash
 # Luna Browser installer. No sudo and no changes to Gatekeeper.
+# Standard: lädt und prüft Luna und öffnet das Installationsfenster (Luna-Symbol + Programme-Ordner zum Hineinziehen).
+# --auto: kopiert Luna selbst in den Programme-Ordner. --verify-only: prüft nur.
 set -euo pipefail
 fail() { printf '\nInstallation abgebrochen: %s\n' "$*" >&2; exit 1; }
 [[ $(uname -s) == Darwin ]] || fail 'Luna benötigt macOS.'
@@ -7,8 +9,8 @@ fail() { printf '\nInstallation abgebrochen: %s\n' "$*" >&2; exit 1; }
 major=$(sw_vers -productVersion | cut -d. -f1)
 [[ $major -ge 13 ]] || fail 'macOS 13 oder neuer erforderlich.'
 mode=${1:-install}
-[[ $mode == install || $mode == --verify-only ]] || fail 'Unbekannte Option.'
-if [[ $mode == install ]] && { pgrep -x 'Luna Browser' || pgrep -x browser-mac; } >/dev/null; then fail 'Bitte Luna vollständig beenden und den Befehl erneut ausführen.'; fi
+[[ $mode == install || $mode == --auto || $mode == --verify-only ]] || fail 'Unbekannte Option.'
+if [[ $mode == --auto ]] && { pgrep -x 'Luna Browser' || pgrep -x browser-mac; } >/dev/null; then fail 'Bitte Luna vollständig beenden und den Befehl erneut ausführen.'; fi
 work=$(mktemp -d)
 mounted=false
 cleanup() { if $mounted; then hdiutil detach "$work/volume" -quiet || true; fi; rm -rf "$work"; }
@@ -36,6 +38,21 @@ source_app="$work/volume/Luna Browser.app"
 [[ $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$source_app/Contents/Info.plist") == com.wails.browser-mac ]] || fail 'Unerwartete App im Download.'
 codesign --verify --deep --strict "$source_app" || fail 'App-Signatur ungültig.'
 if [[ $mode == --verify-only ]]; then printf 'Download, Prüfsumme, DMG und App-Signatur erfolgreich geprüft. Nichts installiert.\n'; exit 0; fi
+if [[ $mode == install ]]; then
+ # Das Installationsfenster öffnen: Der Nutzer zieht Luna selbst in den Programme-Ordner.
+ mkdir -p "$HOME/Downloads"
+ dmg="$HOME/Downloads/$asset"
+ cp -f "$work/$asset" "$dmg" || fail 'Das Installationsabbild konnte nicht gespeichert werden.'
+ hdiutil detach "$work/volume" -quiet || true
+ mounted=false
+ printf '\nLuna ist bereit. Es öffnen sich zwei Fenster:\n'
+ printf '  1. der Ordner „Programme“\n  2. ein Fenster mit dem Luna-Symbol\n'
+ printf 'Ziehe „Luna Browser“ aus dem Luna-Fenster in den Ordner „Programme“ und starte Luna danach von dort.\n'
+ printf 'Ist schon eine ältere Luna installiert, beende sie vorher und wähle beim Ziehen „Ersetzen“.\n'
+ open /Applications || true
+ open "$dmg" || printf 'Bitte öffne die Datei %s per Doppelklick.\n' "$dmg"
+ exit 0
+fi
 # Ziel: der Programme-Ordner des Macs. Ist er für dich nicht beschreibbar, nimmt Luna deinen persönlichen (~/Applications).
 if [[ -w /Applications ]]; then apps=/Applications; else apps="$HOME/Applications"; mkdir -p "$apps"; fi
 stage=$(mktemp -d "$apps/.luna-install.XXXXXX")
