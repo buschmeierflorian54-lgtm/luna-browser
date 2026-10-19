@@ -20,10 +20,15 @@ static NSString *updatePhase = @"starting";
 - (void)updater:(id)updater didFindValidUpdate:(id)item {
     updatePhase=@"available"; updateMessage=@"Ein Update ist verfügbar. Das Update-Fenster führt durch die Installation.";
 }
+- (void)updaterDidNotFindUpdate:(id)updater error:(NSError *)error {
+    updatePhase=@"current";
+    updateMessage=@"Kein neueres kompatibles Update verfügbar.";
+}
 - (void)updaterDidNotFindUpdate:(id)updater {
     updatePhase=@"current"; updateMessage=@"Du verwendest die neueste Version.";
 }
 - (void)updater:(id)updater didAbortWithError:(NSError *)error {
+    if ([error.domain isEqualToString:@"SUSparkleErrorDomain"] && error.code == 1001) return;
     updatePhase=@"error"; updateMessage=[@"Update-Prüfung fehlgeschlagen: " stringByAppendingString:error.localizedDescription ?: @"Unbekannter Fehler"];
 }
 @end
