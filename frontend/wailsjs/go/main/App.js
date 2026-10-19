@@ -134,8 +134,8 @@ export function Notes() {
   return window['go']['main']['App']['Notes']();
 }
 
-export function OnboardingClipboard(arg1, arg2) {
-  return window['go']['main']['App']['OnboardingClipboard'](arg1, arg2);
+export function OnboardingClipboard(arg1, arg2, arg3) {
+  return window['go']['main']['App']['OnboardingClipboard'](arg1, arg2, arg3);
 }
 
 export function OnboardingSpotifyConnect(arg1) {

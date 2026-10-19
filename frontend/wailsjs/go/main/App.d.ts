@@ -74,7 +74,7 @@ export function MCPStatus():Promise<browsermcp.Status>;
 
 export function Notes():Promise<Array<store.Note>>;
 
-export function OnboardingClipboard(arg1:number,arg2:string):Promise<string>;
+export function OnboardingClipboard(arg1:number,arg2:string,arg3:number):Promise<string>;
 
 export function OnboardingSpotifyConnect(arg1:number):Promise<void>;
 
