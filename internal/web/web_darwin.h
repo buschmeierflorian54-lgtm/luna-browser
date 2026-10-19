@@ -23,3 +23,4 @@ void fmwEvaluate(int id, const char *script, int req);
 int fmwSetDockIcon(const void *bytes, int length);
 
 void fmwSetErrorPalette(const char *palette);
+char *fmwOnboardingClipboard(int tab, const char *provider);

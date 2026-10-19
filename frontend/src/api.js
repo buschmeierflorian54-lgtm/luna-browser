@@ -122,3 +122,8 @@ export const checkUpdates = () => App.CheckUpdates();
 export const setAutomaticUpdates = (enabled) => App.SetAutomaticUpdates(enabled);
 
 export const setErrorPalette = nat((palette) => App.SetErrorPalette(palette));
+export const onboardingClipboard = nat(
+  async (id, provider) => JSON.parse(await App.OnboardingClipboard(id, provider)),
+  { count: 0, eligible: false },
+);
+export const onboardingSpotifyConnect = (id) => App.OnboardingSpotifyConnect(id);

@@ -90,3 +90,24 @@ func TestStore(t *testing.T) {
 		t.Fatal("nicht persistent")
 	}
 }
+
+func TestOnboardingPreferencesSurviveRestart(t *testing.T) {
+	dir := t.TempDir()
+	s, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.SetPref("googleSearch", true)
+	s.SetPref("onboardingComplete", true)
+	reopened, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reopened.Prefs()["googleSearch"] || !reopened.Prefs()["onboardingComplete"] {
+		t.Fatal("setup choices lost after restart")
+	}
+	reopened.SetPref("googleSearch", false)
+	if reopened.Prefs()["googleSearch"] {
+		t.Fatal("cannot switch back to Luna Search")
+	}
+}

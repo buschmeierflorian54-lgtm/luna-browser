@@ -162,7 +162,10 @@ export function createSettings({
           <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
       </section>
       ${gesturesHTML(S.gesture)}
-      <section id="set-search" class="sp-card"><h2>Luna Search</h2>
+      <section id="set-search" class="sp-card"><h2>Deine Suche</h2>
+        <p class="muted">Luna Search braucht einen Brave-Key. Google funktioniert ohne Key.</p>
+        <div class="row"><button class="btn ${!S.googleSearch ? 'pri' : ''}" data-act="search-provider" data-provider="luna">Luna Search</button><button class="btn ${S.googleSearch ? 'pri' : ''}" data-act="search-provider" data-provider="google">Google</button></div>
+        <button class="btn" data-act="setup">Geführte Einrichtung öffnen</button><h3>Brave-API-Key</h3>
         <p class="muted">Luna Search nutzt die Brave-Search-API; die Ergebnisse erscheinen direkt im Browser. Den Schlüssel erstellst du unter <button class="link" data-act="open-brave">brave.com/search/api</button>.</p>
         <div class="state ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Schlüssel gespeichert ✓' : 'Kein Schlüssel gespeichert'}</div>
         <input id="keyIn" type="password" placeholder="${S.hasKey ? 'Neuen Schlüssel einfügen, um ihn zu ersetzen' : 'Brave-API-Schlüssel einfügen'}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Brave-API-Schlüssel">

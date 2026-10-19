@@ -565,3 +565,30 @@ void fmwSetErrorPalette(const char *palette) {
   for (FMTab *tab in gTabs.allValues) if (tab.isError) [tab.view evaluateJavaScript:script completionHandler:nil];
  });
 }
+
+static BOOL setupKeyPage(NSURL *url, NSString *provider) {
+ if (![url.scheme.lowercaseString isEqualToString:@"https"]) return NO;
+ NSString *host = url.host.lowercaseString;
+ NSString *path = url.path;
+ if ([path hasSuffix:@"/"]) path = [path substringToIndex:path.length - 1];
+ if ([provider isEqualToString:@"brave"]) return [host isEqualToString:@"api-dashboard.search.brave.com"] && [path isEqualToString:@"/app/keys"];
+ if ([provider isEqualToString:@"groq"]) return [host isEqualToString:@"console.groq.com"] && [path isEqualToString:@"/keys"];
+ if ([provider isEqualToString:@"openrouter"]) return [host isEqualToString:@"openrouter.ai"] && ([path isEqualToString:@"/settings/keys"] || ([path hasPrefix:@"/workspace"] && [path hasSuffix:@"/keys"]));
+ if ([provider isEqualToString:@"spotify"]) return [host isEqualToString:@"developer.spotify.com"] && [path hasPrefix:@"/dashboard/"];
+ return NO;
+}
+char *fmwOnboardingClipboard(int tab, const char *provider) {
+ NSString *service = [NSString stringWithUTF8String:provider ?: ""];
+ __block NSString *result;
+ void (^read)(void) = ^{
+  FMTab *t = gTabs[@(tab)];
+  NSURL *url = t.view.URL;
+  BOOL eligible = NSApp.isActive && gActive == tab && !t.view.hidden && !t.isError && !t.view.loading && setupKeyPage(url, service);
+  // changeCount deliberately avoids stringForType/dataForType: no secrets leave the pasteboard.
+  NSDictionary *status = @{@"count": @(NSPasteboard.generalPasteboard.changeCount), @"eligible": @(eligible), @"host": url.host ?: @"", @"loading": @(t.view.loading), @"error": @(t.isError)};
+  NSData *data = [NSJSONSerialization dataWithJSONObject:status options:0 error:nil];
+  result = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+ };
+ if (NSThread.isMainThread) read(); else dispatch_sync(dispatch_get_main_queue(), read);
+ return strdup((result ?: @"{}").UTF8String);
+}

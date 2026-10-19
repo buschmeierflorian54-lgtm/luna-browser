@@ -248,6 +248,21 @@ test('global-notifications', async ({ browser }) => {
   await p.getByRole('switch', { name: 'Automatische Updates', exact: true }).click();
   await p.waitForFunction(() => window.autoUpdates === false);
   if (await p.locator('#set-look').count()) throw Error('updates chapter not isolated');
+  await call('browser_settings', { section: 'search' });
+  await p.getByRole('button', { name: 'Google', exact: true }).click();
+  await address.fill('test search with spaces & umlaut ä');
+  await address.press('Enter');
+  await p.waitForFunction(() =>
+    document.querySelector('#url').value.startsWith('https://www.google.com/search?q='),
+  );
+  if (
+    !decodeURIComponent(await address.inputValue()).includes('test search with spaces & umlaut ä')
+  )
+    throw Error('Google query lost');
+  await call('browser_settings', { section: 'search' });
+  await p.getByRole('button', { name: 'Luna Search', exact: true }).click();
+  if (await p.evaluate(() => window.preferences.googleSearch))
+    throw Error('search provider not saved');
   if (errors.length) throw Error(errors.join('\n'));
   console.log(
     'PASS: music sidebar search, play, add, queue tab, query persistence, no overflow or JS errors.',

@@ -1,3 +1,5 @@
+import { createOnboarding } from './onboarding.js';
+let onboarding = null;
 import { parseTabCommand, tabDomain, tabMatchesDomain } from './tab-command.js';
 import { initChat, refreshChatStatus } from './chat.js';
 import { startBackgroundHTML, startWaves } from './start-background.js';
@@ -120,6 +122,10 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
 let splashing = true,
   pendingShow = -1;
 function nativeShow(id) {
+  if (onboarding?.active) {
+    onboarding.layout();
+    return;
+  }
   if (isOverlayOpen() || S.cover > 0) id = -1;
   if (splashing) {
     pendingShow = id;
@@ -131,6 +137,8 @@ function nativeShow(id) {
 /* ---------- Zustand ---------- */
 const S = {
   hasKey: false,
+  googleSearch: false,
+  onboardingComplete: false,
   autoNextAlways: false,
   restore: false,
   gesture: true,
@@ -298,6 +306,10 @@ function openWeb(t, url) {
 }
 function openSearch(t, q, page = 0, opts = {}) {
   q = q.trim();
+  if (q && opts.provider !== 'spotify' && S.googleSearch) {
+    openWeb(t, 'https://www.google.com/search?q=' + encodeURIComponent(q));
+    return;
+  }
   if (!q && opts.provider !== 'spotify') return;
   if (t.id === S.active && !opts.preserveInput) $('#url').blur();
   if (t.mode === 'web' && t.native) t.under = true; // Webseite bleibt (verborgen) darunter, Zurück kehrt zu ihr zurück
@@ -593,6 +605,7 @@ async function restoreSession() {
 
 /* ---------- Ereignisse aus den nativen Tabs ---------- */
 api.onWeb((e) => {
+  if (onboarding?.handleWeb(e)) return;
   const t = tabById(e.tab);
   switch (e.t) {
     case 'state':
@@ -795,10 +808,10 @@ function startHTML() {
     </header>
     <form id="startForm" class="st-search" autocomplete="off">
       <svg class="st-si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="startQ" type="text" placeholder="Mit Luna Search suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
+      <input id="startQ" type="text" placeholder="Mit ${S.googleSearch ? 'Google' : 'Luna Search'} suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
       <kbd>⌘L</kbd><span class="st-glow"></span>
     </form>
-    <div class="st-status">${S.hasKey ? '<span class="pill ok"><i></i>Luna Search · bereit</span>' : '<button class="pill warn" data-act="settings"><i></i>Luna Search einrichten</button>'}</div>
+    <div class="st-status">${S.googleSearch ? '<span class="pill ok"><i></i>Google · bereit</span>' : S.hasKey ? '<span class="pill ok"><i></i>Luna Search · bereit</span>' : '<button class="pill warn" data-act="settings"><i></i>Luna Search einrichten</button>'}</div>
     <div class="st-quick">${QUICK.map((q, i) => `<button class="qa" data-act="cmd" data-cmd="${q[0]}" ${delay(i + 3)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${q[2]}</svg>${q[1]}</button>`).join('')}</div>
     <section id="widget-banner" hidden></section>
     <section class="st-sec"><h3>Lesezeichen</h3><div class="st-tiles">${bms.map((b, i) => `<button class="st-card tile" data-act="open-url" data-url="${esc(b.url)}" data-bm="${esc(b.url)}" title="${esc(b.title)} – Rechtsklick: bearbeiten oder löschen" ${delay(i + 6)}><span class="st-glare"></span><span class="tdel" role="button" aria-label="Lesezeichen löschen" data-act="bm-del" data-url="${esc(b.url)}">${ICON.x}</span><div class="big" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</div><span class="tt">${esc(b.title)}</span><span class="th">${esc(hostOf(b.url))}</span></button>`).join('')}<button class="st-card tile addtile" data-act="bm-add" ${delay(bms.length + 6)}><span class="st-glare"></span><div class="big plus">${ICON.plus}</div><span class="tt">Hinzufügen</span><span class="th">&nbsp;</span></button></div></section>
@@ -883,7 +896,11 @@ async function renderStart() {
     stopStartMotion();
     return;
   }
-  const sig = [S.hasKey, S.bookmarks.map((b) => b.url + '\u0001' + b.title).join('|')].join('#');
+  const sig = [
+    S.hasKey,
+    S.googleSearch,
+    S.bookmarks.map((b) => b.url + '\u0001' + b.title).join('|'),
+  ].join('#');
   if (!wasHidden && sig === startSig) return; // nichts geändert: Einblend-Animation nicht neu starten
   startSig = sig;
   el.innerHTML = startHTML();
@@ -974,6 +991,10 @@ let frameT;
 function updateFrame() {
   clearTimeout(frameT);
   frameT = setTimeout(() => {
+    if (onboarding?.active) {
+      onboarding.layout();
+      return;
+    }
     const r = $('#page').getBoundingClientRect();
     api.setFrame(Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height));
   }, 0);
@@ -988,6 +1009,10 @@ document.addEventListener('visibilitychange', () => {
 // Overlays (Menü, Vorschläge) müssen über der Seite liegen, native Ansichten liegen aber über der Oberfläche.
 // Lösung: kurz ein Foto der Seite zeigen und die native Ansicht verbergen.
 async function cover(on) {
+  if (onboarding?.active) {
+    onboarding.suspend(on);
+    return;
+  }
   if (on) {
     S.cover++;
     if (S.cover !== 1) return;
@@ -1111,7 +1136,9 @@ async function openSugg(q) {
       sub:
         /^[^\s]+\.[a-z]{2,}/i.test(text) || /:\/\//.test(text)
           ? 'Öffnen'
-          : 'Mit Luna Search suchen',
+          : S.googleSearch
+            ? 'Mit Google suchen'
+            : 'Mit Luna Search suchen',
       url: text,
     },
   ];
@@ -1887,6 +1914,7 @@ async function toggleBookmark() {
   renderSide();
 }
 async function runCmd(c) {
+  if (onboarding?.active) return;
   const t = cur();
   switch (c) {
     case 'new-tab':
@@ -2353,6 +2381,14 @@ document.addEventListener('click', async (ev) => {
       }
       if (d.s === 'mcp') refreshMCPStatus();
       break;
+    case 'setup':
+      onboarding.start().catch((e) => toast(String(e)));
+      break;
+    case 'search-provider':
+      await api.setPref('googleSearch', d.provider === 'google');
+      S.googleSearch = d.provider === 'google';
+      renderAll();
+      break;
     case 'open-brave':
       newTab('https://brave.com/search/api/');
       break;
@@ -2397,6 +2433,7 @@ document.addEventListener('mousedown', (ev) => {
   if (menuOpen && !ev.target.closest('#menu, #bMenu')) closeMenu();
 });
 document.addEventListener('keydown', (ev) => {
+  if (onboarding?.active) return;
   if (bmDlg) {
     if (ev.key === 'Escape') {
       ev.preventDefault();
@@ -2475,6 +2512,20 @@ function dismissSplash() {
   return splashDismissal;
 }
 
+onboarding = createOnboarding({
+  async refreshSearch() {
+    S.hasKey = await api.keyStatus();
+    S.googleSearch = !!(await api.prefs()).googleSearch;
+  },
+  onFinish() {
+    refreshChatStatus();
+    const t = cur();
+    if (t?.native && t.mode === 'web') nativeShow(t.id);
+    else nativeShow(-1);
+    renderAll();
+  },
+});
+
 /* ---------- Start ---------- */
 (async function init() {
   applyTheme(themeMode());
@@ -2488,6 +2539,8 @@ function dismissSplash() {
         await loadGestures();
         const p = await api.prefs();
         S.autoNextAlways = !!p.spotifyAutoNextAlways;
+        S.googleSearch = !!p.googleSearch;
+        S.onboardingComplete = !!p.onboardingComplete;
         return [
           await api.keyStatus(),
           !!p.restoreSession,
@@ -2532,11 +2585,12 @@ function dismissSplash() {
         updateFrame();
       },
     );
-    await step('Seite wird geladen …', 0.94, () => waitLoaded(cur()));
+    if (S.onboardingComplete) await step('Seite wird geladen …', 0.94, () => waitLoaded(cur()));
   } catch (e) {
     console.error(e);
   }
   await dismissSplash();
+  if (IS_NATIVE && !S.onboardingComplete) onboarding.start().catch((e) => toast(String(e)));
 })();
 
 document.addEventListener('change', (ev) => {

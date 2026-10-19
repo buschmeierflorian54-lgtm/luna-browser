@@ -159,3 +159,11 @@ func SetErrorPalette(palette string) {
 	defer C.free(unsafe.Pointer(c))
 	C.fmwSetErrorPalette(c)
 }
+
+func OnboardingClipboard(tab int, provider string) string {
+	c := C.CString(provider)
+	defer C.free(unsafe.Pointer(c))
+	result := C.fmwOnboardingClipboard(C.int(tab), c)
+	defer C.free(unsafe.Pointer(result))
+	return C.GoString(result)
+}
