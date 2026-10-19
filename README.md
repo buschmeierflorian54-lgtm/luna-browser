@@ -86,7 +86,8 @@ Das Skript lädt die aktuelle Version, prüft sie und installiert Luna in deinen
 Programme-Ordner, ganz ohne Administrator-Passwort.
 
 > **Gut zu wissen:** Luna ist noch nicht von Apple notarisiert. Falls macOS den ersten Start blockiert,
-> erlaubst du ihn unter *Systemeinstellungen → Datenschutz & Sicherheit*. Danach bleibt Luna von selbst
+> erlaubst du ihn unter *Systemeinstellungen → Datenschutz & Sicherheit*. Hilft das nicht, steht
+> [weiter unten](#luna-startet-nicht) ein Terminal-Befehl dafür. Danach bleibt Luna von selbst
 > aktuell: Updates kommen signiert direkt in der App an.
 
 ## Beim ersten Start
@@ -102,7 +103,30 @@ Einstellungen ändern.
 - Dienste wie Brave-Suche, Spotify oder die Chat-Anbieter bekommen nur, was du ihnen schickst.
 - Der KI-Zugriff für andere Apps ist standardmäßig aus.
 
-## Neugierig geworden, wie Luna gebaut ist?
+## Neugierig geworden?
+
+<a id="luna-startet-nicht"></a>
+
+### Luna startet nicht? Der Gatekeeper-Befehl
+
+Weil Luna noch nicht von Apple notarisiert ist, markiert macOS die heruntergeladene App als
+„unbekannt“ und blockiert manchmal den ersten Start. Mit diesem Befehl im Terminal nimmst du Luna
+die Download-Markierung ab (nur für Apps, denen du vertraust, und nur für diese eine App):
+
+```sh
+xattr -dr com.apple.quarantine "/Applications/Luna Browser.app"
+```
+
+Lag Luna in `~/Applications` (so installiert es das Skript), nimm diesen Pfad:
+
+```sh
+xattr -dr com.apple.quarantine "$HOME/Applications/Luna Browser.app"
+```
+
+Danach lässt sich Luna ganz normal öffnen. Die Gatekeeper-Prüfung deines Macs bleibt für alle
+anderen Apps unverändert.
+
+### Wie Luna gebaut ist
 
 Luna entsteht mit Go, [Wails](https://wails.io) und einem nativen WebKit-Kern.
 Alles Technische, vom Bauen bis zum Veröffentlichen, steht in der
