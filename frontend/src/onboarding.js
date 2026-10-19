@@ -101,12 +101,12 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         step === 0 && configured.google
           ? `<p>Google funktioniert ohne Brave-Key. Deine Suchbegriffe werden an Google gesendet.</p>${btn('next', 'Mit Google weiter →', 'setup-primary')}`
           : `
-      ${step === 1 ? `<div class="setup-spotify-guide"><h2>So verbindest du Spotify</h2><ol><li><b>Dashboard öffnen.</b> Melde dich mit deinem Spotify-Konto an und wähle „Create app“.</li><li><b>App anlegen.</b> Gib ihr einen Namen, zum Beispiel „Meine Luna“, und eine kurze Beschreibung. Wähle „Web API“, falls Spotify nach der verwendeten API fragt.</li><li><b>Rücksprungadresse eintragen.</b> Hinterlege unter „Redirect URIs“ genau <code>http://127.0.0.1:8888/callback</code> und speichere die App. Dorthin kehrt Spotify nach deiner Zustimmung zurück.</li><li><b>Client ID kopieren.</b> Du findest sie in den App-Einstellungen. Sie identifiziert deine App. Füge sie unten ein und bestätige sie. Luna benötigt kein Client Secret.</li><li><b>Konto verknüpfen.</b> Klicke danach auf „Spotify-Konto verknüpfen“ und bestätige bei Spotify die angezeigten Berechtigungen. Nach erfolgreicher Anmeldung geht Luna automatisch weiter.</li></ol><p class="setup-note">Spotify ist freiwillig. Für die Wiedergabe muss die Spotify-App auf diesem Mac installiert sein. Spotify kann je nach Konto und Entwicklungsmodus weitere Voraussetzungen verlangen.</p></div>` : ''}
+      ${step === 1 ? `<div class="setup-spotify-guide"><h2>So verbindest du Spotify</h2><ol><li><b>Dashboard öffnen.</b> Melde dich mit deinem Spotify-Konto an und wähle „Create app“.</li><li><b>App anlegen.</b> Gib ihr einen Namen, zum Beispiel „Meine Luna“, und eine kurze Beschreibung. Wähle „Web API“, falls Spotify nach der verwendeten API fragt.</li><li><b>Rücksprungadresse eintragen.</b> Hinterlege unter „Redirect URIs“ genau <code>http://127.0.0.1:8888/callback</code> und speichere die App. Dorthin kehrt Spotify nach deiner Zustimmung zurück.</li><li><b>Client ID kopieren.</b> Du findest sie in den App-Einstellungen. Sie identifiziert deine App. Füge sie unten ein und bestätige sie. Luna benötigt kein Client Secret.</li><li><b>Konto verknüpfen.</b> Klicke auf „Speichern & weiter“ und bestätige bei Spotify die angezeigten Berechtigungen. Nach erfolgreicher Anmeldung geht Luna automatisch weiter.</li></ol><p class="setup-note">Spotify ist freiwillig. Für die Wiedergabe muss die Spotify-App auf diesem Mac installiert sein. Spotify kann je nach Konto und Entwicklungsmodus weitere Voraussetzungen verlangen.</p></div>` : ''}
       ${configured[s.id] || saved ? `<p class="setup-saved">✓ ${step === 1 ? 'Client ID' : 'Key'} ist gespeichert${step === 1 && connected ? ' · Konto verbunden' : ''}.</p>` : ''}
       <div class="setup-actions">${view === 'form' ? btn('portal', tabs.has(s.id) ? 'Anbieterseite wieder anzeigen' : `${esc(s.name)} öffnen & ${step === 1 ? 'Client ID' : 'Key'} holen`) : ''}${step !== 0 ? btn('skip', 'Überspringen', 'setup-quiet') : ''}</div>
-      <form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' ? 'Fertig' : 'Speichern & weiter'}</button></div></form>
+      <form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' && step !== 1 ? 'Fertig' : 'Speichern & weiter'}</button></div></form>
       ${copied && view === 'form' ? btn('notdone', 'Hey, ich war noch nicht fertig', 'setup-quiet') : ''}
-      ${step === 1 && (configured.spotify || saved) ? `<div class="setup-actions">${btn('connect', connected ? 'Konto erneut verbinden' : 'Spotify-Konto verknüpfen', 'setup-primary')}${btn('next', 'Weiter →')}</div><p data-connection class="setup-note">${connected ? 'Dein Konto ist verbunden.' : 'Die Anmeldung öffnet sich ebenfalls hier in Luna. Alternativ später verbinden.'}</p>` : configured[s.id] || saved ? btn('next', 'Weiter →', 'setup-primary') : ''}
+      ${step !== 1 && (configured[s.id] || saved) ? btn('next', 'Weiter →', 'setup-primary') : ''}
       ${step === 0 && !configured.google ? '<p class="setup-note">Keinen Brave-Key? Wähle oben Google – damit geht es sofort weiter.</p>' : ''}`
       }
       <p class="setup-note">Nur neue Kopien auf der geöffneten Key-Seite werden ins Feld übernommen. Gespeichert wird erst mit deinem Klick oder Enter.</p>`
@@ -241,7 +241,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     const input = root.querySelector('#setupKey'),
       key = input.value.trim(),
       s = service();
-    if (!key) {
+    if (!key && !(s.id === 'spotify' && configured.spotify)) {
       message('Bitte füge zuerst deinen Key ein.');
       input.focus();
       return;
@@ -255,7 +255,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         configured.google = false;
         await refreshSearch();
       } else if (s.id === 'spotify') {
-        await api.spotifyAPIConfigure(key);
+        if (key) await api.spotifyAPIConfigure(key);
         connected = !!(await api.spotifyAPIStatus()).connected;
       } else await api.chatProviderKey(s.id, key);
       input.value = '';
@@ -272,6 +272,13 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       }
       generation++;
       render();
+      if (s.id === 'spotify') {
+        await openPortal(true);
+        await api.onboardingSpotifyConnect(currentID);
+        linkingSpotify = true;
+        message('Bestätige die Anmeldung links bei Spotify. Danach geht Luna automatisch weiter.');
+        return;
+      }
       message(
         s.id === 'brave'
           ? 'Gespeichert. Luna Search ist ausgewählt.'
@@ -285,7 +292,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       busy = false;
       for (const b of root?.querySelectorAll('button') || []) b.disabled = false;
       const submit = root?.querySelector('[type=submit]');
-      if (submit) submit.textContent = 'Speichern ↵';
+      if (submit) submit.textContent = view === 'split' && step !== 1 ? 'Fertig' : 'Speichern & weiter';
       const field = root?.querySelector('#setupKey');
       if (field) field.disabled = false;
     }
@@ -309,13 +316,6 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       await api.setPref('googleSearch', configured.google);
       await refreshSearch();
       render();
-      return;
-    }
-    if (action === 'connect') {
-      await openPortal(true);
-      await api.onboardingSpotifyConnect(currentID);
-      linkingSpotify = true;
-      message('Schließe die Spotify-Anmeldung links ab.');
       return;
     }
     if (action === 'next' && service() && drafts.get(service().id)?.trim()) {

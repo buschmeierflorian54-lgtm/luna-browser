@@ -127,7 +127,7 @@ test('Spotify login remains inside Luna and detects account connection', async (
   await page.locator('#setupKey').fill('client-id-test');
   await page.locator('#setupKey').press('Enter');
   await expect(page.locator('#setupKey')).toHaveValue('');
-  await page.getByRole('button', { name: 'Spotify-Konto verknüpfen' }).click();
+  await expect(page.getByRole('button', {name: /Konto erneut verbinden|Spotify-Konto verknüpfen|Weiter →/})).toHaveCount(0);
   await expect(page.locator('.setup.split')).toBeVisible();
   await page.screenshot({ path: '/tmp/luna-setup-split.png', animations: 'disabled' });
   expect(await page.evaluate(() => window.calls.some((c) => c[0] === 'connect'))).toBe(true);
