@@ -9,7 +9,7 @@ Browser mit wählbaren Farbthemes. Jede Seite rendert in einem **nativen WKWebVi
 
 ```
 wails dev      # Entwicklung
-wails build    # Release (build/bin/browser-mac.app)
+wails build    # Release (build/bin/Luna Browser.app)
 go test ./internal/...
 ```
 
@@ -163,7 +163,7 @@ npm run check                  # Formatprüfung, Oberflächentests und Vite-Buil
 
 Die Tests starten ihren Vite-Server selbst auf `127.0.0.1:5174`; dieser Port muss frei sein.
 Im Projektstamm prüft `go test ./...` das Backend. `wails build` erzeugt anschließend
-die App unter `build/bin/browser-mac.app`.
+die App unter `build/bin/Luna Browser.app`.
 
 Neue Funktionen möglichst in einem eigenen Fachmodul halten und über explizite
 Callbacks an den Browser anbinden. Keine Rückimporte aus Fachmodulen in `main.js`.
@@ -237,7 +237,7 @@ Sira verwendet keine nativen Foundation-Models-Tools und keine strukturierte Gen
 
 Normale Antworten sind weiterhin möglich (Präfix `ANTWORT:` schützt numerische Antworten vor Verwechslung mit Toolnummern). Der technische Dialog bleibt im normalen Chat verborgen und steht nach dem fertigen Aufruf mit Anfrage und Ergebnis unter Werkzeugdetails. Neue Antworten speichern ihre Modellherkunft und tragen bei Apple Intelligence die Kennzeichnung Sira · Apple Intelligence · lokal.
 
-Optionaler nativer Integrationstest (keine echten Browseraktionen, Test-Dispatcher): `LUNA_TEST_APPLE_HELPER="$PWD/build/bin/browser-mac.app/Contents/MacOS/luna-apple-model" go test ./internal/chat -run TestAppleNative -v`.
+Optionaler nativer Integrationstest (keine echten Browseraktionen, Test-Dispatcher): `LUNA_TEST_APPLE_HELPER="$PWD/build/bin/Luna Browser.app/Contents/MacOS/luna-apple-model" go test ./internal/chat -run TestAppleNative -v`.
 
 ## Automatische Updates
 

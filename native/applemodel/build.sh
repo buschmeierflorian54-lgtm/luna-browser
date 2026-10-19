@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 cd "$(dirname "$0")/../.."
-app="build/bin/browser-mac.app"
+app="build/bin/Luna Browser.app"
 sh scripts/setup-sparkle.sh
 mkdir -p "$app/Contents/Frameworks"
 ditto build/sparkle/Sparkle.framework "$app/Contents/Frameworks/Sparkle.framework"

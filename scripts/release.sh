@@ -4,7 +4,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 repo=buschmeierflorian54-lgtm/luna-browser
-app=build/bin/browser-mac.app
+app="build/bin/Luna Browser.app"
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
 case "$version" in ''|*[!0-9.]*) echo 'Invalid version' >&2; exit 1;; esac
 if [ -n "$(git status --porcelain)" ]; then echo 'Commit the source before publishing.' >&2; exit 1; fi

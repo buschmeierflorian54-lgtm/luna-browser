@@ -8,7 +8,7 @@ major=$(sw_vers -productVersion | cut -d. -f1)
 [[ $major -ge 13 ]] || fail 'macOS 13 oder neuer erforderlich.'
 mode=${1:-install}
 [[ $mode == install || $mode == --verify-only ]] || fail 'Unbekannte Option.'
-if [[ $mode == install ]] && pgrep -x browser-mac >/dev/null; then fail 'Bitte Luna vollständig beenden und den Befehl erneut ausführen.'; fi
+if [[ $mode == install ]] && { pgrep -x 'Luna Browser' || pgrep -x browser-mac; } >/dev/null; then fail 'Bitte Luna vollständig beenden und den Befehl erneut ausführen.'; fi
 work=$(mktemp -d)
 mounted=false
 cleanup() { if $mounted; then hdiutil detach "$work/volume" -quiet || true; fi; rm -rf "$work"; }
@@ -30,20 +30,25 @@ actual=$(shasum -a 256 "$work/$asset" | awk '{print $1}')
 mkdir "$work/volume"
 hdiutil attach "$work/$asset" -readonly -nobrowse -mountpoint "$work/volume" -quiet
 mounted=true
-source_app="$work/volume/browser-mac.app"
+# Ältere Downloads heißen noch browser-mac.app; installiert wird immer „Luna Browser.app“.
+source_app="$work/volume/Luna Browser.app"
+[[ -d $source_app ]] || source_app="$work/volume/browser-mac.app"
 [[ $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$source_app/Contents/Info.plist") == com.wails.browser-mac ]] || fail 'Unerwartete App im Download.'
 codesign --verify --deep --strict "$source_app" || fail 'App-Signatur ungültig.'
 if [[ $mode == --verify-only ]]; then printf 'Download, Prüfsumme, DMG und App-Signatur erfolgreich geprüft. Nichts installiert.\n'; exit 0; fi
 mkdir -p "$HOME/Applications"
 stage=$(mktemp -d "$HOME/Applications/.luna-install.XXXXXX")
-if ! ditto "$source_app" "$stage/browser-mac.app"; then rm -rf "$stage"; fail 'App konnte nicht kopiert werden.'; fi
-destination="$HOME/Applications/browser-mac.app"
+if ! ditto "$source_app" "$stage/Luna Browser.app"; then rm -rf "$stage"; fail 'App konnte nicht kopiert werden.'; fi
+destination="$HOME/Applications/Luna Browser.app"
+legacy="$HOME/Applications/browser-mac.app"
 backup=''
+# Eine frühere Installation unter dem alten Namen wird gesichert und ersetzt.
+[[ -e $destination || ! -e $legacy ]] || mv "$legacy" "$destination"
 if [[ -e $destination ]]; then
  backup="$HOME/Applications/Luna-Backup-$(date +%Y%m%d-%H%M%S)-$$.app"
  mv "$destination" "$backup"
 fi
-if ! mv "$stage/browser-mac.app" "$destination"; then
+if ! mv "$stage/Luna Browser.app" "$destination"; then
  [[ -z $backup ]] || mv "$backup" "$destination"
  rm -rf "$stage"
  fail 'Installation fehlgeschlagen; vorherige Version wiederhergestellt.'

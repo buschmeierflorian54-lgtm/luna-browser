@@ -9,7 +9,7 @@ Richte Luna Browser als lokalen MCP-Server für mich in deiner KI-Anwendung ein.
       "args": [
         "--mcp"
       ],
-      "command": "/Applications/Luna Browser.app/Contents/MacOS/browser-mac"
+      "command": "/Applications/Luna Browser.app/Contents/MacOS/Luna Browser"
     }
   }
 }

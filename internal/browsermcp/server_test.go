@@ -139,7 +139,7 @@ func TestLifecycle(t *testing.T) {
 	}
 }
 func TestSetupDoesNotIncludeSecrets(t *testing.T) {
-	p := SetupPrompt("/Applications/Luna Browser.app/Contents/MacOS/browser-mac")
+	p := SetupPrompt("/Applications/Luna Browser.app/Contents/MacOS/Luna Browser")
 	if !strings.Contains(p, "--mcp") || strings.Contains(p, "{{CONFIG}}") || strings.Contains(p, "Bearer ") {
 		t.Fatal(p)
 	}
