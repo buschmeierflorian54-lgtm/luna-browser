@@ -12,5 +12,9 @@
   },
   "postBuildHooks": {
     "darwin/*": "sh ../../native/applemodel/build.sh"
+  },
+  "info": {
+    "productName": "Luna Browser",
+    "productVersion": "1.1.0"
   }
 }

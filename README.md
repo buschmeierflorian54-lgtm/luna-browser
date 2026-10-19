@@ -234,3 +234,7 @@ Sira verwendet keine nativen Foundation-Models-Tools und keine strukturierte Gen
 Normale Antworten sind weiterhin möglich (Präfix `ANTWORT:` schützt numerische Antworten vor Verwechslung mit Toolnummern). Der technische Dialog bleibt im normalen Chat verborgen und steht nach dem fertigen Aufruf mit Anfrage und Ergebnis unter Werkzeugdetails. Neue Antworten speichern ihre Modellherkunft und tragen bei Apple Intelligence die Kennzeichnung Sira · Apple Intelligence · lokal.
 
 Optionaler nativer Integrationstest (keine echten Browseraktionen, Test-Dispatcher): `LUNA_TEST_APPLE_HELPER="$PWD/build/bin/browser-mac.app/Contents/MacOS/luna-apple-model" go test ./internal/chat -run TestAppleNative -v`.
+
+## Automatische Updates
+
+Updates kommen über signierte GitHub Releases. Details und Release-Ablauf: [UPDATES.md](UPDATES.md).

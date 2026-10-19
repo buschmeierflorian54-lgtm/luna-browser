@@ -3,6 +3,7 @@ package main
 import (
 	"browser-mac/internal/browsermcp"
 	"browser-mac/internal/secret"
+	"browser-mac/internal/web"
 	"context"
 	"embed"
 	"fmt"
@@ -118,6 +119,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 239, G: 182, B: 213, A: 1},
 		AssetServer:      &assetserver.Options{Assets: assets},
 		OnStartup:        app.startup,
+		OnDomReady:       func(context.Context) { web.StartUpdates() },
 		OnShutdown:       app.shutdown,
 		Bind:             []interface{}{app},
 		Menu:             buildMenu(app),

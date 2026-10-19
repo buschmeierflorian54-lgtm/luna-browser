@@ -12,3 +12,7 @@ frontend/playwright-report/
 .env
 .env.*
 !.env.example
+
+# Downloaded update framework and release archives
+/build/sparkle/
+/build/releases/
