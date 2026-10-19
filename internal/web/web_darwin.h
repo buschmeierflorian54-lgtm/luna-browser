@@ -16,6 +16,7 @@ void fmwSetAppearance(int mode); // 0 System, 1 Hell, 2 Dunkel
 void fmwPlaySound(const void *bytes, int len);
 void fmwSetWriteSound(const void *bytes, int len);
 void fmwWriteSound(int on);
+int fmwAuthenticate(const char *reason);
 void fmwScreenshot(int id, int req); // Seite → Zwischenablage; Vorschau über goSnapshotDone
 void fmwConfigureGesture(const char *src, int on); // Mausgeste: Skript für jede Seite, Ein/Aus
 

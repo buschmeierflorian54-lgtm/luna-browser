@@ -35,6 +35,17 @@ type mcpBridge struct {
 
 func (a *App) MCPStatus() browsermcp.Status { return a.mcpServer.Status() }
 func (a *App) MCPConfigure(on bool) (browsermcp.Status, error) {
+	// Einschalten gibt der KI Zugriff auf den Browser: erst Touch ID (oder Passwort) des Mac-Nutzers.
+	// Der Zugangsschlüssel entsteht pro Installation zufällig beim ersten Einschalten.
+	if on && !a.mcpServer.Status().Enabled {
+		ok, err := web.Authenticate("Luna: KI-Zugriff (MCP) einschalten")
+		if err != nil {
+			return a.mcpServer.Status(), err
+		}
+		if !ok {
+			return a.mcpServer.Status(), errors.New("Bestätigung abgebrochen. MCP bleibt ausgeschaltet.")
+		}
+	}
 	err := a.mcpServer.Configure(on)
 	if err == nil && !on && a.chat != nil {
 		a.chat.CancelAll()

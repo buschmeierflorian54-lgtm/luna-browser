@@ -45,3 +45,7 @@ Farben: `browser_customize.color_theme` erlaubt ausschließlich `luna`, `lavende
 `browser_play_song` spielt einen Song direkt ab: `song` (Pflicht) und `artist` (optional). Das Tool erledigt Spotify-Suche, Trefferauswahl und Wiedergabe über AppleScript. Beispiel: `{"song":"lovely","artist":"Billie Eilish"}`. Es gibt den gewählten Titel nach erfolgreichem Wiedergabebefehl zurück.
 
 Die Werkzeuge liefern kompakte Einsatzregeln, Feldbeschreibungen und JSON-Beispiele direkt in `tools/list`. Beispiele sind Formathilfen: IDs und Inhalte müssen aus der echten Nutzeranfrage oder vorherigen Werkzeugergebnissen stammen. Nach `isError` keine Erfolgsmeldung; bei falschen Parametern gezielt korrigieren, bei Berechtigungsfehlern die Ursache nennen. Erfolgreiche schreibende Aktionen nicht wiederholen.
+
+## Zugriffsschutz
+
+Der Zugangsschlüssel entsteht pro Installation zufällig beim ersten Einschalten (`mcp-server.json`, 0600). Jeder Nutzer hat also seinen eigenen. Das **Einschalten** von MCP in den Einstellungen verlangt Touch ID oder das Mac-Passwort (`LocalAuthentication`). Ausschalten braucht keine Bestätigung. Ein echter WebAuthn-Passkey ist in einer ad-hoc signierten App nicht möglich.

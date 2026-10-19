@@ -1,5 +1,6 @@
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
+#import <LocalAuthentication/LocalAuthentication.h>
 #import <objc/runtime.h>
 #include <stdlib.h>
 #include <string.h>
@@ -613,4 +614,21 @@ char *fmwOnboardingClipboard(int tab, const char *provider, int previousCount) {
  };
  if (NSThread.isMainThread) read(); else dispatch_sync(dispatch_get_main_queue(), read);
  return strdup((result ?: @"{}").UTF8String);
+}
+
+// Touch ID (mit Passwort als Ersatz). Blockiert, bis der Nutzer entschieden hat; nicht vom Main-Thread aufrufen.
+// Rückgabe: 0 = bestätigt, 1 = abgelehnt/abgebrochen, 2 = auf diesem Mac nicht verfügbar.
+int fmwAuthenticate(const char *reason) {
+	NSString *why = [NSString stringWithUTF8String:reason];
+	LAContext *ctx = [LAContext new];
+	NSError *err = nil;
+	if (![ctx canEvaluatePolicy:LAPolicyDeviceOwnerAuthentication error:&err]) return 2;
+	dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+	__block int result = 1;
+	[ctx evaluatePolicy:LAPolicyDeviceOwnerAuthentication localizedReason:why reply:^(BOOL ok, NSError *e) {
+		result = ok ? 0 : 1;
+		dispatch_semaphore_signal(sem);
+	}];
+	dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+	return result;
 }

@@ -4,7 +4,7 @@ package web
 
 /*
 #cgo CFLAGS: -x objective-c -fobjc-arc
-#cgo LDFLAGS: -framework Cocoa -framework WebKit
+#cgo LDFLAGS: -framework Cocoa -framework WebKit -framework LocalAuthentication
 #include <stdlib.h>
 #include "web_darwin.h"
 */
@@ -126,6 +126,22 @@ func PlaySound(data []byte) {
 	}
 	C.fmwPlaySound(unsafe.Pointer(&data[0]), C.int(len(data)))
 }
+
+// Authenticate verlangt Touch ID oder das Mac-Passwort. Nur false, wenn der Nutzer ablehnt.
+// Ist auf dem Mac keine Geräteauthentifizierung eingerichtet, kommt ErrAuthUnavailable.
+func Authenticate(reason string) (bool, error) {
+	c := C.CString(reason)
+	defer C.free(unsafe.Pointer(c))
+	switch C.fmwAuthenticate(c) {
+	case 0:
+		return true, nil
+	case 2:
+		return false, ErrAuthUnavailable
+	}
+	return false, nil
+}
+
+var ErrAuthUnavailable = errors.New("Auf diesem Mac ist weder Touch ID noch ein Anmeldepasswort eingerichtet.")
 
 // SetWriteSound hinterlegt den Schreibton, der beim Zeichnen von Gesten in Schleife läuft.
 func SetWriteSound(data []byte) {
