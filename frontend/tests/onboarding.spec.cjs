@@ -38,7 +38,7 @@ async function setup(page, initial = {}) {
   );
   await page.goto('http://127.0.0.1:5174/__setup_test');
   await expect(page.locator('.setup')).toBeVisible();
-  await page.screenshot({ path: '/tmp/luna-setup-welcome.png', animations: 'disabled' });
+  if (!initial.liveAnimation) await page.screenshot({ path: '/tmp/luna-setup-welcome.png', animations: 'disabled' });
 }
 test('Brave clipboard metadata, Enter, recovery split and preserved provider', async ({ page }) => {
   await setup(page);
@@ -172,7 +172,7 @@ for (const [provider, step] of [['groq', 3]])
 test('S demonstration runs twice, then invitation disappears on drawing start', async ({
   page,
 }) => {
-  await setup(page, { prefs: { googleSearch: true }, resume: 2 });
+  await setup(page, { prefs: { googleSearch: true }, resume: 2, liveAnimation: true });
   const prompt = page.locator('.setup-practice-prompt');
   await expect(prompt).toBeHidden();
   expect(
