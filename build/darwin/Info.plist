@@ -17,6 +17,8 @@
         <string>{{.Info.ProductVersion}}</string>
         <key>CFBundleIconFile</key>
         <string>iconfile</string>
+        <key>LSApplicationCategoryType</key>
+        <string>public.app-category.productivity</string>
         <key>LSMinimumSystemVersion</key>
         <string>13.0</string>
         <key>SUFeedURL</key>
