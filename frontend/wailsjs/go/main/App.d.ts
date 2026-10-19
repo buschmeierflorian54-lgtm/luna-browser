@@ -74,6 +74,10 @@ export function MCPStatus():Promise<browsermcp.Status>;
 
 export function Notes():Promise<Array<store.Note>>;
 
+export function OnboardingClipboard(arg1:number,arg2:string):Promise<string>;
+
+export function OnboardingSpotifyConnect(arg1:number):Promise<void>;
+
 export function OpenFile(arg1:string,arg2:boolean):Promise<void>;
 
 export function Prefs():Promise<Record<string, boolean>>;
