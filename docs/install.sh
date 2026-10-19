@@ -40,17 +40,40 @@ codesign --verify --deep --strict "$source_app" || fail 'App-Signatur ungültig.
 if [[ $mode == --verify-only ]]; then printf 'Download, Prüfsumme, DMG und App-Signatur erfolgreich geprüft. Nichts installiert.\n'; exit 0; fi
 if [[ $mode == install ]]; then
  # Das Installationsfenster öffnen: Der Nutzer zieht Luna selbst in den Programme-Ordner.
+ # Danach nimmt dieses Skript der kopierten App die Download-Markierung ab, damit macOS sie ohne Schadsoftware-Meldung startet.
  mkdir -p "$HOME/Downloads"
  dmg="$HOME/Downloads/$asset"
+ new_version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$source_app/Contents/Info.plist")
  cp -f "$work/$asset" "$dmg" || fail 'Das Installationsabbild konnte nicht gespeichert werden.'
  hdiutil detach "$work/volume" -quiet || true
  mounted=false
  printf '\nLuna ist bereit. Es öffnen sich zwei Fenster:\n'
  printf '  1. der Ordner „Programme“\n  2. ein Fenster mit dem Luna-Symbol\n'
- printf 'Ziehe „Luna Browser“ aus dem Luna-Fenster in den Ordner „Programme“ und starte Luna danach von dort.\n'
+ printf 'Ziehe „Luna Browser“ aus dem Luna-Fenster in den Ordner „Programme“.\n'
+ printf 'Lass dieses Terminal-Fenster offen: Sobald Luna kopiert ist, räume ich auf und starte sie.\n'
  printf 'Ist schon eine ältere Luna installiert, beende sie vorher und wähle beim Ziehen „Ersetzen“.\n'
  open /Applications || true
  open "$dmg" || printf 'Bitte öffne die Datei %s per Doppelklick.\n' "$dmg"
+ target=''
+ tries=0
+ while [[ -z $target && $tries -lt 300 ]]; do
+  tries=$((tries + 1))
+  for candidate in "/Applications/Luna Browser.app" "$HOME/Applications/Luna Browser.app"; do
+   if [[ -x "$candidate/Contents/MacOS/Luna Browser" ]] \
+    && [[ $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$candidate/Contents/Info.plist" 2>/dev/null) == "$new_version" ]] \
+    && codesign --verify --deep --strict "$candidate" 2>/dev/null; then target=$candidate; break; fi
+  done
+  [[ -n $target ]] || sleep 2
+ done
+ if [[ -z $target ]]; then
+  printf '\nIch habe Luna nicht im Ordner „Programme“ gefunden. Ziehe sie hinein und führe danach diesen Befehl aus:\n'
+  printf '  xattr -dr com.apple.quarantine "/Applications/Luna Browser.app"\n'
+  exit 0
+ fi
+ xattr -dr com.apple.quarantine "$target" 2>/dev/null || true
+ hdiutil detach "/Volumes/Luna Browser" -quiet 2>/dev/null || true
+ printf '\nLuna ist installiert: %s\nViel Freude damit!\n' "$target"
+ open "$target" || true
  exit 0
 fi
 # Ziel: der Programme-Ordner des Macs. Ist er für dich nicht beschreibbar, nimmt Luna deinen persönlichen (~/Applications).

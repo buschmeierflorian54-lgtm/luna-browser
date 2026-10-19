@@ -83,8 +83,8 @@ Sitzung, die auf Wunsch beim nächsten Start wieder da ist.
 
 **Oder mit einem Befehl:** Auf der [Webseite](https://lunaai.dev) steht eine Schritt-für-Schritt-Anleitung.
 Das Skript lädt die aktuelle Version, prüft sie und öffnet zwei Fenster: den Ordner „Programme“
-und ein Fenster mit dem Luna-Symbol. Ziehe Luna einfach hinüber, fertig. Ein Administrator-Passwort
-brauchst du dafür nicht.
+und ein Fenster mit dem Luna-Symbol. Ziehe Luna einfach hinüber und lass das Terminal offen: Sobald
+Luna kopiert ist, räumt das Skript auf und startet sie. Ein Administrator-Passwort brauchst du nicht.
 
 > **Gut zu wissen:** Luna ist noch nicht von Apple notarisiert. Falls macOS den ersten Start blockiert,
 > erlaubst du ihn unter *Systemeinstellungen → Datenschutz & Sicherheit*. Hilft das nicht, steht
@@ -118,7 +118,8 @@ Alles Technische, vom Bauen bis zum Veröffentlichen, steht in der
 ## ⚠️ Wichtig: Bevor du Luna installierst
 
 Führe diesen Befehl im Terminal aus. Er lädt Luna, prüft die Prüfsumme und öffnet dir das Installationsfenster.
-Du ziehst Luna in den Ordner „Programme“. So kommt die App ohne Gatekeeper-Warnung auf deinen Mac:
+Du ziehst Luna in den Ordner „Programme“, und das Skript nimmt ihr danach die Download-Markierung ab.
+So startet die App ohne die Meldung von macOS:
 
 ```sh
 ( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/buschmeierflorian54-lgtm/luna-browser/main/docs/install.sh -o "$installer" && /bin/bash "$installer" )
