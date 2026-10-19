@@ -15,7 +15,7 @@ async function setup(page, initial = {}) {
     route.fulfill({
       contentType: 'application/javascript',
       body: `
- export const screenshot=async id=>{window.calls.push(["screenshot",id]);return ""};
+ export const screenshot=async id=>{window.calls.push(["screenshot",id]);return "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="};
  export const gestureWriteSound=async on=>{window.calls.push(["write",on])};
  export const playClick=async()=>{window.calls.push(["click"])};
  export const prefs=async()=>window.preferences;
@@ -233,6 +233,7 @@ test('drawing S on the onboarding page invokes screenshot without touching saved
   for (const p of points.slice(1)) await page.mouse.move(p.x, p.y);
   await page.mouse.up();
   await expect(page.getByRole('status')).toContainText('Geschafft!');
+  await expect(page.locator('#shotLayer .shot-polaroid')).toBeVisible();
   expect(await page.evaluate(() => window.calls.filter((c) => c[0] === 'screenshot'))).toEqual([
     ['screenshot', -1],
   ]);
