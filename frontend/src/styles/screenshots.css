@@ -7,27 +7,40 @@
 }
 .shot-flash {
   position: absolute;
-  background: #fff;
+  background: radial-gradient(circle at 50% 45%, #fff 0%, #fff 45%, rgba(255, 250, 235, 0.92) 100%);
   border-radius: 12px;
   opacity: 0;
 }
-.shot-img {
+/* Sofortbild: weißer Rahmen, unten breiter für die Beschriftung */
+.shot-polaroid {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background: #fbfaf6;
+  border-radius: 12px;
+  overflow: hidden;
+  transform-origin: 50% 60%;
+}
+.shot-polaroid img {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   object-fit: cover;
   object-position: top left;
-  border: 0;
-  box-sizing: border-box;
-  border-radius: 12px;
-  background: #fff;
-  outline: 0;
+  background: #1c1c1c;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
-.shot-label {
-  position: absolute;
-  text-align: center;
+.shot-caption {
+  flex: none;
+  display: grid;
+  place-items: center;
+  height: 34px;
+  color: #3b3a36;
   font:
-    800 12.5px Manrope,
-    sans-serif;
-  color: var(--ink);
-  opacity: 0;
-  text-shadow: 0 1px 8px color-mix(in srgb, var(--panel) 90%, transparent);
+    700 17px 'Bradley Hand',
+    'Segoe Script',
+    'Comic Sans MS',
+    cursive;
+  letter-spacing: 0.02em;
 }
