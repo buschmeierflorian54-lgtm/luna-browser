@@ -144,12 +144,6 @@
   position: relative;
   width: 118px;
   height: 118px;
-  animation: stFloat 6s ease-in-out infinite;
-}
-@keyframes stFloat {
-  50% {
-    transform: translateY(-9px);
-  }
 }
 .st-logo {
   position: relative;
