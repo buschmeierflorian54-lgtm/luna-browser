@@ -77,3 +77,52 @@ test('theme grows the address bar downward, applies themes live and closes', asy
   await expect(drop).toHaveCount(0, { timeout: 2000 });
   await expect(page.locator('#urlbox')).not.toHaveClass(/drop-open/);
 });
+
+test('commands can be switched on and off: green and red frames, off commands act like normal input', async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.locator('#url').fill('commands');
+  const cards = page.locator('#cmdPage .cmd-card');
+  const theme = cards.filter({ has: page.locator('[data-toggle="theme"]') });
+  await expect(theme).toHaveClass(/\bon\b/);
+  await expect(theme).toHaveCSS('border-top-color', 'rgb(47, 174, 107)');
+  await theme.locator('.cmd-switch').click();
+  await expect(theme).toHaveClass(/\boff\b/);
+  await expect(theme).toHaveCSS('border-top-color', 'rgb(224, 82, 77)');
+  await expect(theme.locator('.cmd-try')).toBeDisabled();
+  // Klick auf die Karte schaltet ebenfalls um
+  await theme.locator('h2').click();
+  await expect(theme).toHaveClass(/\bon\b/);
+  await theme.locator('h2').click();
+  await expect(theme).toHaveClass(/\boff\b/);
+  await page.screenshot({ path: '/tmp/luna-commands-toggle.png' });
+  await page.keyboard.press('Escape');
+  // „theme“ ist aus: es passiert nichts Besonderes mehr
+  await page.locator('#url').fill('theme');
+  await page.waitForTimeout(400);
+  await expect(page.locator('#themeDrop')).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem('luna-commands-off'))).toBe('["theme"]');
+});
+
+test('settings chapter Befehle lists all commands and toggles them', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('Meta+,');
+  await page.locator('#url').fill('einstellungen');
+  const settings = page.locator('#settingsView');
+  if (!(await settings.isVisible())) {
+    await page.getByRole('button', { name: 'Einstellungen öffnen' }).click();
+  }
+  await page.getByRole('button', { name: 'Befehle', exact: true }).click();
+  await expect(page.locator('.cmd-set-card')).toHaveCount(7);
+  await expect(page.locator('.cmd-count')).toHaveText('7 von 7 Befehlen aktiv');
+  await page.locator('.cmd-set-card[data-id="chat"]').click();
+  await expect(page.locator('.cmd-set-card[data-id="chat"]')).toHaveClass(/\boff\b/);
+  await expect(page.locator('.cmd-count')).toHaveText('6 von 7 Befehlen aktiv');
+  await page.getByRole('button', { name: 'Alle aus' }).click();
+  await expect(page.locator('.cmd-count')).toHaveText('0 von 7 Befehlen aktiv');
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: '/tmp/luna-commands-settings.png' });
+  await page.getByRole('button', { name: 'Alle an' }).click();
+  await expect(page.locator('.cmd-count')).toHaveText('7 von 7 Befehlen aktiv');
+});

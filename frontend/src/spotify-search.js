@@ -1,3 +1,4 @@
+import { commandOn } from './command-data.js';
 // Spotify-Suchmodus als Chip im Eingabefeld. Ergebnisse kommen aus der Spotify-API.
 const logo =
   '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><g fill="none" stroke="var(--card)" stroke-width="1.6" stroke-linecap="round"><path d="M6 9c4-1.4 8-1.1 12 1M7 12.5c3-1 6.8-.7 10 1M8 16c2.5-.7 5-.4 7.5.7"/></g></svg>';
@@ -6,7 +7,7 @@ export function spotifySearchURL(query) {
   return 'spotify-search:' + encodeURIComponent(query.trim());
 }
 export function spotifyCommand(input) {
-  return command.test(input) ? input.replace(command, '').trim() : null;
+  return commandOn('spotify') && command.test(input) ? input.replace(command, '').trim() : null;
 }
 export function bindSpotifySearch(input, navigate, onModeChange = () => {}, playSong = null) {
   if (!input || input._spotifySearch) return;
@@ -43,7 +44,7 @@ export function bindSpotifySearch(input, navigate, onModeChange = () => {}, play
           : originalPlaceholder;
   };
   const consumePlay = () => {
-    if (!playSong) return false;
+    if (!playSong || !commandOn('play')) return false;
     if (/^\s*play(?:\s|$)/i.test(input.value)) {
       input.value = input.value.replace(/^\s*play(?:\s+|$)/i, '');
       setMode('play');

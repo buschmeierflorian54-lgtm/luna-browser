@@ -279,3 +279,141 @@
   outline: 2px solid var(--acc);
   outline-offset: 3px;
 }
+
+/* ---------- Befehle ein- und ausschalten: grüner bzw. roter Rahmen, Schalter mit Zustand ---------- */
+:root {
+  --cmd-on: #2fae6b;
+  --cmd-off: #e0524d;
+}
+.cmd-card,
+.cmd-set-card {
+  cursor: pointer;
+  border-width: 2px;
+  transition:
+    transform 0.2s,
+    border-color 0.25s,
+    box-shadow 0.25s,
+    background 0.25s;
+}
+.cmd-card.on,
+.cmd-set-card.on {
+  border-color: var(--cmd-on);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cmd-on) 14%, transparent);
+}
+.cmd-card.off,
+.cmd-set-card.off {
+  border-color: var(--cmd-off);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--cmd-off) 12%, transparent);
+}
+.cmd-card:hover.on,
+.cmd-set-card:hover.on {
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--cmd-on) 26%, transparent);
+}
+.cmd-card:hover.off,
+.cmd-set-card:hover.off {
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--cmd-off) 22%, transparent);
+}
+.cmd-card.off > :not(.cmd-card-top):not(h2),
+.cmd-set-card.off > :not(.cmd-set-top) {
+  opacity: 0.5;
+}
+.cmd-card.off h2,
+.cmd-set-card.off b {
+  opacity: 0.75;
+}
+.cmd-card-top,
+.cmd-set-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cmd-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px 3px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cmd-off) 18%, var(--card));
+  color: var(--cmd-off);
+  font:
+    800 11.5px Manrope,
+    sans-serif;
+  cursor: pointer;
+  transition:
+    background 0.25s,
+    color 0.25s;
+}
+.cmd-switch i {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--cmd-off);
+  transition: background 0.25s;
+}
+.cmd-switch i::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  transition: transform 0.28s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.cmd-switch[aria-checked='true'] {
+  background: color-mix(in srgb, var(--cmd-on) 18%, var(--card));
+  color: var(--cmd-on);
+}
+.cmd-switch[aria-checked='true'] i {
+  background: var(--cmd-on);
+}
+.cmd-switch[aria-checked='true'] i::after {
+  transform: translateX(16px);
+}
+.cmd-switch:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+}
+.cmd-try:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* Einstellungen */
+.cmd-set-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 16px 0 14px;
+}
+.cmd-count {
+  font-weight: 700;
+  font-size: 13px;
+}
+.cmd-set-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+.cmd-set-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+}
+.cmd-set-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+}
+.cmd-set-card b {
+  font-size: 15px;
+}

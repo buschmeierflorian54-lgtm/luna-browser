@@ -2,72 +2,7 @@
 // Beide erscheinen sofort beim Tippen, ohne Enter, und übernehmen die Farben des gewählten Themes über CSS-Variablen.
 import { COLOR_THEMES, colorTheme, colorThemesHTML } from './color-themes.js';
 import { esc } from './ui.js';
-
-const COMMANDS = [
-  {
-    word: 'spotify',
-    title: 'Spotify durchsuchen',
-    text: 'Tippe spotify und danach einen Suchbegriff. Songs, Künstler und Alben erscheinen direkt in Luna.',
-    demo: 'spotify daft punk',
-    result: 'Top-Treffer · Songs · Künstler · Alben',
-    hint: 'Enter ist nicht nötig, die Suche startet von selbst.',
-    action: { fill: 'spotify ' },
-  },
-  {
-    word: 'play',
-    title: 'Song sofort abspielen',
-    text: 'play und ein Songname, dann Enter. Luna sucht den besten Treffer und übergibt ihn an die Spotify-App.',
-    demo: 'play bohemian rhapsody',
-    result: '▶ Wiedergabe an Spotify übergeben',
-    hint: 'Esc beendet den Play-Modus.',
-    action: { fill: 'play ' },
-  },
-  {
-    word: 'theme',
-    title: 'Farbwelt wählen',
-    text: 'Die Eingabeleiste wächst nach unten und zeigt alle Themes. Ein Klick färbt Luna sofort um.',
-    demo: 'theme',
-    result: 'swatches',
-    hint: 'Auch Hell, Dunkel und Auto lassen sich dort umschalten.',
-    action: { run: 'theme' },
-  },
-  {
-    word: 'chat',
-    title: 'Luna Chat öffnen',
-    text: 'Sobald du chat getippt hast, öffnet sich der Chat. Auch hier ohne Enter.',
-    demo: 'chat',
-    result: 'Luna Chat öffnet sich …',
-    hint: 'Frag Luna etwas oder lass sie den Browser bedienen.',
-    action: { run: 'chat' },
-  },
-  {
-    word: 'tab',
-    title: 'Tabs steuern',
-    text: 'tab list, tab open youtube.com, tab close, tab reload, tab zoom 120 oder tab close youtube.com. Mit Enter ausführen.',
-    demo: 'tab open youtube.com',
-    result: 'Neuer Tab · youtube.com',
-    hint: 'tab close youtube.com schließt alle Tabs dieser Seite.',
-    action: { fill: 'tab ' },
-  },
-  {
-    word: 'einstellungen',
-    title: 'Einstellungen öffnen',
-    text: 'Luna fragt kurz nach, ob du die Einstellungen öffnen möchtest, statt im Web zu suchen.',
-    demo: 'einstellungen',
-    result: 'Einstellungen öffnen?',
-    hint: 'Auch mit ⌘ , erreichbar.',
-    action: { run: 'einstellungen' },
-  },
-  {
-    word: 'google · youtube',
-    title: 'Direkt zu einer Seite',
-    text: 'Tippe google oder youtube und eine Sekunde später bist du dort. Weitertippen, etwa „google maps“, funktioniert weiter.',
-    demo: 'youtube',
-    result: 'youtube.com wird geöffnet',
-    hint: 'Eine kurze Tipp-Pause löst den Sprung aus.',
-    action: { run: 'youtube' },
-  },
-];
+import { COMMANDS, commandOn, commandSwitchHTML, setCommandOn } from './command-data.js';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -112,14 +47,14 @@ export function createCommandUI({ urlbox, page, cover, getMode, pickColor, pickM
     ).join('');
   }
   function cardHTML(c, i) {
-    return `<article class="cmd-card" style="--i:${i}" data-demo="${esc(c.demo)}" data-i="${i}">
-      <div class="cmd-word">${esc(c.word)}</div>
+    return `<article class="cmd-card ${commandOn(c.id) ? 'on' : 'off'}" style="--i:${i}" data-id="${c.id}" data-demo="${esc(c.demo)}" data-i="${i}">
+      <div class="cmd-card-top"><div class="cmd-word">${esc(c.word)}</div>${commandSwitchHTML(c)}</div>
       <h2>${esc(c.title)}</h2>
       <p>${esc(c.text)}</p>
       <button type="button" class="cmd-bar" data-replay aria-label="Demo erneut abspielen"><span class="cmd-prompt">›</span><span class="cmd-typed"></span><i class="cmd-caret"></i></button>
       <div class="cmd-result">${c.result === 'swatches' ? swatches() : esc(c.result)}</div>
       <small>${esc(c.hint)}</small>
-      <button type="button" class="cmd-try" data-try="${i}">Ausprobieren →</button>
+      <button type="button" class="cmd-try" data-try="${i}" ${commandOn(c.id) ? '' : 'disabled'}>Ausprobieren →</button>
     </article>`;
   }
   function placePage() {
@@ -146,6 +81,19 @@ export function createCommandUI({ urlbox, page, cover, getMode, pickColor, pickM
     pageObserver.observe(page);
     pageEl.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-close]')) return closePage();
+      const card = ev.target.closest('.cmd-card');
+      if (card && !ev.target.closest('[data-replay], [data-try], [data-close]')) {
+        const id = card.dataset.id;
+        setCommandOn(id, !commandOn(id));
+        const on = commandOn(id);
+        card.classList.toggle('on', on);
+        card.classList.toggle('off', !on);
+        const sw = card.querySelector('.cmd-switch');
+        sw.setAttribute('aria-checked', String(on));
+        sw.querySelector('.cmd-switch-label').textContent = on ? 'An' : 'Aus';
+        card.querySelector('[data-try]').disabled = !on;
+        return;
+      }
       const replay = ev.target.closest('[data-replay]');
       if (replay) {
         stopDemos();

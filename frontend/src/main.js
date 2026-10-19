@@ -1,6 +1,7 @@
 import { createOnboarding } from './onboarding.js';
 let onboarding = null;
 import { createCommandUI } from './command-ui.js';
+import { commandOn, setAllCommands, setCommandOn } from './command-data.js';
 import { parseTabCommand, tabDomain, tabMatchesDomain } from './tab-command.js';
 import { initChat, refreshChatStatus } from './chat.js';
 import { startBackgroundHTML, startWaves } from './start-background.js';
@@ -232,13 +233,13 @@ function visit(t, input, options = {}) {
     cmdUI.openPage();
     return;
   }
-  if (/^themes?$/i.test(String(input).trim())) {
+  if (commandOn('theme') && /^themes?$/i.test(String(input).trim())) {
     closeSugg();
     $('#url').blur();
     cmdUI.openDrop();
     return;
   }
-  if (/^chat:?$/i.test(String(input).trim())) {
+  if (/^chat:?$/i.test(String(input).trim()) && (commandOn('chat') || /:$/.test(String(input)))) {
     openChatPage(t);
     return;
   }
@@ -255,7 +256,7 @@ function visit(t, input, options = {}) {
     openSearch(t, spotifyQuery, 0, { provider: 'spotify', ...options });
     return;
   }
-  if (String(input).trim().toLowerCase() === 'einstellungen') {
+  if (commandOn('settings') && String(input).trim().toLowerCase() === 'einstellungen') {
     askSettings(t, input);
     return;
   }
@@ -1259,7 +1260,7 @@ function armQuickSite(input, ev) {
   clearTimeout(quickT);
   if (ev && ev.inputType && !ev.inputType.startsWith('insert')) return;
   const key = input.value.trim().toLowerCase();
-  if (key === 'chat' && !ev?.isComposing) {
+  if (key === 'chat' && commandOn('chat') && !ev?.isComposing) {
     closeSugg();
     input.blur();
     visit(cur(), 'chat:');
@@ -1271,14 +1272,14 @@ function armQuickSite(input, ev) {
     cmdUI.openPage();
     return;
   }
-  if (/^themes?$/.test(key) && !ev?.isComposing) {
+  if (/^themes?$/.test(key) && commandOn('theme') && !ev?.isComposing) {
     closeSugg();
     input.blur();
     cmdUI.openDrop();
     return;
   }
-  const target = QUICK_SITES[key];
-  if (!target && key !== 'einstellungen') return;
+  const target = commandOn('sites') ? QUICK_SITES[key] : undefined;
+  if (!target && !(key === 'einstellungen' && commandOn('settings'))) return;
   quickT = setTimeout(() => {
     if (input.value.trim().toLowerCase() !== key) return;
     if (key === 'einstellungen') {
@@ -1294,7 +1295,7 @@ function armQuickSite(input, ev) {
 document.addEventListener(
   'input',
   (ev) => {
-    if (ev.target !== url || !/^\s*tab(?:\s|$)/i.test(url.value)) return;
+    if (ev.target !== url || !commandOn('tab') || !/^\s*tab(?:\s|$)/i.test(url.value)) return;
     url._spotifySearch?.setMode(false);
     clearTimeout(quickT);
     closeSugg();
@@ -1309,6 +1310,7 @@ document.addEventListener(
       ev.target !== url ||
       ev.key !== 'Enter' ||
       ev.isComposing ||
+      !commandOn('tab') ||
       !/^\s*tab(?:\s|$)/i.test(url.value)
     )
       return;
@@ -2324,6 +2326,32 @@ document.addEventListener('click', async (ev) => {
       renderSettingsView();
       break;
     }
+    case 'cmd-toggle': {
+      setCommandOn(d.id, !commandOn(d.id));
+      // direkt am Element umschalten, damit die Seite nicht neu einblendet
+      const on = commandOn(d.id),
+        card = document.querySelector(`.cmd-set-card[data-id="${d.id}"]`);
+      if (!card) {
+        renderSettingsView();
+        break;
+      }
+      card.classList.toggle('on', on);
+      card.classList.toggle('off', !on);
+      const sw = card.querySelector('.cmd-switch');
+      sw.setAttribute('aria-checked', String(on));
+      sw.querySelector('.cmd-switch-label').textContent = on ? 'An' : 'Aus';
+      const total = document.querySelectorAll('.cmd-set-card').length;
+      $('.cmd-count').textContent =
+        `${document.querySelectorAll('.cmd-set-card.on').length} von ${total} Befehlen aktiv`;
+      break;
+    }
+    case 'cmd-all':
+      setAllCommands(d.on === '1');
+      renderSettingsView();
+      break;
+    case 'cmd-page':
+      cmdUI.openPage();
+      break;
     case 'color-theme':
       localStorage.removeItem(MCP_COLORS);
       clearLegacyMCPColors();

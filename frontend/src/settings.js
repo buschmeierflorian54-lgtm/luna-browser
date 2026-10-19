@@ -3,6 +3,7 @@ import { gesturesHTML } from './gestures.js';
 import * as api from './api.js';
 import { $, esc, hueOf, initial, shownUrl } from './ui.js';
 import { colorThemesHTML } from './color-themes.js';
+import { commandSettingsHTML } from './command-data.js';
 import { settingsWordmark } from './branding.js';
 import { mcpSettingsHTML } from './mcp-view.js';
 import { sonosSettingsHTML, updateSonosSettings } from './sonos-view.js';
@@ -102,6 +103,7 @@ export function createSettings({
     ['panels', 'Seitenpanel'],
     ['start', 'Start'],
     ['gestures', 'Mausgesten'],
+    ['commands', 'Befehle'],
     ['search', 'Suche'],
     ['spotify', 'Spotify'],
     ['mcp', 'KI & MCP'],
@@ -162,6 +164,7 @@ export function createSettings({
           <button class="switch ${S.restore ? 'on' : ''}" role="switch" aria-checked="${S.restore}" aria-label="Zuletzt geöffnete Seiten merken" data-act="pref-restore"><i></i></button></div>
       </section>
       ${gesturesHTML(S.gesture)}
+      ${commandSettingsHTML()}
       <section id="set-search" class="sp-card"><h2>Deine Suche</h2>
         <p class="muted">Luna Search braucht einen Brave-Key. Google funktioniert ohne Key.</p>
         <div class="row"><button class="btn ${!S.googleSearch ? 'pri' : ''}" data-act="search-provider" data-provider="luna">Luna Search</button><button class="btn ${S.googleSearch ? 'pri' : ''}" data-act="search-provider" data-provider="google">Google</button></div>
