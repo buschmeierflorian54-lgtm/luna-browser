@@ -75,14 +75,53 @@ static WKWebViewConfiguration *sharedConfig(void) {
 }
 
 static NSString *errorHTML(NSError *e, NSURL *u) {
-	NSString *url = u.absoluteString ?: @"";
-	NSString *msg = e.localizedDescription ?: @"Unbekannter Fehler";
-	NSString *(^esc)(NSString *) = ^NSString *(NSString *s) {
-		s = [s stringByReplacingOccurrencesOfString:@"&" withString:@"&amp;"];
-		s = [s stringByReplacingOccurrencesOfString:@"<" withString:@"&lt;"];
-		return [s stringByReplacingOccurrencesOfString:@">" withString:@"&gt;"];
-	};
-	return [NSString stringWithFormat:@"<!doctype html><meta charset=utf-8><title>Seite nicht erreichbar</title><style>body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:#fbf2f7;color:#3a2433;font:14px -apple-system,system-ui,sans-serif;text-align:center}h1{margin:0;font-size:20px}p{margin:0;color:#6f5264;max-width:460px;line-height:1.5}a{margin-top:14px;padding:10px 18px;border-radius:12px;background:#3a2433;color:#fbeef6;text-decoration:none;font-weight:700}@media (prefers-color-scheme:dark){body{background:#1c1119;color:#fbeef6}p{color:#b99dae}a{background:#fbeef6;color:#2a1621}}</style><h1>Seite kann nicht geöffnet werden</h1><p>%@</p><p style=\"font-size:12px\">%@</p><a href=\"%@\">Erneut versuchen</a>", esc(msg), esc(url), esc(url)];
+ NSString *title = @"Diese Seite ist gerade nicht erreichbar.";
+ NSString *reason = @"Luna konnte die Seite nicht laden. Die Verbindung wurde unterbrochen oder die Website antwortet gerade nicht.";
+ NSString *hint = @"Versuche es in einem Moment noch einmal.";
+ if ([e.domain isEqualToString:NSURLErrorDomain]) {
+  switch (e.code) {
+   case NSURLErrorServerCertificateHasBadDate:
+   case NSURLErrorServerCertificateUntrusted:
+   case NSURLErrorServerCertificateHasUnknownRoot:
+   case NSURLErrorServerCertificateNotYetValid:
+   case NSURLErrorSecureConnectionFailed:
+    title = @"Luna fühlt sich auf dieser Seite nicht wohl.";
+    reason = @"Luna kann die Identität dieser Website nicht sicher bestätigen. Das Sicherheitszertifikat ist möglicherweise abgelaufen, noch nicht gültig, nicht vertrauenswürdig oder gehört zu einer anderen Adresse. Auch eine gestörte verschlüsselte Verbindung kann die Ursache sein.";
+    hint = @"Deshalb hat Luna die Seite nicht geöffnet. Prüfe die Adresse sowie Datum und Uhrzeit deines Macs. Bei einer neu eingerichteten Website ist das Zertifikat eventuell noch nicht bereit. Versuche es später erneut.";
+    break;
+   case NSURLErrorClientCertificateRejected:
+   case NSURLErrorClientCertificateRequired:
+    title = @"Luna fühlt sich auf dieser Seite nicht wohl.";
+    reason = @"Diese Website verlangt ein persönliches Zugangs-Zertifikat. Es fehlt oder wurde vom Server abgelehnt.";
+    hint = @"Wende dich an den Betreiber der Website, wenn du Zugang benötigst.";
+    break;
+   case NSURLErrorNotConnectedToInternet:
+    reason = @"Dein Mac scheint gerade nicht mit dem Internet verbunden zu sein.";
+    hint = @"Prüfe dein WLAN oder deine Netzwerkverbindung und versuche es erneut.";
+    break;
+   case NSURLErrorCannotFindHost:
+   case NSURLErrorDNSLookupFailed:
+    reason = @"Die Adresse dieser Website konnte nicht gefunden werden. Sie ist möglicherweise falsch geschrieben oder ihre DNS-Einträge sind noch nicht verfügbar.";
+    hint = @"Prüfe die Schreibweise. Wurde die Domain gerade eingerichtet, versuche es später erneut.";
+    break;
+   case NSURLErrorTimedOut:
+    reason = @"Die Website hat zu lange nicht geantwortet.";
+    hint = @"Der Server ist möglicherweise ausgelastet. Versuche es gleich noch einmal.";
+    break;
+   default: break;
+  }
+ }
+ NSString *(^esc)(NSString *) = ^NSString *(NSString *s) {
+  s = [(s ?: @"") stringByReplacingOccurrencesOfString:@"&" withString:@"&amp;"];
+  s = [s stringByReplacingOccurrencesOfString:@"<" withString:@"&lt;"];
+  s = [s stringByReplacingOccurrencesOfString:@">" withString:@"&gt;"];
+  return [s stringByReplacingOccurrencesOfString:@"\"" withString:@"&quot;"];
+ };
+ NSString *scheme = u.scheme.lowercaseString;
+ NSString *retry = ([scheme isEqualToString:@"https"] || [scheme isEqualToString:@"http"]) ? [NSString stringWithFormat:@"<a href=\"%@\">Erneut versuchen</a>", esc(u.absoluteString)] : @"";
+ return [NSString stringWithFormat:@"<!doctype html><html lang=de><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>%@</title><style>"
+ @":root{color-scheme:light dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px;background:#fbf2f7;color:#3a2433;font:16px -apple-system,system-ui,sans-serif}main{width:min(100%%,620px)}.mark{font-size:14px;letter-spacing:3px;font-weight:700;color:#896578;margin-bottom:32px}svg{width:52px;height:52px;margin-bottom:22px;color:#a7778e}h1{font-size:clamp(28px,5vw,42px);line-height:1.15;letter-spacing:-1px;margin:0 0 24px}p{line-height:1.65;color:#6f5264}.host{font-size:13px;overflow-wrap:anywhere}a{display:inline-block;margin-top:16px;padding:13px 21px;border-radius:24px;background:#3a2433;color:#fbeef6;text-decoration:none;font-weight:600}a:focus-visible,summary:focus-visible{outline:3px solid #a7778e;outline-offset:4px}details{margin-top:30px;color:#6f5264;font-size:13px}summary{cursor:pointer}details p{overflow-wrap:anywhere}@media(prefers-color-scheme:dark){body{background:#1c151b;color:#fbeef6}p,details{color:#bfa8b6}a{background:#edcedf;color:#2a1621}}"
+ @"</style><main><div class=mark>LUNA BROWSER</div><svg aria-hidden=true viewBox=\"0 0 48 48\" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d=\"M24 4 7 11v12c0 10 17 21 17 21s17-11 17-21V11Z\"/><path d=\"M24 14v12m0 7h.01\"/></svg><div class=host>%@</div><h1>%@</h1><p>%@</p><p>%@</p>%@<details><summary>Technische Details</summary><p>%@ (%@ · %ld)</p></details></main></html>", esc(title), esc(u.host), esc(title), esc(reason), esc(hint), retry, esc(e.localizedDescription), esc(e.domain), (long)e.code];
 }
 
 @interface FMTab : NSObject <WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate>
