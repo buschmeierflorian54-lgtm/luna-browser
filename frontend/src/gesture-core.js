@@ -220,6 +220,7 @@
     var onCircle = opts.onCircle || function () {};
     var onLetter = opts.onLetter;
     var onS = opts.onS || function () {};
+    var onDraw = opts.onDraw || function () {};
     var enabled =
       opts.enabled ||
       function () {
@@ -234,7 +235,19 @@
       ctx = null,
       raf = 0,
       fade = null,
-      shotTimer = 0;
+      shotTimer = 0,
+      drawing = false;
+
+    // Meldet Anfang und Ende des Zeichnens (für den Schreibton).
+    function setDrawing(on) {
+      if (drawing === on) return;
+      drawing = on;
+      try {
+        onDraw(on);
+      } catch (x) {
+        /* Handler darf die Seite nie stören */
+      }
+    }
 
     function skip(el) {
       if (!el || !el.closest) return false;
@@ -518,6 +531,7 @@
 
     /* ---------- Ereignisse ---------- */
     function end() {
+      setDrawing(false);
       var had = pts && pts.length > 1;
       if (pts && !fired && pts.length >= 18 && enabled()) {
         // beim Loslassen: war es ein S?
@@ -595,6 +609,7 @@
       if (pts.length > 400) pts.shift();
       if (fired) return;
       if (pts.length > 10) {
+        setDrawing(true);
         ensureCanvas();
         drawTrail(1, null);
       } // erst bei echter Bewegung: einfache Klicks bleiben unberührt
@@ -642,6 +657,7 @@
       window.removeEventListener('blur', end);
       clearTimeout(shotTimer);
       shotTimer = 0;
+      setDrawing(false);
       removeCanvas();
     };
   };

@@ -1689,6 +1689,7 @@ function toggleNotes() {
 window.__fmCircle({
   target: $('#page'),
   enabled: () => S.gesture,
+  onDraw: (on) => api.gestureWriteSound(on),
   onLetter: (letter) => {
     if (cur()?.mode !== 'web') gestures.run(letter);
   },

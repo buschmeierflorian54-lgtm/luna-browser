@@ -86,6 +86,10 @@ export function GestureBindings() {
   return window['go']['main']['App']['GestureBindings']();
 }
 
+export function GestureWriteSound(arg1) {
+  return window['go']['main']['App']['GestureWriteSound'](arg1);
+}
+
 export function History(arg1, arg2) {
   return window['go']['main']['App']['History'](arg1, arg2);
 }
@@ -144,6 +148,10 @@ export function OnboardingSpotifyConnect(arg1) {
 
 export function OpenFile(arg1, arg2) {
   return window['go']['main']['App']['OpenFile'](arg1, arg2);
+}
+
+export function PlayClick() {
+  return window['go']['main']['App']['PlayClick']();
 }
 
 export function Prefs() {

@@ -26,6 +26,14 @@ var assets embed.FS
 //go:embed assets/shutter.mp3
 var shutterSound []byte
 
+// Schreibton (läuft in Schleife, solange eine Geste gezeichnet wird) und Klickton der Maus-Demo im Setup.
+//
+//go:embed assets/write.mp3
+var writeSound []byte
+
+//go:embed assets/click.mp3
+var clickSound []byte
+
 // Kern der Mausgeste: dieselbe Datei läuft in der Oberfläche und – von hier eingeschleust – in jeder Webseite.
 //
 //go:embed frontend/src/gesture-core.js

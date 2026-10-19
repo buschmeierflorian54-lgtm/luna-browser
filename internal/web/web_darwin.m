@@ -311,6 +311,8 @@ static FMTab *tabFor(int tid, WKWebViewConfiguration *cfg) {
 	int tid = -1;
 	for (FMTab *t in gTabs.allValues) if (t.view == msg.webView) tid = t.tid;
 	NSDictionary *b = [msg.body isKindOfClass:[NSDictionary class]] ? msg.body : @{};
+	// Zeichnen läuft: nur den Schreibton steuern, kein Ereignis ans Frontend
+	if ([b[@"kind"] isEqual:@"draw"]) { fmwWriteSound([b[@"on"] boolValue] ? 1 : 0); return; }
 	emit(@{@"t": @"gesture", @"tab": @(tid), @"kind": nn(b[@"kind"]), @"dir": nn(b[@"dir"]), @"letter": nn(b[@"letter"])});
 }
 @end
@@ -481,6 +483,22 @@ void fmwPlaySound(const void *bytes, int len) {
 		gSound = [[NSSound alloc] initWithData:d];
 		[gSound stop];
 		[gSound play];
+	});
+}
+
+// Schreibton: läuft in Schleife, solange eine Geste gezeichnet wird.
+static NSData *gWriteData;
+static NSSound *gWriteSound;
+void fmwSetWriteSound(const void *bytes, int len) {
+	NSData *d = [NSData dataWithBytes:bytes length:len];
+	dispatch_async(dispatch_get_main_queue(), ^{ gWriteData = d; gWriteSound = nil; });
+}
+void fmwWriteSound(int on) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		if (!on) { [gWriteSound stop]; return; }
+		if (!gWriteData) return;
+		if (!gWriteSound) { gWriteSound = [[NSSound alloc] initWithData:gWriteData]; gWriteSound.loops = YES; }
+		if (!gWriteSound.isPlaying) { [gWriteSound stop]; [gWriteSound play]; }
 	});
 }
 

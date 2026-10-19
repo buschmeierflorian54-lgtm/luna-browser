@@ -354,23 +354,49 @@
   line-height: 1.5;
   margin-top: 4px;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .setup-gesture-line {
-    animation: setup-draw-s 4s ease 2 forwards;
+/* Die Maus-Demo wird vom Skript gesteuert (Linie, Maus, Klick- und Schreibton laufen im Gleichschritt). */
+.setup-mouse {
+  display: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.setup-mouse-body rect {
+  fill: var(--panel, var(--soft));
+}
+.setup-mouse-button {
+  fill: transparent;
+}
+.setup-mouse.pressed .setup-mouse-button {
+  fill: var(--acc);
+}
+.setup-mouse.pressed .setup-mouse-body {
+  transform: translateY(2px);
+}
+.setup-gesture-demo .setup-click-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  opacity: 0;
+}
+.setup-mouse.pressed .setup-click-ring {
+  animation: setup-click-ring 500ms ease-out;
+}
+@keyframes setup-click-ring {
+  from {
+    r: 2px;
+    opacity: 0.8;
   }
-  @keyframes setup-draw-s {
-    0%,
-    10% {
-      stroke-dashoffset: 1;
-    }
-    65%,
-    90% {
-      stroke-dashoffset: 0;
-    }
-    100% {
-      stroke-dashoffset: 1;
-    }
+  to {
+    r: 18px;
+    opacity: 0;
   }
+}
+.setup-gesture-stage.demo-run .setup-mouse {
+  display: inline;
+}
+.setup-gesture-stage.practice-intro .setup-gesture-demo {
+  display: none;
 }
 
 .setup-spotify-guide {

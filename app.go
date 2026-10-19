@@ -70,6 +70,7 @@ func (a *App) startup(ctx context.Context) {
 	web.SetEmitter(func(j string) { a.emit("web", j) })
 	// Mausgeste (Kreis): Skript in jede Seite, Ein/Aus aus den Einstellungen (Standard: an)
 	a.gesture = pageGestureScript()
+	web.SetWriteSound(writeSound)
 	web.ConfigureGesture(a.gesture, a.st.Prefs()["circleGesture"] || !hasPref(a.st.Prefs(), "circleGesture"))
 
 	// Eigene Suchmaschine (Brave-API); der Schlüssel wird bei jeder Anfrage frisch aus der geschützten Datei gelesen.
@@ -133,6 +134,12 @@ func (a *App) Screenshot(tab int) (string, error) {
 	}
 	return image, err
 }
+// GestureWriteSound startet oder beendet den Schreibton, solange in der Oberfläche eine Geste gezeichnet wird.
+func (a *App) GestureWriteSound(on bool) { web.WriteSound(on) }
+
+// PlayClick spielt den Mausklick der Setup-Demo.
+func (a *App) PlayClick() { web.PlaySound(clickSound) }
+
 func (a *App) SetAppearance(mode string)          { web.SetAppearance(mode) }
 func (a *App) WebFocusUI()                        { web.FocusUI() }
 func (a *App) WebSnapshot(id int) (string, error) { return web.Snapshot(id) }
@@ -217,7 +224,7 @@ func hasPref(p map[string]bool, k string) bool { _, ok := p[k]; return ok }
 
 // pageGestureScript: gemeinsamer Kern + Anbindung an die App (Nachricht an window.webkit.messageHandlers.fmGesture).
 func pageGestureScript() string {
-	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onLetter:function(letter){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'letter',letter:letter});}catch(e){}}});\n})();"
+	return "(function(){\n" + gestureCore + "\nwindow.__fmCircle({target:window,onDraw:function(on){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'draw',on:on});}catch(e){}},onLetter:function(letter){try{window.webkit.messageHandlers.fmGesture.postMessage({kind:'letter',letter:letter});}catch(e){}}});\n})();"
 }
 
 func (a *App) SpotifyAPIStatus() spotifyapi.Status       { return a.spotifyAPI.Status() }

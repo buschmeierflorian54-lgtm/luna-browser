@@ -16,6 +16,8 @@ async function setup(page, initial = {}) {
       contentType: 'application/javascript',
       body: `
  export const screenshot=async id=>{window.calls.push(["screenshot",id]);return ""};
+ export const gestureWriteSound=async on=>{window.calls.push(["write",on])};
+ export const playClick=async()=>{window.calls.push(["click"])};
  export const prefs=async()=>window.preferences;
  export const setPref=async(k,v)=>{window.preferences[k]=v;return window.preferences};
  export const keyStatus=async()=>!!window.savedKeys.brave;
@@ -167,22 +169,31 @@ for (const [provider, step] of [['groq', 3]])
     expect(await page.evaluate((p) => window.savedKeys[p], provider)).toBe('test-provider-key');
   });
 
-test('S demonstration runs twice, then invitation disappears on drawing start', async ({
+test('practice text stays 2s, a mouse clicks and draws the S with sounds, then the invitation returns', async ({
   page,
 }) => {
   await setup(page, { prefs: { googleSearch: true }, resume: 2, liveAnimation: true });
   const prompt = page.locator('.setup-practice-prompt');
-  await expect(prompt).toBeHidden();
-  expect(
-    await page
-      .locator('.setup-gesture-line')
-      .evaluate((el) => getComputedStyle(el).animationIterationCount),
-  ).toBe('2');
-  await expect(prompt).toBeVisible({ timeout: 10000 });
+  const stage = page.locator('.setup-gesture-stage');
+  const soundCalls = () =>
+    page.evaluate(() => window.calls.filter((c) => /write|click/.test(c[0])));
+  // 1) „Probier es selber“ steht zuerst, die Demo ist noch nicht zu sehen
+  await expect(prompt).toBeVisible();
   await expect(prompt.locator('svg')).toHaveAttribute('aria-label', 'Probier es selber');
-  await page.waitForTimeout(1500);
-  await page.screenshot({ path: '/tmp/luna-fullpage-practice.png' });
-  const area = await page.locator('.setup-gesture-stage').boundingBox();
+  await expect(page.locator('.setup-gesture-demo')).toBeHidden();
+  expect(await soundCalls()).toEqual([]);
+  // 2) Nach etwa 2 Sekunden zeigt die Demo die Maus
+  await expect(stage).toHaveClass(/demo-run/, { timeout: 4000 });
+  await expect(prompt).toBeHidden();
+  await expect(page.locator('.setup-mouse')).toBeVisible();
+  await expect(page.locator('.setup-mouse')).toHaveClass(/pressed/, { timeout: 3000 });
+  expect((await soundCalls())[0]).toEqual(['click']);
+  await expect.poll(soundCalls, { timeout: 3000 }).toEqual([['click'], ['write', true]]);
+  await expect(page.locator('.setup-gesture-line')).not.toHaveCSS('stroke-dashoffset', '1px');
+  // 3) Nach dem S endet der Schreibton, die Einladung kehrt zurück
+  await expect(prompt).toBeVisible({ timeout: 8000 });
+  expect(await soundCalls()).toEqual([['click'], ['write', true], ['write', false]]);
+  const area = await stage.boundingBox();
   await page.mouse.move(area.x + 30, area.y + 30);
   await page.mouse.down();
   await expect(prompt).toBeHidden();
@@ -190,10 +201,26 @@ test('S demonstration runs twice, then invitation disappears on drawing start', 
   await page.mouse.up();
 });
 
+test('drawing during the demo stops it and silences the write sound', async ({ page }) => {
+  await setup(page, { prefs: { googleSearch: true }, resume: 2, liveAnimation: true });
+  await expect(page.locator('.setup-gesture-stage')).toHaveClass(/demo-run/, { timeout: 4000 });
+  await expect(page.locator('.setup-mouse')).toHaveClass(/pressed/, { timeout: 3000 });
+  const area = await page.locator('.setup-gesture-stage').boundingBox();
+  await page.mouse.move(area.x + 30, area.y + 30);
+  await page.mouse.down();
+  await expect(page.locator('.setup-gesture-stage')).not.toHaveClass(/demo-run/);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  const calls = await page.evaluate(() => window.calls.filter((c) => c[0] === 'write'));
+  expect(calls.at(-1)).toEqual(['write', false]);
+});
+
 test('drawing S on the onboarding page invokes screenshot without touching saved gestures', async ({
   page,
 }) => {
   await setup(page, { prefs: { googleSearch: true }, resume: 2, liveAnimation: true });
+  // Während die Demo sichtbar ist, liefert die Vorlage echte Bildschirmkoordinaten.
+  await expect(page.locator('.setup-gesture-stage')).toHaveClass(/demo-run/, { timeout: 4000 });
   const points = await page.locator('.setup-gesture-line').evaluate((path) => {
     const matrix = path.getScreenCTM();
     return Array.from({ length: 90 }, (_, i) => {

@@ -35,6 +35,7 @@ const SERVICES = [
   },
 ];
 const PROGRESS_KEY = 'luna-onboarding-step';
+const DEMO_DRAW_MS = 2400;
 export function createOnboarding({ onFinish, refreshSearch }) {
   let root,
     step = -1,
@@ -52,7 +53,15 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     connected = false,
     linkingSpotify = false,
     suspended = false;
-  let practiceTimer, detachPractice;
+  let practiceTimer, detachPractice, demoTimer, demoTick, demoWriting;
+  // Stoppt die Maus-Demo samt Tönen (beim Zeichnen des Nutzers, bei Schrittwechsel und beim Beenden).
+  function stopDemo() {
+    clearTimeout(demoTimer);
+    clearInterval(demoTick);
+    demoTimer = demoTick = undefined;
+    if (demoWriting) api.gestureWriteSound(false);
+    demoWriting = false;
+  }
   const drafts = new Map();
   const tabs = new Map(),
     owned = new Set(),
@@ -87,6 +96,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
   function render() {
     if (!root) return;
     clearTimeout(practiceTimer);
+    stopDemo();
     detachPractice?.();
     detachPractice = null;
     root.onpointerdown = null;
@@ -100,7 +110,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
           : step === 4
             ? `<span class="setup-eyebrow">ALLES AN DEINEM PLATZ</span><h1>Deine Luna<br>ist bereit.</h1><p>${configured.google ? 'Google ist deine Standardsuche.' : 'Luna Search ist eingerichtet.'} Musik und KI kannst du jederzeit in den Einstellungen ergänzen.</p><div class="setup-features"><article><b>Musik</b><span>Tippe „spotify“ für Luna Music oder „play“ mit einem Songtitel.</span></article><article><b>Chat & Modelle</b><span>Tippe „chat“. Modelle wählst du in KI & MCP. Browser-Werkzeuge aktivierst du dort ausdrücklich über MCP.</span></article></div><p class="setup-note">Zugangsdaten bleiben im geschützten App-Speicher. Sie werden nur für den jeweiligen Dienst verwendet.</p>${btn('finish', 'Los geht’s', 'setup-primary')}`
             : step === 2
-              ? `<span class="setup-eyebrow">EINE GESTE. EIN BILD.</span><h1>Zeichne ein S.<br>Halte den Moment fest.</h1><div class="setup-practice-prompt" hidden aria-live="polite">${practiceWordmark}</div><div class="setup-gesture-demo"><svg viewBox="0 0 160 160" role="img" aria-label="S-Geste: oben rechts beginnen und ein S bis unten links zeichnen"><path class="setup-gesture-guide" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><path class="setup-gesture-line" pathLength="1" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><circle cx="125" cy="35" r="5"/></svg><span>Hier starten · oben rechts</span></div><ol class="setup-gesture-steps"><li><b>Linke Maustaste halten</b><span>Beginne auf einer freien Stelle der Seite, außerhalb eines Eingabefelds.</span></li><li><b>Ein großes S zeichnen</b><span>Zeichne den Buchstaben in einem Zug – wie in der Vorlage.</span></li><li><b>Loslassen. Screenshot kopiert.</b><span>Die Zeichnung verschwindet vor der Aufnahme. Luna bestätigt den Screenshot; mit ⌘ V fügst du ihn ein.</span></li></ol><p class="setup-note">Das ist die Standardbelegung. Unter Einstellungen → Mausgesten kannst du Gesten einschalten und die Belegung ändern. Bestehende Anpassungen bleiben erhalten.</p><p class="setup-note">OpenRouter kannst du später unter Einstellungen → KI & MCP verbinden.</p>${btn('next', 'Weiter →', 'setup-primary')}`
+              ? `<span class="setup-eyebrow">EINE GESTE. EIN BILD.</span><h1>Zeichne ein S.<br>Halte den Moment fest.</h1><div class="setup-practice-prompt" hidden aria-live="polite">${practiceWordmark}</div><div class="setup-gesture-demo"><svg viewBox="0 0 160 160" role="img" aria-label="S-Geste: oben rechts beginnen und ein S bis unten links zeichnen"><path class="setup-gesture-guide" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><path class="setup-gesture-line" pathLength="1" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><circle cx="125" cy="35" r="5"/><g class="setup-mouse"><circle class="setup-click-ring" cx="0" cy="0" r="0"/><g class="setup-mouse-body"><rect x="-11" y="-8" width="22" height="34" rx="11"/><path class="setup-mouse-button" d="M-11 10 V3 A11 11 0 0 1 0 -8 V10 Z"/><path d="M-11 10 H11 M0 -8 V10"/></g></g></svg><span>Hier starten · oben rechts</span></div><ol class="setup-gesture-steps"><li><b>Linke Maustaste halten</b><span>Beginne auf einer freien Stelle der Seite, außerhalb eines Eingabefelds.</span></li><li><b>Ein großes S zeichnen</b><span>Zeichne den Buchstaben in einem Zug – wie in der Vorlage.</span></li><li><b>Loslassen. Screenshot kopiert.</b><span>Die Zeichnung verschwindet vor der Aufnahme. Luna bestätigt den Screenshot; mit ⌘ V fügst du ihn ein.</span></li></ol><p class="setup-note">Das ist die Standardbelegung. Unter Einstellungen → Mausgesten kannst du Gesten einschalten und die Belegung ändern. Bestehende Anpassungen bleiben erhalten.</p><p class="setup-note">OpenRouter kannst du später unter Einstellungen → KI & MCP verbinden.</p>${btn('next', 'Weiter →', 'setup-primary')}`
               : `<span class="setup-eyebrow">${step === 0 ? 'DEINE STANDARDSUCHE' : 'FREIWILLIG · ' + esc(s.name.toUpperCase())}</span><h1>${view === 'split' && copied ? 'Oh, Entschuldigung!' : copied ? 'Schon kopiert?' : esc(s.title)}</h1><p>${view === 'split' && copied ? 'Ich war zu aufgeregt. Mach links in Ruhe weiter. Gib hier deinen Key ein und klicke dann auf „Fertig“.' : copied ? 'Ich habe eine Kopieraktion bemerkt. Dein kopierter Key steht im Feld. Prüfe ihn und klicke auf „Speichern & weiter“. Deine Anbieterseite bleibt im Hintergrund geöffnet.' : esc(s.text)}</p>
       ${step === 0 ? `<div class="setup-choice">${btn('luna', 'Luna Search', !configured.google ? 'selected' : '')}${btn('google', 'Google · ohne Key', configured.google ? 'selected' : '')}</div>` : ''}
       ${
@@ -122,6 +132,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       detachPractice = window.__fmCircle({
         target: root,
         enabled: () => active && step === 2,
+        onDraw: (on) => api.gestureWriteSound(on),
         onLetter: async (letter) => {
           if (letter !== 'S') {
             message('Versuche ein großes S in einem Zug.');
@@ -141,17 +152,56 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       let started = false;
       const reveal = () => {
         if (active && step === 2 && !started && prompt.isConnected) {
+          stopDemo();
+          root.classList.remove('practice-intro', 'demo-run');
           root.classList.add('practice-ready');
           prompt.hidden = false;
         }
       };
-      root
-        .querySelector('.setup-gesture-line')
-        .addEventListener('animationend', reveal, { once: true });
-      practiceTimer = setTimeout(
-        reveal,
-        matchMedia('(prefers-reduced-motion: reduce)').matches ? 800 : 8100,
-      );
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        practiceTimer = setTimeout(reveal, 800);
+      } else {
+        // 1) „Probier es selber“ steht 2 Sekunden, 2) eine Maus klickt und zeichnet ein S, 3) der Nutzer ist dran.
+        const line = root.querySelector('.setup-gesture-line');
+        const mouse = root.querySelector('.setup-mouse');
+        const length = line.getTotalLength();
+        const place = (progress) => {
+          const point = line.getPointAtLength(length * progress);
+          mouse.setAttribute('transform', `translate(${point.x + 12} ${point.y + 16})`);
+        };
+        line.style.strokeDashoffset = '1';
+        place(0);
+        root.classList.add('practice-intro');
+        prompt.hidden = false;
+        demoTimer = setTimeout(() => {
+          if (!active || step !== 2 || started) return;
+          root.classList.remove('practice-intro');
+          root.classList.add('demo-run');
+          prompt.hidden = true;
+          demoTimer = setTimeout(() => {
+            mouse.classList.add('pressed');
+            api.playClick();
+            demoTimer = setTimeout(() => {
+              const t0 = Date.now();
+              demoWriting = true;
+              api.gestureWriteSound(true);
+              demoTick = setInterval(() => {
+                const t = Math.min(1, (Date.now() - t0) / DEMO_DRAW_MS);
+                const progress = t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
+                line.style.strokeDashoffset = String(1 - progress);
+                place(progress);
+                if (t < 1) return;
+                clearInterval(demoTick);
+                demoTick = undefined;
+                demoWriting = false;
+                api.gestureWriteSound(false);
+                mouse.classList.remove('pressed');
+                demoTimer = setTimeout(reveal, 900);
+              }, 16);
+            }, 350);
+          }, 600);
+        }, 2000);
+      }
       root.onpointerdown = (event) => {
         if (
           step !== 2 ||
@@ -160,6 +210,8 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         )
           return;
         started = true;
+        stopDemo();
+        root.classList.remove('practice-intro', 'demo-run');
         root.classList.add('practice-ready', 'practice-drawing');
         prompt.hidden = true;
         clearTimeout(practiceTimer);
@@ -258,6 +310,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     generation++;
     clearInterval(timer);
     clearTimeout(practiceTimer);
+    stopDemo();
     detachPractice?.();
     detachPractice = null;
     for (const id of owned) await api.close(id);

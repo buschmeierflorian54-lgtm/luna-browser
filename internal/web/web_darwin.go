@@ -127,6 +127,23 @@ func PlaySound(data []byte) {
 	C.fmwPlaySound(unsafe.Pointer(&data[0]), C.int(len(data)))
 }
 
+// SetWriteSound hinterlegt den Schreibton, der beim Zeichnen von Gesten in Schleife läuft.
+func SetWriteSound(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+	C.fmwSetWriteSound(unsafe.Pointer(&data[0]), C.int(len(data)))
+}
+
+// WriteSound startet oder beendet den Schreibton.
+func WriteSound(on bool) {
+	v := 0
+	if on {
+		v = 1
+	}
+	C.fmwWriteSound(C.int(v))
+}
+
 // ConfigureGesture schleust das Mausgesten-Skript in jede Seite ein (src leer = nur Ein/Aus ändern).
 func ConfigureGesture(src string, on bool) {
 	c := C.CString(src)

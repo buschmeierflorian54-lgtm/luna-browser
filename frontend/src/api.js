@@ -28,6 +28,9 @@ export const setGesture = nat((on) => App.SetGesture(on));
 export const setAppearance = nat((mode) => App.SetAppearance(mode));
 // Screenshot ist bewusst nicht gesperrt: Er ändert nichts an den Ansichten (aber: kopiert in die Zwischenablage und spielt den Ton)
 export const screenshot = (id) => App.Screenshot(id);
+// Töne (Schreibton beim Zeichnen von Gesten, Mausklick der Setup-Demo)
+export const gestureWriteSound = nat((on) => App.GestureWriteSound(on));
+export const playClick = nat(() => App.PlayClick());
 export const snapshot = nat((id) => App.WebSnapshot(id), '');
 
 // Lesezeichen, Verlauf, Downloads, Sitzung

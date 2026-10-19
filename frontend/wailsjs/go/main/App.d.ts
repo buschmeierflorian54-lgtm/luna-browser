@@ -50,6 +50,8 @@ export function EditBookmark(arg1:string,arg2:string,arg3:string):Promise<Array<
 
 export function GestureBindings():Promise<Record<string, store.GestureBinding>>;
 
+export function GestureWriteSound(arg1:boolean):Promise<void>;
+
 export function History(arg1:string,arg2:number):Promise<Array<store.Visit>>;
 
 export function HistoryAdd(arg1:string,arg2:string):Promise<void>;
@@ -79,6 +81,8 @@ export function OnboardingClipboard(arg1:number,arg2:string,arg3:number):Promise
 export function OnboardingSpotifyConnect(arg1:number):Promise<void>;
 
 export function OpenFile(arg1:string,arg2:boolean):Promise<void>;
+
+export function PlayClick():Promise<void>;
 
 export function Prefs():Promise<Record<string, boolean>>;
 
