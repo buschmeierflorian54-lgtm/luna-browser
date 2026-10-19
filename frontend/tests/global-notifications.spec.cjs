@@ -273,7 +273,7 @@ test('global-notifications', async ({ browser }) => {
   await p.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   if (await p.evaluate(() => sessionStorage.getItem('reset-called'))) throw Error('reset ran on cancel');
   await p.locator('[data-act="reset-browser"]').click();
-  await p.getByRole('button', { name: 'Jetzt zurücksetzen', exact: true }).click();
+  await Promise.all([p.waitForNavigation({ waitUntil: 'domcontentloaded' }), p.getByRole('button', { name: 'Jetzt zurücksetzen', exact: true }).click()]);
   await p.waitForFunction(() => sessionStorage.getItem('reset-called') === 'yes' && !localStorage.getItem('luna-color-theme'));
   if (await p.evaluate(() => localStorage.getItem('luna-chat-active')) !== 'keep-chat') throw Error('chat selection erased');
   if (errors.length) throw Error(errors.join('\n'));
