@@ -83,7 +83,15 @@ test('Google without keys, optional providers, completion and resume', async ({ 
   await page.getByRole('button', { name: 'Google · ohne Key' }).click();
   await expect(page.locator('#setupKey')).toHaveCount(0);
   await page.getByRole('button', { name: 'Mit Google weiter' }).click();
-  for (let n = 0; n < 3; n++) await page.getByRole('button', { name: 'Überspringen' }).click();
+  await page.getByRole('button', { name: 'Überspringen' }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Zeichne ein S. Halte den Moment fest.' }),
+  ).toBeVisible();
+  await expect(page.locator('#setupKey')).toHaveCount(0);
+  await expect(page.getByText('OpenRouter kannst du später', { exact: false })).toBeVisible();
+  await page.screenshot({ path: '/tmp/luna-setup-gesture.png', animations: 'disabled' });
+  await page.getByRole('button', { name: 'Weiter →', exact: true }).click();
+  await page.getByRole('button', { name: 'Überspringen' }).click();
   await expect(page.getByText('Google ist deine Standardsuche.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Los geht’s' }).click();
   await expect(page.locator('.setup')).toHaveCount(0);
@@ -121,10 +129,7 @@ test('Spotify login remains inside Luna and detects account connection', async (
   await expect(page.getByText('Spotify ist verbunden.', { exact: true })).toBeVisible();
 });
 
-for (const [provider, step] of [
-  ['openrouter', 2],
-  ['groq', 3],
-])
+for (const [provider, step] of [['groq', 3]])
   test(`${provider} optional key setup`, async ({ page }) => {
     await setup(page, { prefs: { googleSearch: true }, resume: step });
     await page.getByRole('button', { name: /öffnen & Key holen/ }).click();

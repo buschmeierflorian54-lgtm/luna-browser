@@ -21,12 +21,8 @@ const SERVICES = [
     text: 'Suche Songs mit Luna Music und steuere die Spotify-App. Erstelle im Spotify Developer Dashboard eine App und kopiere ihre Client ID. Kein Client Secret erforderlich.',
   },
   {
-    id: 'openrouter',
-    name: 'OpenRouter',
-    label: 'OpenRouter-API-Key',
-    url: 'https://openrouter.ai/settings/keys',
-    title: 'Viele Modelle. Dein Gespräch.',
-    text: 'Verbinde OpenRouter für Luna Chat. Du entscheidest später im Modell-Picker, welches Modell antwortet. Anfragen können je nach Anbieter Kosten verursachen.',
+    id: 'screenshot',
+    name: 'Screenshot',
   },
   {
     id: 'groq',
@@ -88,14 +84,16 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     if (!root) return;
     const s = service();
     root.className = `setup ${view}`;
-    root.innerHTML = `<header class="setup-head"><span class="setup-brand">${lunaWordmark}</span><span>DEIN START MIT LUNA</span>${btn('later', 'Später fortsetzen', 'setup-quiet')}</header><div class="setup-progress" aria-label="Einrichtungsschritte">${['Willkommen', 'Suche', 'Musik', 'OpenRouter', 'Groq', 'Bereit'].map((name, i) => `<span class="${i === step + 1 ? 'current' : ''} ${i < step + 1 ? 'done' : ''}">${i + 1}<b>${name}</b></span>`).join('')}</div><div class="setup-layout">
+    root.innerHTML = `<header class="setup-head"><span class="setup-brand">${lunaWordmark}</span><span>DEIN START MIT LUNA</span>${btn('later', 'Später fortsetzen', 'setup-quiet')}</header><div class="setup-progress" aria-label="Einrichtungsschritte">${['Willkommen', 'Suche', 'Musik', 'Screenshot', 'Groq', 'Bereit'].map((name, i) => `<span class="${i === step + 1 ? 'current' : ''} ${i < step + 1 ? 'done' : ''}">${i + 1}<b>${name}</b></span>`).join('')}</div><div class="setup-layout">
       ${view === 'portal' || view === 'split' ? `<section class="setup-provider"><div class="setup-webbar">${btn('webback', '←')}${btn('webreload', '↻')}<span data-host>${esc(new URL(s.url).host)}</span>${btn('form', 'Key eingeben')}</div><div class="setup-web" aria-label="Anbieterseite in Luna"></div><p class="setup-webhint">${esc(s.name)} ist in Luna geöffnet. Kopiere deinen ${esc(s.label)}. Luna erkennt nur die Kopieraktion – nicht den Inhalt.</p></section>` : ''}
       <section class="setup-card">${
         step === -1
           ? `<span class="setup-eyebrow">HALLO. ICH BIN LUNA.</span><h1>Mach es dir<br>im Web gemütlich.</h1><p>Deine Farben, deine Musik und deine Werkzeuge. Lass uns Luna kurz auf dich einstellen.</p><div class="setup-features"><article><b>Dein Look</b><span>Zehn Farbwelten, flexible Seitenmenüs und Mausgesten.</span></article><article><b>Deine Suche & Musik</b><span>Luna Search oder Google. Spotify-Suche, Wiedergabe und Warteschlange.</span></article><article><b>Deine KI</b><span>Luna Chat mit OpenRouter oder Groq. Sira nutzt Apple Intelligence auf unterstützten Macs, ohne API-Key.</span></article></div><p class="setup-note">Du entscheidest, was du verbindest. Dienste sind optional; alle Einstellungen kannst du später ändern.</p>${btn('next', 'Luna kennenlernen →', 'setup-primary')}`
           : step === 4
             ? `<span class="setup-eyebrow">ALLES AN DEINEM PLATZ</span><h1>Deine Luna<br>ist bereit.</h1><p>${configured.google ? 'Google ist deine Standardsuche.' : 'Luna Search ist eingerichtet.'} Musik und KI kannst du jederzeit in den Einstellungen ergänzen.</p><div class="setup-features"><article><b>Musik</b><span>Tippe „spotify“ für Luna Music oder „play“ mit einem Songtitel.</span></article><article><b>Chat & Modelle</b><span>Tippe „chat“. Modelle wählst du in KI & MCP. Browser-Werkzeuge aktivierst du dort ausdrücklich über MCP.</span></article></div><p class="setup-note">Zugangsdaten bleiben im geschützten App-Speicher. Sie werden nur für den jeweiligen Dienst verwendet.</p>${btn('finish', 'Los geht’s', 'setup-primary')}`
-            : `<span class="setup-eyebrow">${step === 0 ? 'DEINE STANDARDSUCHE' : 'FREIWILLIG · ' + esc(s.name.toUpperCase())}</span><h1>${view === 'split' && copied ? 'Oh, Entschuldigung!' : copied ? 'Schon kopiert?' : esc(s.title)}</h1><p>${view === 'split' && copied ? 'Ich war zu aufgeregt. Mach links in Ruhe weiter. Gib hier deinen Key ein und klicke dann auf „Fertig“.' : copied ? 'Ich habe eine Kopieraktion bemerkt. Füge deinen Key selbst in das Feld ein und drücke Enter. Deine Anbieterseite bleibt im Hintergrund geöffnet.' : esc(s.text)}</p>
+            : step === 2
+              ? `<span class="setup-eyebrow">EINE GESTE. EIN BILD.</span><h1>Zeichne ein S.<br>Halte den Moment fest.</h1><div class="setup-gesture-demo"><svg viewBox="0 0 160 160" role="img" aria-label="S-Geste: oben rechts beginnen und ein S bis unten links zeichnen"><path class="setup-gesture-guide" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><path class="setup-gesture-line" pathLength="1" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><circle cx="125" cy="35" r="5"/></svg><span>Hier starten · oben rechts</span></div><ol class="setup-gesture-steps"><li><b>Linke Maustaste halten</b><span>Beginne auf einer freien Stelle der Seite, außerhalb eines Eingabefelds.</span></li><li><b>Ein großes S zeichnen</b><span>Zeichne den Buchstaben in einem Zug – wie in der Vorlage.</span></li><li><b>Loslassen. Screenshot kopiert.</b><span>Die Zeichnung verschwindet vor der Aufnahme. Luna bestätigt den Screenshot; mit ⌘ V fügst du ihn ein.</span></li></ol><p class="setup-note">Das ist die Standardbelegung. Unter Einstellungen → Mausgesten kannst du Gesten einschalten und die Belegung ändern. Bestehende Anpassungen bleiben erhalten.</p><p class="setup-note">OpenRouter kannst du später unter Einstellungen → KI & MCP verbinden.</p>${btn('next', 'Weiter →', 'setup-primary')}`
+              : `<span class="setup-eyebrow">${step === 0 ? 'DEINE STANDARDSUCHE' : 'FREIWILLIG · ' + esc(s.name.toUpperCase())}</span><h1>${view === 'split' && copied ? 'Oh, Entschuldigung!' : copied ? 'Schon kopiert?' : esc(s.title)}</h1><p>${view === 'split' && copied ? 'Ich war zu aufgeregt. Mach links in Ruhe weiter. Gib hier deinen Key ein und klicke dann auf „Fertig“.' : copied ? 'Ich habe eine Kopieraktion bemerkt. Füge deinen Key selbst in das Feld ein und drücke Enter. Deine Anbieterseite bleibt im Hintergrund geöffnet.' : esc(s.text)}</p>
       ${step === 0 ? `<div class="setup-choice">${btn('luna', 'Luna Search', !configured.google ? 'selected' : '')}${btn('google', 'Google · ohne Key', configured.google ? 'selected' : '')}</div>` : ''}
       ${
         step === 0 && configured.google

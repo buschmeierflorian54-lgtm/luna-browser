@@ -296,3 +296,79 @@
     }
   }
 }
+
+.setup-gesture-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin: 20px 0;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--soft);
+  padding: 18px;
+  color: var(--acc);
+}
+.setup-gesture-demo svg {
+  width: 145px;
+  height: 145px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.setup-gesture-demo circle {
+  fill: var(--acc);
+  stroke: none;
+}
+.setup-gesture-demo span {
+  font-size: 13px;
+  color: var(--mute);
+}
+.setup-gesture-guide {
+  opacity: 0.16;
+}
+.setup-gesture-line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+.setup-gesture-steps {
+  padding-left: 24px;
+  display: grid;
+  gap: 14px;
+}
+.setup-gesture-steps li {
+  padding-left: 8px;
+  color: var(--acc);
+}
+.setup-gesture-steps b {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+}
+.setup-gesture-steps span {
+  display: block;
+  color: var(--mute);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .setup-gesture-line {
+    animation: setup-draw-s 4s ease infinite;
+  }
+  @keyframes setup-draw-s {
+    0%,
+    10% {
+      stroke-dashoffset: 1;
+    }
+    65%,
+    90% {
+      stroke-dashoffset: 0;
+    }
+    100% {
+      stroke-dashoffset: 1;
+    }
+  }
+}
