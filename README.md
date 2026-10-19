@@ -82,8 +82,9 @@ Sitzung, die auf Wunsch beim nächsten Start wieder da ist.
 öffnen und Luna in den Ordner „Programme“ ziehen.
 
 **Oder mit einem Befehl:** Auf der [Webseite](https://lunaai.dev) steht eine Schritt-für-Schritt-Anleitung.
-Das Skript lädt die aktuelle Version, prüft sie und installiert Luna in deinen persönlichen
-Programme-Ordner, ganz ohne Administrator-Passwort.
+Das Skript lädt die aktuelle Version, prüft sie und legt Luna direkt in den
+Ordner „Programme“ (bei Bedarf in deinen persönlichen Programme-Ordner), ganz ohne Administrator-Passwort.
+Eine ältere Version wandert in den Papierkorb.
 
 > **Gut zu wissen:** Luna ist noch nicht von Apple notarisiert. Falls macOS den ersten Start blockiert,
 > erlaubst du ihn unter *Systemeinstellungen → Datenschutz & Sicherheit*. Hilft das nicht, steht

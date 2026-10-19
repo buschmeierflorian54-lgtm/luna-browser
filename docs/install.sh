@@ -36,25 +36,27 @@ source_app="$work/volume/Luna Browser.app"
 [[ $(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$source_app/Contents/Info.plist") == com.wails.browser-mac ]] || fail 'Unerwartete App im Download.'
 codesign --verify --deep --strict "$source_app" || fail 'App-Signatur ungültig.'
 if [[ $mode == --verify-only ]]; then printf 'Download, Prüfsumme, DMG und App-Signatur erfolgreich geprüft. Nichts installiert.\n'; exit 0; fi
-mkdir -p "$HOME/Applications"
-stage=$(mktemp -d "$HOME/Applications/.luna-install.XXXXXX")
+# Ziel: der Programme-Ordner des Macs. Ist er für dich nicht beschreibbar, nimmt Luna deinen persönlichen (~/Applications).
+if [[ -w /Applications ]]; then apps=/Applications; else apps="$HOME/Applications"; mkdir -p "$apps"; fi
+stage=$(mktemp -d "$apps/.luna-install.XXXXXX")
 if ! ditto "$source_app" "$stage/Luna Browser.app"; then rm -rf "$stage"; fail 'App konnte nicht kopiert werden.'; fi
-destination="$HOME/Applications/Luna Browser.app"
-legacy="$HOME/Applications/browser-mac.app"
+destination="$apps/Luna Browser.app"
+# Frühere Installationen (auch unter dem alten Namen browser-mac.app) wandern in den Papierkorb und lassen sich von dort zurückholen.
 backup=''
-# Eine frühere Installation unter dem alten Namen wird gesichert und ersetzt.
-[[ -e $destination || ! -e $legacy ]] || mv "$legacy" "$destination"
-if [[ -e $destination ]]; then
- backup="$HOME/Applications/Luna-Backup-$(date +%Y%m%d-%H%M%S)-$$.app"
- mv "$destination" "$backup"
-fi
+for old in "$destination" "$apps/browser-mac.app" "$HOME/Applications/Luna Browser.app" "$HOME/Applications/browser-mac.app"; do
+ if [[ -e $old ]]; then
+  trashed="$HOME/.Trash/Luna-vorher-$(date +%Y%m%d-%H%M%S)-$$-$RANDOM.app"
+  mv "$old" "$trashed"
+  [[ -n $backup ]] || { backup=$trashed; backup_from=$old; }
+ fi
+done
 if ! mv "$stage/Luna Browser.app" "$destination"; then
- [[ -z $backup ]] || mv "$backup" "$destination"
+ [[ -z $backup ]] || mv "$backup" "$backup_from"
  rm -rf "$stage"
  fail 'Installation fehlgeschlagen; vorherige Version wiederhergestellt.'
 fi
 rmdir "$stage"
 printf '\nLuna wurde installiert: %s\n' "$destination"
-[[ -z $backup ]] || printf 'Vorherige Version gesichert: %s\n' "$backup"
+[[ -z $backup ]] || printf 'Vorherige Version liegt im Papierkorb: %s\n' "$backup"
 printf 'Falls macOS den ersten Start blockiert: Systemeinstellungen → Datenschutz & Sicherheit öffnen und die Meldung prüfen.\n'
 open "$destination" || printf 'Bitte Luna im Finder aus deinem Programme-Ordner starten.\n'
