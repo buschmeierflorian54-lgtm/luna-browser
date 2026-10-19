@@ -6,7 +6,17 @@ import { COMMANDS, commandOn, commandSwitchHTML, setCommandOn } from './command-
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-export function createCommandUI({ urlbox, page, cover, getMode, pickColor, pickMode, fill, run }) {
+export function createCommandUI({
+  input,
+  urlbox,
+  page,
+  cover,
+  getMode,
+  pickColor,
+  pickMode,
+  fill,
+  run,
+}) {
   let pageEl = null,
     pageObserver = null,
     pageKey = null,
@@ -253,6 +263,24 @@ export function createCommandUI({ urlbox, page, cover, getMode, pickColor, pickM
       fill: 'forwards',
     }).finished.then(done, done);
   }
+
+  // Beides gilt nur solange das Wort in der Adressleiste steht: tippt man weiter oder etwas anderes, schließt es sich.
+  input.addEventListener('input', () => {
+    const word = input.value.trim().toLowerCase();
+    if (dropEl && !/^themes?$/.test(word)) closeDrop();
+    if (pageEl && !/^(?:commands?|befehle)$/.test(word)) closePage();
+  });
+  // Jede Bedienung außerhalb (Spotify-Chip, Tabs, Menü, Seitenleiste …) schließt die Befehlsseite zuerst und läuft dann normal weiter.
+  document.addEventListener(
+    'pointerdown',
+    (ev) => {
+      if (pageEl && !ev.target.closest('#cmdPage, #urlbox')) closePage();
+    },
+    true,
+  );
+  document.addEventListener('focusin', (ev) => {
+    if (dropEl && !ev.target.closest('#themeDrop, #urlbox')) closeDrop();
+  });
 
   return {
     openPage,

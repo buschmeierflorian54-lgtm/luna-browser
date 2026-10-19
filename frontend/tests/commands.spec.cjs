@@ -126,3 +126,41 @@ test('settings chapter Befehle lists all commands and toggles them', async ({ pa
   await page.getByRole('button', { name: 'Alle an' }).click();
   await expect(page.locator('.cmd-count')).toHaveText('7 von 7 Befehlen aktiv');
 });
+
+test('commands page does not trap the user: Spotify chip, typing and tabs work while it is open', async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.locator('#url').fill('commands');
+  await expect(page.locator('#cmdPage')).toBeVisible();
+  await page.locator('#spChip .spChip').click();
+  await expect(page.locator('#cmdPage')).toHaveCount(0);
+  await expect(page.locator('#spChip .spChip')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.locator('#url').fill('commands');
+  await expect(page.locator('#cmdPage')).toBeVisible();
+  await page.locator('#url').pressSequentially('x');
+  await expect(page.locator('#cmdPage')).toHaveCount(0);
+});
+
+test('theme bar closes when you type more, type something else or click away', async ({ page }) => {
+  await openApp(page);
+  const drop = page.locator('#themeDrop');
+  await page.locator('#url').fill('theme');
+  await expect(drop).toBeVisible();
+  await page.locator('#url').click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('s');
+  await page.waitForTimeout(150);
+  await expect(drop).toBeVisible(); // „themes“ gilt weiter
+  await page.keyboard.type('x');
+  await expect(drop).toHaveCount(0, { timeout: 2000 });
+  await page.locator('#url').fill('theme');
+  await expect(drop).toBeVisible();
+  await page.locator('#url').fill('google maps');
+  await expect(drop).toHaveCount(0, { timeout: 2000 });
+  await page.locator('#url').fill('theme');
+  await expect(drop).toBeVisible();
+  await page.locator('#bMenu').click();
+  await expect(drop).toHaveCount(0, { timeout: 2000 });
+});

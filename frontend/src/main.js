@@ -1126,6 +1126,7 @@ $('#menu').addEventListener('click', (ev) => {
 /* ---------- Adressleiste & Vorschläge ---------- */
 const url = $('#url');
 cmdUI = createCommandUI({
+  input: url,
   urlbox: $('#urlbox'),
   page: $('#page'),
   cover,
@@ -1274,8 +1275,7 @@ function armQuickSite(input, ev) {
   }
   if (/^themes?$/.test(key) && commandOn('theme') && !ev?.isComposing) {
     closeSugg();
-    input.blur();
-    cmdUI.openDrop();
+    cmdUI.openDrop(); // Fokus bleibt in der Leiste: Weitertippen schließt die Theme-Leiste wieder
     return;
   }
   const target = commandOn('sites') ? QUICK_SITES[key] : undefined;
