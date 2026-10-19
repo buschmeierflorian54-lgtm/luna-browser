@@ -68,13 +68,10 @@ test('Brave clipboard metadata, Enter, recovery split and preserved provider', a
   await page.waitForTimeout(650);
   await expect(page.locator('.setup.split')).toBeVisible();
   await page.locator('#setupKey').fill('BSA-test-only');
-  await page.locator('#setupKey').press('Enter');
-  await expect(page.getByText('Key ist gespeichert', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Fertig', exact: true }).click();
   expect(await page.evaluate(() => window.savedKeys.brave)).toBe('BSA-test-only');
-  await expect(page.locator('#setupKey')).toHaveValue('');
-  await expect(page.locator('#setupKey')).toBeEnabled();
+  expect(await page.evaluate(() => localStorage.getItem('luna-onboarding-step'))).toBe('1');
   expect(await page.locator('body').innerText()).not.toContain('BSA-test-only');
-  await page.getByRole('button', { name: 'Weiter →', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Deine Musik zieht mit ein.' })).toBeVisible();
 });
 test('Google without keys, optional providers, completion and resume', async ({ page }) => {
@@ -119,6 +116,7 @@ test('Spotify login remains inside Luna and detects account connection', async (
   await setup(page, { prefs: { googleSearch: true }, resume: 1 });
   await page.locator('#setupKey').fill('client-id-test');
   await page.locator('#setupKey').press('Enter');
+  await expect(page.locator('#setupKey')).toHaveCount(0);
   await page.getByRole('button', { name: 'Spotify-Konto verknüpfen' }).click();
   await expect(page.locator('.setup.split')).toBeVisible();
   await page.screenshot({ path: '/tmp/luna-setup-split.png', animations: 'disabled' });
@@ -137,6 +135,6 @@ for (const [provider, step] of [['groq', 3]])
     await expect(page.locator('.setup.form')).toBeVisible();
     await page.locator('#setupKey').fill('test-provider-key');
     await page.locator('#setupKey').press('Enter');
-    await expect(page.getByText('Key ist gespeichert', { exact: false })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Deine Luna ist bereit.' })).toBeVisible();
     expect(await page.evaluate((p) => window.savedKeys[p], provider)).toBe('test-provider-key');
   });

@@ -102,7 +102,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       ${step === 1 ? '<p class="setup-note">Trage bei Spotify diese Redirect URI ein: <code>http://127.0.0.1:8888/callback</code>. Für die Wiedergabe muss die Spotify-App installiert sein. Spotify kann zusätzliche Kontovoraussetzungen verlangen.</p>' : ''}
       ${configured[s.id] || saved ? `<p class="setup-saved">✓ ${step === 1 ? 'Client ID' : 'Key'} ist gespeichert${step === 1 && connected ? ' · Konto verbunden' : ''}.</p>` : ''}
       <div class="setup-actions">${btn('portal', tabs.has(s.id) ? 'Anbieterseite wieder anzeigen' : `${esc(s.name)} öffnen & ${step === 1 ? 'Client ID' : 'Key'} holen`)}${step !== 0 ? btn('skip', 'Überspringen', 'setup-quiet') : ''}</div>
-      <form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' ? 'Fertig' : 'Speichern ↵'}</button></div></form>
+      ${configured[s.id] || saved ? btn('editkey', 'Gespeicherten Key ersetzen', 'setup-quiet') : `<form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' ? 'Fertig' : 'Speichern ↵'}</button></div></form>`}
       ${copied ? btn('notdone', 'Hey, ich war noch nicht fertig', 'setup-quiet') : ''}
       ${step === 1 && (configured.spotify || saved) ? `<div class="setup-actions">${btn('connect', connected ? 'Konto erneut verbinden' : 'Spotify-Konto verknüpfen', 'setup-primary')}${btn('next', 'Weiter →')}</div><p data-connection class="setup-note">${connected ? 'Dein Konto ist verbunden.' : 'Die Anmeldung öffnet sich ebenfalls hier in Luna. Alternativ später verbinden.'}</p>` : configured[s.id] || saved ? btn('next', 'Weiter →', 'setup-primary') : ''}
       ${step === 0 && !configured.google ? '<p class="setup-note">Keinen Brave-Key? Wähle oben Google – damit geht es sofort weiter.</p>' : ''}`
@@ -253,6 +253,13 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       configured[s.id] = true;
       saved = true;
       view = 'form';
+      copied = false;
+      if (s.id !== 'spotify') {
+        step++;
+        saved = false;
+        currentID = 0;
+        storeStep();
+      }
       generation++;
       render();
       message(
@@ -291,6 +298,12 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       configured.google = action === 'google';
       await api.setPref('googleSearch', configured.google);
       await refreshSearch();
+      render();
+      return;
+    }
+    if (action === 'editkey') {
+      configured[service().id] = false;
+      saved = false;
       render();
       return;
     }
