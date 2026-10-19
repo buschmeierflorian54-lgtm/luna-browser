@@ -120,7 +120,7 @@ Führe diesen Befehl im Terminal aus. Er lädt Luna, prüft die Prüfsumme und i
 dass macOS sie ohne Gatekeeper-Warnung startet:
 
 ```sh
-( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://lunaai.dev/install.sh -o "$installer" && /bin/bash "$installer" )
+( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/buschmeierflorian54-lgtm/luna-browser/main/docs/install.sh -o "$installer" && /bin/bash "$installer" )
 ```
 
 Das Terminal öffnest du mit <kbd>⌘</kbd> + <kbd>Leertaste</kbd>, dann „Terminal“ tippen und Enter.
