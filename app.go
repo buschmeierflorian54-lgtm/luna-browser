@@ -282,3 +282,5 @@ func (a *App) SpotifyScheduleNext(uri, title string) error {
 }
 func (a *App) SpotifyCancelNext()                    { a.autoNext.Cancel() }
 func (a *App) SpotifyNextStatus() spotify.NextStatus { return a.autoNext.Status() }
+
+func (a *App) SetErrorPalette(palette string) { web.SetErrorPalette(palette) }

@@ -1,5 +1,5 @@
 import iconSVG from './assets/luna-icon.svg?raw';
-import { setDockIcon } from './api.js';
+import { setDockIcon, setErrorPalette } from './api.js';
 // Farbwelten bleiben unabhängig von Hell/Dunkel ; KI und MCP wählen aus derselben Liste.
 export const COLOR_THEMES = [
   ['luna', 'Luna Rosé', 325, 38],
@@ -43,6 +43,7 @@ export function applyColorTheme(id = colorTheme(), persist = false) {
   // Luna bewahrt die ursprüngliche, handabgestimmte Farbpalette.
   if (id === 'luna') {
     style.textContent = '';
+    syncErrorPalette();
     return;
   }
   const [, , h, s] = theme,
@@ -109,6 +110,11 @@ export function applyColorTheme(id = colorTheme(), persist = false) {
           `:root[data-color-theme="${id}"] .st-bg .a${n}{background:hsl(${h + (n - 1) * 12} ${s}% ${dark ? 35 : 76}%);}`,
       )
       .join('');
+  syncErrorPalette();
+}
+function syncErrorPalette() {
+  const css = getComputedStyle(document.documentElement);
+  setErrorPalette(JSON.stringify(Object.fromEntries(['panel', 'ink', 'mute', 'acc', 'pri', 'pri-fg'].map(key => [key, css.getPropertyValue('--' + key).trim()]))));
 }
 export function colorThemesHTML() {
   const current = colorTheme();

@@ -153,3 +153,9 @@ func SetDockIcon(data []byte) bool {
 	defer C.free(p)
 	return C.fmwSetDockIcon(p, C.int(len(data))) != 0
 }
+
+func SetErrorPalette(palette string) {
+	c := C.CString(palette)
+	defer C.free(unsafe.Pointer(c))
+	C.fmwSetErrorPalette(c)
+}

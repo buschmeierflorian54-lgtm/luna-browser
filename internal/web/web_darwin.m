@@ -74,6 +74,8 @@ static WKWebViewConfiguration *sharedConfig(void) {
 	return gConfig;
 }
 
+static NSString *gErrorPaletteCSS = @"";
+
 static NSString *errorHTML(NSError *e, NSURL *u) {
  NSString *title = @"Diese Seite ist gerade nicht erreichbar.";
  NSString *reason = @"Luna konnte die Seite nicht laden. Die Verbindung wurde unterbrochen oder die Website antwortet gerade nicht.";
@@ -121,7 +123,7 @@ static NSString *errorHTML(NSError *e, NSURL *u) {
  NSString *retry = ([scheme isEqualToString:@"https"] || [scheme isEqualToString:@"http"]) ? [NSString stringWithFormat:@"<a href=\"%@\">Erneut versuchen</a>", esc(u.absoluteString)] : @"";
  return [NSString stringWithFormat:@"<!doctype html><html lang=de><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\"><title>%@</title><style>"
  @":root{color-scheme:light dark}*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:32px;background:#fbf2f7;color:#3a2433;font:16px -apple-system,system-ui,sans-serif}main{width:min(100%%,620px)}.mark{font-size:14px;letter-spacing:3px;font-weight:700;color:#896578;margin-bottom:32px}svg{width:52px;height:52px;margin-bottom:22px;color:#a7778e}h1{font-size:clamp(28px,5vw,42px);line-height:1.15;letter-spacing:-1px;margin:0 0 24px}p{line-height:1.65;color:#6f5264}.host{font-size:13px;overflow-wrap:anywhere}a{display:inline-block;margin-top:16px;padding:13px 21px;border-radius:24px;background:#3a2433;color:#fbeef6;text-decoration:none;font-weight:600}a:focus-visible,summary:focus-visible{outline:3px solid #a7778e;outline-offset:4px}details{margin-top:30px;color:#6f5264;font-size:13px}summary{cursor:pointer}details p{overflow-wrap:anywhere}@media(prefers-color-scheme:dark){body{background:#1c151b;color:#fbeef6}p,details{color:#bfa8b6}a{background:#edcedf;color:#2a1621}}"
- @"</style><main><div class=mark>LUNA BROWSER</div><svg aria-hidden=true viewBox=\"0 0 48 48\" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d=\"M24 4 7 11v12c0 10 17 21 17 21s17-11 17-21V11Z\"/><path d=\"M24 14v12m0 7h.01\"/></svg><div class=host>%@</div><h1>%@</h1><p>%@</p><p>%@</p>%@<details><summary>Technische Details</summary><p>%@ (%@ · %ld)</p></details></main></html>", esc(title), esc(u.host), esc(title), esc(reason), esc(hint), retry, esc(e.localizedDescription), esc(e.domain), (long)e.code];
+ @"</style><style id=luna-error-palette>%@</style><main><div class=mark>LUNA BROWSER</div><svg aria-hidden=true viewBox=\"0 0 48 48\" fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round><path d=\"M24 4 7 11v12c0 10 17 21 17 21s17-11 17-21V11Z\"/><path d=\"M24 14v12m0 7h.01\"/></svg><div class=host>%@</div><h1>%@</h1><p>%@</p><p>%@</p>%@<details><summary>Technische Details</summary><p>%@ (%@ · %ld)</p></details></main></html>", esc(title), gErrorPaletteCSS, esc(u.host), esc(title), esc(reason), esc(hint), retry, esc(e.localizedDescription), esc(e.domain), (long)e.code];
 }
 
 @interface FMTab : NSObject <WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate>
@@ -540,4 +542,26 @@ int fmwSetDockIcon(const void *bytes, int length) {
  };
  if (NSThread.isMainThread) apply(); else dispatch_sync(dispatch_get_main_queue(), apply);
  return saved ? 1 : 0;
+}
+
+// Only Luna-generated error documents receive these palette values.
+void fmwSetErrorPalette(const char *palette) {
+ NSString *json = [NSString stringWithUTF8String:palette ?: "{}"];
+ dispatch_async(dispatch_get_main_queue(), ^{
+  NSDictionary *values = [NSJSONSerialization JSONObjectWithData:[json dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];
+  if (![values isKindOfClass:[NSDictionary class]]) return;
+  NSMutableString *css = [NSMutableString stringWithString:@":root{"];
+  NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdefABCDEF#.,%() /rgbhsla"];
+  for (NSString *key in @[@"panel", @"ink", @"mute", @"acc", @"pri", @"pri-fg"]) {
+   NSString *value = values[key];
+   if (![value isKindOfClass:[NSString class]] || !value.length || value.length > 80 || [value rangeOfCharacterFromSet:allowed.invertedSet].location != NSNotFound) return;
+   [css appendFormat:@"--%@: %@;", key, value];
+  }
+  [css appendString:@"}body{background:var(--panel);color:var(--ink)}p,details{color:var(--mute)}.mark,svg{color:var(--acc)}a{background:var(--pri);color:var(--pri-fg)}a:focus-visible,summary:focus-visible{outline-color:var(--acc)}"];
+  gErrorPaletteCSS = [css copy];
+  NSData *data = [NSJSONSerialization dataWithJSONObject:@[gErrorPaletteCSS] options:0 error:nil];
+  NSString *literal = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+  NSString *script = [NSString stringWithFormat:@"(()=>{const s=document.getElementById('luna-error-palette');if(s)s.textContent=%@[0]})()", literal];
+  for (FMTab *tab in gTabs.allValues) if (tab.isError) [tab.view evaluateJavaScript:script completionHandler:nil];
+ });
 }

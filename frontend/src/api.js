@@ -120,3 +120,5 @@ export const chatSelectModel = (slot) => App.ChatSelectModel(slot);
 export const updateStatus = () => App.UpdateStatus();
 export const checkUpdates = () => App.CheckUpdates();
 export const setAutomaticUpdates = (enabled) => App.SetAutomaticUpdates(enabled);
+
+export const setErrorPalette = nat((palette) => App.SetErrorPalette(palette));
