@@ -1,3 +1,4 @@
+import './gesture-core.js';
 import * as api from './api.js';
 import { esc } from './ui.js';
 import { lunaWordmark, practiceWordmark } from './branding.js';
@@ -51,7 +52,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     connected = false,
     linkingSpotify = false,
     suspended = false;
-  let practiceTimer;
+  let practiceTimer, detachPractice;
   const drafts = new Map();
   const tabs = new Map(),
     owned = new Set(),
@@ -86,6 +87,8 @@ export function createOnboarding({ onFinish, refreshSearch }) {
   function render() {
     if (!root) return;
     clearTimeout(practiceTimer);
+    detachPractice?.();
+    detachPractice = null;
     root.onpointerdown = null;
     const s = service();
     root.className = `setup ${view}${step === 2 ? ' setup-gesture-stage' : ''}`;
@@ -116,6 +119,24 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       }
       <p data-message role="status" class="setup-message"></p>${step >= 0 ? btn('back', '← Zurück', 'setup-quiet') : ''}</section></div>`;
     if (step === 2) {
+      detachPractice = window.__fmCircle({
+        target: root,
+        enabled: () => active && step === 2,
+        onLetter: async (letter) => {
+          if (letter !== 'S') {
+            message('Versuche ein großes S in einem Zug.');
+            return;
+          }
+          try {
+            await api.screenshot(-1);
+            if (active && step === 2)
+              message('Geschafft! Dein Screenshot ist kopiert. Mit ⌘ V kannst du ihn einfügen.');
+          } catch {
+            if (active && step === 2)
+              message('S erkannt. Der Screenshot konnte nicht kopiert werden. Versuche es erneut.');
+          }
+        },
+      });
       const prompt = root.querySelector('.setup-practice-prompt');
       let started = false;
       const reveal = () => {
@@ -237,6 +258,8 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     generation++;
     clearInterval(timer);
     clearTimeout(practiceTimer);
+    detachPractice?.();
+    detachPractice = null;
     for (const id of owned) await api.close(id);
     tabs.clear();
     owned.clear();

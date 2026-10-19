@@ -477,7 +477,9 @@
   display: none;
 }
 @keyframes setup-write-letter {
-  from { opacity: 1; }
+  from {
+    opacity: 1;
+  }
   to {
     opacity: 1;
     stroke-dashoffset: 0;
@@ -490,4 +492,14 @@
     stroke-dashoffset: 0;
     opacity: 1;
   }
+}
+
+.setup-gesture-stage.practice-drawing .setup-message {
+  display: block;
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 30px;
+  text-align: center;
+  pointer-events: none;
 }

@@ -15,6 +15,7 @@ async function setup(page, initial = {}) {
     route.fulfill({
       contentType: 'application/javascript',
       body: `
+ export const screenshot=async id=>{window.calls.push(["screenshot",id]);return ""};
  export const prefs=async()=>window.preferences;
  export const setPref=async(k,v)=>{window.preferences[k]=v;return window.preferences};
  export const keyStatus=async()=>!!window.savedKeys.brave;
@@ -187,4 +188,25 @@ test('S demonstration runs twice, then invitation disappears on drawing start', 
   await expect(prompt).toBeHidden();
   await page.mouse.move(area.x + 80, area.y + 60);
   await page.mouse.up();
+});
+
+test('drawing S on the onboarding page invokes screenshot without touching saved gestures', async ({
+  page,
+}) => {
+  await setup(page, { prefs: { googleSearch: true }, resume: 2, liveAnimation: true });
+  const points = await page.locator('.setup-gesture-line').evaluate((path) => {
+    const matrix = path.getScreenCTM();
+    return Array.from({ length: 90 }, (_, i) => {
+      const p = path.getPointAtLength((path.getTotalLength() * i) / 89).matrixTransform(matrix);
+      return { x: p.x, y: p.y };
+    });
+  });
+  await page.mouse.move(points[0].x, points[0].y);
+  await page.mouse.down();
+  for (const p of points.slice(1)) await page.mouse.move(p.x, p.y);
+  await page.mouse.up();
+  await expect(page.getByRole('status')).toContainText('Geschafft!');
+  expect(await page.evaluate(() => window.calls.filter((c) => c[0] === 'screenshot'))).toEqual([
+    ['screenshot', -1],
+  ]);
 });
