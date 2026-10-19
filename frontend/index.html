@@ -13,17 +13,17 @@ var d=m==='dark'||(m==='auto'&&window.matchMedia&&matchMedia('(prefers-color-sch
 document.documentElement.dataset.theme=d?'dark':'light';
 window.applyLunaBootTheme=function(id,dark){
  var colors={luna:[325,38],lavender:[265,42],ocean:[210,55],mint:[163,40],forest:[140,30],sand:[38,42],peach:[22,58],cherry:[350,46],arctic:[188,43],graphite:[220,5]};
- var c=colors[id]||colors.luna, root=document.documentElement;
+ var c=colors[id]||colors.forest, root=document.documentElement;
  root.style.setProperty('--boot-bg','hsl('+c[0]+','+(dark?22:30)+'%,'+(dark?11:96)+'%)');
  root.style.setProperty('--boot-ink','hsl('+c[0]+','+c[1]+'%,'+(dark?73:38)+'%)');
 };
-var id='luna';try{id=localStorage.getItem('luna-color-theme')||'luna'}catch(e){}
+var id='forest';try{id=localStorage.getItem('luna-color-theme')||'forest'}catch(e){}
 window.applyLunaBootTheme(id,d);})();
 </script>
 <style>
 /* Sofort sichtbar, auch bevor JavaScript und App-Daten geladen sind. */
-html{background:var(--boot-bg,#f8edf4)}
-#splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:hidden;--wails-draggable:drag;background:var(--boot-bg,#f8edf4);color:var(--boot-ink,#994976);transition:opacity .32s ease}
+html{background:var(--boot-bg,#f2f8f4)}
+#splash{position:fixed;inset:0;z-index:200;display:grid;place-items:center;overflow:hidden;--wails-draggable:drag;background:var(--boot-bg,#f2f8f4);color:var(--boot-ink,#44845a);transition:opacity .32s ease}
 
 #splash.out{opacity:0;pointer-events:none}#splash.gone{display:none}
 .boot-composition{display:flex;flex-direction:column;align-items:center;gap:8px;transform:translateY(-12px)}

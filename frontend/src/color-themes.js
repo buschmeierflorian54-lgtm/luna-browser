@@ -17,9 +17,9 @@ const KEY = 'luna-color-theme';
 export function colorTheme() {
   try {
     const id = localStorage.getItem(KEY);
-    return COLOR_THEMES.some((t) => t[0] === id) ? id : 'luna';
+    return COLOR_THEMES.some((t) => t[0] === id) ? id : 'forest';
   } catch {
-    return 'luna';
+    return 'forest';
   }
 }
 export function applyColorTheme(id = colorTheme(), persist = false) {
