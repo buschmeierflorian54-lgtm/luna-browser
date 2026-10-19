@@ -105,9 +105,16 @@ Einstellungen ändern.
 
 ## Neugierig geworden?
 
+### Wie Luna gebaut ist
+
+Luna entsteht mit Go, [Wails](https://wails.io) und einem nativen WebKit-Kern.
+Alles Technische, vom Bauen bis zum Veröffentlichen, steht in der
+[Entwicklerdoku](docs/ENTWICKLUNG.md). Für die Anbindung von KI-Apps gibt es die
+[MCP-Anleitung](MCP_SETUP.md), und wie Updates funktionieren, steht in [UPDATES.md](UPDATES.md).
+
 <a id="luna-startet-nicht"></a>
 
-### Luna startet nicht? Der Gatekeeper-Befehl
+## Luna startet nicht? Der Gatekeeper-Befehl
 
 Weil Luna noch nicht von Apple notarisiert ist, markiert macOS die heruntergeladene App als
 „unbekannt“ und blockiert manchmal den ersten Start. Mit diesem Befehl im Terminal nimmst du Luna
@@ -125,13 +132,6 @@ xattr -dr com.apple.quarantine "$HOME/Applications/Luna Browser.app"
 
 Danach lässt sich Luna ganz normal öffnen. Die Gatekeeper-Prüfung deines Macs bleibt für alle
 anderen Apps unverändert.
-
-### Wie Luna gebaut ist
-
-Luna entsteht mit Go, [Wails](https://wails.io) und einem nativen WebKit-Kern.
-Alles Technische, vom Bauen bis zum Veröffentlichen, steht in der
-[Entwicklerdoku](docs/ENTWICKLUNG.md). Für die Anbindung von KI-Apps gibt es die
-[MCP-Anleitung](MCP_SETUP.md), und wie Updates funktionieren, steht in [UPDATES.md](UPDATES.md).
 
 <br>
 
