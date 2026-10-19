@@ -401,38 +401,93 @@
   user-select: text;
 }
 
-.setup-practice-prompt {
-  position: fixed;
-  z-index: 10;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%) rotate(-4deg);
+/* The tutorial is a page-sized stage, not a card inside the setup form. */
+.setup-gesture-stage .setup-head,
+.setup-gesture-stage .setup-progress {
+  display: none;
+}
+.setup-gesture-stage .setup-layout {
+  display: block;
+  height: 100%;
+}
+.setup-gesture-stage .setup-card {
+  max-width: none;
+  width: 100%;
+  height: 100%;
+}
+.setup-gesture-stage .setup-eyebrow,
+.setup-gesture-stage h1,
+.setup-gesture-stage .setup-gesture-steps,
+.setup-gesture-stage .setup-note,
+.setup-gesture-stage .setup-message {
+  display: none;
+}
+.setup-gesture-stage .setup-gesture-demo {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  flex-direction: column;
+  gap: 20px;
   pointer-events: none;
-  white-space: nowrap;
-  font-family: 'Snell Roundhand', 'Apple Chancery', cursive;
-  font-size: clamp(38px, 7vw, 110px);
-  line-height: 1.4;
+}
+.setup-gesture-stage .setup-gesture-demo svg {
+  width: min(55vw, 55vh);
+  height: min(55vw, 55vh);
+}
+.setup-gesture-stage [data-setup='next'] {
+  position: absolute;
+  right: 32px;
+  bottom: 28px;
+  z-index: 2;
+}
+.setup-gesture-stage [data-setup='back'] {
+  position: absolute;
+  left: 32px;
+  bottom: 28px;
+  z-index: 2;
+}
+.setup-gesture-stage.practice-ready .setup-gesture-demo {
+  display: none;
+}
+.setup-practice-prompt {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 8vw;
+  pointer-events: none;
   color: var(--acc);
-  text-shadow:
-    0 0 18px var(--panel),
-    0 0 36px var(--panel);
-  animation: setup-write-prompt 900ms ease-out both;
+}
+.setup-practice-prompt svg {
+  width: min(100%, 1200px);
+  height: auto;
+  overflow: visible;
+}
+.setup-practice-prompt path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+  animation: setup-write-letter 400ms ease forwards;
+  animation-delay: calc(var(--letter) * 65ms);
 }
 .setup-practice-prompt[hidden] {
   display: none;
 }
-@keyframes setup-write-prompt {
-  from {
-    clip-path: inset(0 100% 0 0);
-    opacity: 0;
-  }
+@keyframes setup-write-letter {
+  from { opacity: 1; }
   to {
-    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    stroke-dashoffset: 0;
     opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .setup-practice-prompt {
+  .setup-practice-prompt path {
     animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
   }
 }

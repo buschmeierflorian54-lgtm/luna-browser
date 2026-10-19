@@ -38,7 +38,8 @@ async function setup(page, initial = {}) {
   );
   await page.goto('http://127.0.0.1:5174/__setup_test');
   await expect(page.locator('.setup')).toBeVisible();
-  if (!initial.liveAnimation) await page.screenshot({ path: '/tmp/luna-setup-welcome.png', animations: 'disabled' });
+  if (!initial.liveAnimation)
+    await page.screenshot({ path: '/tmp/luna-setup-welcome.png', animations: 'disabled' });
 }
 test('Brave clipboard metadata, Enter, recovery split and preserved provider', async ({ page }) => {
   await setup(page);
@@ -87,11 +88,9 @@ test('Google without keys, optional providers, completion and resume', async ({ 
   await expect(page.locator('#setupKey')).toHaveCount(0);
   await page.getByRole('button', { name: 'Mit Google weiter' }).click();
   await page.getByRole('button', { name: 'Überspringen' }).click();
-  await expect(
-    page.getByRole('heading', { name: 'Zeichne ein S. Halte den Moment fest.' }),
-  ).toBeVisible();
+  await expect(page.locator('.setup-gesture-stage')).toBeVisible();
   await expect(page.locator('#setupKey')).toHaveCount(0);
-  await expect(page.getByText('OpenRouter kannst du später', { exact: false })).toBeVisible();
+  await expect(page.getByText('OpenRouter kannst du später', { exact: false })).toHaveCount(1);
   await page.screenshot({ path: '/tmp/luna-setup-gesture.png', animations: 'disabled' });
   await page.getByRole('button', { name: 'Weiter →', exact: true }).click();
   await page.getByRole('button', { name: 'Überspringen' }).click();
@@ -148,9 +147,7 @@ test('Spotify login remains inside Luna and detects account connection', async (
     window.spotify.pending = false;
     window.spotify.message = 'Spotify ist verknüpft.';
   });
-  await expect(
-    page.getByRole('heading', { name: 'Zeichne ein S. Halte den Moment fest.' }),
-  ).toBeVisible();
+  await expect(page.locator('.setup-gesture-stage')).toBeVisible();
   await expect(page.locator('.setup.form')).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('luna-onboarding-step'))).toBe('2');
 });
@@ -181,7 +178,10 @@ test('S demonstration runs twice, then invitation disappears on drawing start', 
       .evaluate((el) => getComputedStyle(el).animationIterationCount),
   ).toBe('2');
   await expect(prompt).toBeVisible({ timeout: 10000 });
-  const area = await page.locator('.setup-gesture-demo').boundingBox();
+  await expect(prompt.locator('svg')).toHaveAttribute('aria-label', 'Probier es selber');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: '/tmp/luna-fullpage-practice.png' });
+  const area = await page.locator('.setup-gesture-stage').boundingBox();
   await page.mouse.move(area.x + 30, area.y + 30);
   await page.mouse.down();
   await expect(prompt).toBeHidden();

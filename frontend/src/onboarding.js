@@ -1,6 +1,6 @@
 import * as api from './api.js';
 import { esc } from './ui.js';
-import { lunaWordmark } from './branding.js';
+import { lunaWordmark, practiceWordmark } from './branding.js';
 import './styles/onboarding.css';
 
 const SERVICES = [
@@ -88,7 +88,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     clearTimeout(practiceTimer);
     root.onpointerdown = null;
     const s = service();
-    root.className = `setup ${view}`;
+    root.className = `setup ${view}${step === 2 ? ' setup-gesture-stage' : ''}`;
     root.innerHTML = `<header class="setup-head"><span class="setup-brand">${lunaWordmark}</span><span>DEIN START MIT LUNA</span>${btn('later', 'Später fortsetzen', 'setup-quiet')}</header><div class="setup-progress" aria-label="Einrichtungsschritte">${['Willkommen', 'Suche', 'Musik', 'Screenshot', 'Groq', 'Bereit'].map((name, i) => `<span class="${i === step + 1 ? 'current' : ''} ${i < step + 1 ? 'done' : ''}">${i + 1}<b>${name}</b></span>`).join('')}</div><div class="setup-layout">
       ${view === 'portal' || view === 'split' ? `<section class="setup-provider"><div class="setup-webbar">${btn('webback', '←')}${btn('webreload', '↻')}<span data-host>${esc(new URL(s.url).host)}</span>${btn('form', 'Key eingeben')}</div><div class="setup-web" aria-label="Anbieterseite in Luna"></div><p class="setup-webhint">${esc(s.name)} ist in Luna geöffnet. Kopiere deinen ${esc(s.label)}. Ein frisch kopierter Key wird ins Eingabefeld übernommen. Du entscheidest, wann es weitergeht.</p></section>` : ''}
       <section class="setup-card">${
@@ -97,7 +97,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
           : step === 4
             ? `<span class="setup-eyebrow">ALLES AN DEINEM PLATZ</span><h1>Deine Luna<br>ist bereit.</h1><p>${configured.google ? 'Google ist deine Standardsuche.' : 'Luna Search ist eingerichtet.'} Musik und KI kannst du jederzeit in den Einstellungen ergänzen.</p><div class="setup-features"><article><b>Musik</b><span>Tippe „spotify“ für Luna Music oder „play“ mit einem Songtitel.</span></article><article><b>Chat & Modelle</b><span>Tippe „chat“. Modelle wählst du in KI & MCP. Browser-Werkzeuge aktivierst du dort ausdrücklich über MCP.</span></article></div><p class="setup-note">Zugangsdaten bleiben im geschützten App-Speicher. Sie werden nur für den jeweiligen Dienst verwendet.</p>${btn('finish', 'Los geht’s', 'setup-primary')}`
             : step === 2
-              ? `<span class="setup-eyebrow">EINE GESTE. EIN BILD.</span><h1>Zeichne ein S.<br>Halte den Moment fest.</h1><div class="setup-practice-prompt" hidden aria-live="polite">Probier es selber</div><div class="setup-gesture-demo"><svg viewBox="0 0 160 160" role="img" aria-label="S-Geste: oben rechts beginnen und ein S bis unten links zeichnen"><path class="setup-gesture-guide" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><path class="setup-gesture-line" pathLength="1" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><circle cx="125" cy="35" r="5"/></svg><span>Hier starten · oben rechts</span></div><ol class="setup-gesture-steps"><li><b>Linke Maustaste halten</b><span>Beginne auf einer freien Stelle der Seite, außerhalb eines Eingabefelds.</span></li><li><b>Ein großes S zeichnen</b><span>Zeichne den Buchstaben in einem Zug – wie in der Vorlage.</span></li><li><b>Loslassen. Screenshot kopiert.</b><span>Die Zeichnung verschwindet vor der Aufnahme. Luna bestätigt den Screenshot; mit ⌘ V fügst du ihn ein.</span></li></ol><p class="setup-note">Das ist die Standardbelegung. Unter Einstellungen → Mausgesten kannst du Gesten einschalten und die Belegung ändern. Bestehende Anpassungen bleiben erhalten.</p><p class="setup-note">OpenRouter kannst du später unter Einstellungen → KI & MCP verbinden.</p>${btn('next', 'Weiter →', 'setup-primary')}`
+              ? `<span class="setup-eyebrow">EINE GESTE. EIN BILD.</span><h1>Zeichne ein S.<br>Halte den Moment fest.</h1><div class="setup-practice-prompt" hidden aria-live="polite">${practiceWordmark}</div><div class="setup-gesture-demo"><svg viewBox="0 0 160 160" role="img" aria-label="S-Geste: oben rechts beginnen und ein S bis unten links zeichnen"><path class="setup-gesture-guide" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><path class="setup-gesture-line" pathLength="1" d="M125 35 C25 -15 5 80 80 80 C155 80 135 175 35 125"/><circle cx="125" cy="35" r="5"/></svg><span>Hier starten · oben rechts</span></div><ol class="setup-gesture-steps"><li><b>Linke Maustaste halten</b><span>Beginne auf einer freien Stelle der Seite, außerhalb eines Eingabefelds.</span></li><li><b>Ein großes S zeichnen</b><span>Zeichne den Buchstaben in einem Zug – wie in der Vorlage.</span></li><li><b>Loslassen. Screenshot kopiert.</b><span>Die Zeichnung verschwindet vor der Aufnahme. Luna bestätigt den Screenshot; mit ⌘ V fügst du ihn ein.</span></li></ol><p class="setup-note">Das ist die Standardbelegung. Unter Einstellungen → Mausgesten kannst du Gesten einschalten und die Belegung ändern. Bestehende Anpassungen bleiben erhalten.</p><p class="setup-note">OpenRouter kannst du später unter Einstellungen → KI & MCP verbinden.</p>${btn('next', 'Weiter →', 'setup-primary')}`
               : `<span class="setup-eyebrow">${step === 0 ? 'DEINE STANDARDSUCHE' : 'FREIWILLIG · ' + esc(s.name.toUpperCase())}</span><h1>${view === 'split' && copied ? 'Oh, Entschuldigung!' : copied ? 'Schon kopiert?' : esc(s.title)}</h1><p>${view === 'split' && copied ? 'Ich war zu aufgeregt. Mach links in Ruhe weiter. Gib hier deinen Key ein und klicke dann auf „Fertig“.' : copied ? 'Ich habe eine Kopieraktion bemerkt. Dein kopierter Key steht im Feld. Prüfe ihn und klicke auf „Speichern & weiter“. Deine Anbieterseite bleibt im Hintergrund geöffnet.' : esc(s.text)}</p>
       ${step === 0 ? `<div class="setup-choice">${btn('luna', 'Luna Search', !configured.google ? 'selected' : '')}${btn('google', 'Google · ohne Key', configured.google ? 'selected' : '')}</div>` : ''}
       ${
@@ -119,7 +119,10 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       const prompt = root.querySelector('.setup-practice-prompt');
       let started = false;
       const reveal = () => {
-        if (active && step === 2 && !started && prompt.isConnected) prompt.hidden = false;
+        if (active && step === 2 && !started && prompt.isConnected) {
+          root.classList.add('practice-ready');
+          prompt.hidden = false;
+        }
       };
       root
         .querySelector('.setup-gesture-line')
@@ -136,6 +139,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         )
           return;
         started = true;
+        root.classList.add('practice-ready', 'practice-drawing');
         prompt.hidden = true;
         clearTimeout(practiceTimer);
         root.onpointerdown = null;

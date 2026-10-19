@@ -47,3 +47,28 @@ const settingsPaths = [...'Einstellungen']
   })
   .join('');
 export const settingsWordmark = `<svg class="settings-wordmark" viewBox="-8 4 ${settingsX + 18} 108" fill="none" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${settingsPaths}</svg>`;
+
+// Reuse the start page's monoline letterforms for the full-page gesture invitation.
+const practiceLetters = {
+  ...settingsLetters,
+  P: [38, 'M2 78 L20 17 C58 5 49 51 13 48 M3 64 L14 50'],
+  r: [29, 'M0 64 L9 46 Q7 58 19 47 Q26 44 23 51 L18 65 Q15 78 29 64'],
+  o: [34, 'M25 49 C12 36 -1 55 3 67 C8 81 28 66 25 51 Q28 60 36 54'],
+  b: [
+    35,
+    'M0 65 C13 53 30 23 23 14 C17 7 10 26 9 46 L6 66 C4 82 26 73 27 55 C28 42 16 44 11 54 Q20 67 36 56',
+  ],
+  ' ': [23, ''],
+};
+let practiceX = 0;
+const practicePaths = [...'Probier es selber']
+  .map((letter, index) => {
+    const [advance, path] = practiceLetters[letter];
+    const x = practiceX;
+    practiceX += advance;
+    return path
+      ? `<path transform="translate(${x} 0)" pathLength="1" style="--letter:${index}" d="${path}"/>`
+      : '';
+  })
+  .join('');
+export const practiceWordmark = `<svg viewBox="-8 0 ${practiceX + 18} 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Probier es selber">${practicePaths}</svg>`;
