@@ -8,6 +8,7 @@ test('global-notifications', async ({ browser }) => {
   const src = fs.readFileSync(path.join(__dirname, '../src/api.js'), 'utf8');
   const names = [...src.matchAll(/export const (\w+)/g)].map((x) => x[1]);
   const mocks = {
+    resetBrowserSettings: 'async()=>{sessionStorage.setItem("reset-called","yes")}',
     updateStatus:
       'async()=>({version:"1.1.1",ready:true,canCheck:true,automatic:window.autoUpdates!==false,message:window.updateChecked?"Du verwendest die neueste Version.":"Bereit",lastCheck:0})',
     checkUpdates: 'async()=>{window.updateChecked=true}',
@@ -263,6 +264,18 @@ test('global-notifications', async ({ browser }) => {
   await p.getByRole('button', { name: 'Luna Search', exact: true }).click();
   if (await p.evaluate(() => window.preferences.googleSearch))
     throw Error('search provider not saved');
+  await call('browser_settings', { section: 'data' });
+  await p.evaluate(() => {
+    localStorage.setItem('luna-color-theme', 'ocean');
+    localStorage.setItem('luna-chat-active', 'keep-chat');
+  });
+  await p.locator('[data-act="reset-browser"]').click();
+  await p.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  if (await p.evaluate(() => sessionStorage.getItem('reset-called'))) throw Error('reset ran on cancel');
+  await p.locator('[data-act="reset-browser"]').click();
+  await p.getByRole('button', { name: 'Jetzt zurücksetzen', exact: true }).click();
+  await p.waitForFunction(() => sessionStorage.getItem('reset-called') === 'yes' && !localStorage.getItem('luna-color-theme'));
+  if (await p.evaluate(() => localStorage.getItem('luna-chat-active')) !== 'keep-chat') throw Error('chat selection erased');
   if (errors.length) throw Error(errors.join('\n'));
   console.log(
     'PASS: music sidebar search, play, add, queue tab, query persistence, no overflow or JS errors.',

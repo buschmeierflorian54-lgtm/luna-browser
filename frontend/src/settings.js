@@ -186,6 +186,7 @@ export function createSettings({
         <p class="muted small">Downloads werden vor der Installation anhand ihrer digitalen Update-Signatur geprüft.</p>
       </section>
       <section id="set-data" class="sp-card"><h2>Daten</h2>
+        <div class="swrow"><div><b>Browser zurücksetzen</b><span>Farben, Seitenleiste, Mausgesten und Browser-Einstellungen auf Standard setzen. Die Ersteinrichtung beginnt erneut. Lesezeichen, Verlauf, Notizen, Chats, Schlüssel und Website-Anmeldungen bleiben erhalten.</span></div><button class="btn danger" data-act="reset-browser">Zurücksetzen …</button></div>
         <div class="swrow"><div><b>Verlauf</b><span>Besuchte Seiten und Suchen auf diesem Gerät.</span></div><button class="btn" data-act="clear-history">Löschen</button></div>
         <div class="swrow"><div><b>Download-Liste</b><span>Entfernt nur die Liste, nicht die Dateien.</span></div><button class="btn" data-act="clear-dl">Leeren</button></div>
       </section>

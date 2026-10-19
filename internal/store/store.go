@@ -314,3 +314,20 @@ func (s *Store) SetNote(key, title, text string) []Note {
 	}
 	return s.Notes()
 }
+
+// ResetSettings restores browser preferences and gestures without deleting personal data.
+func (s *Store) ResetSettings() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Write preferences first; report filesystem failures instead of claiming success.
+	dst := filepath.Join(s.dir, "prefs.json")
+	if err := os.WriteFile(dst+".tmp", []byte("{}"), 0600); err != nil {
+		return err
+	}
+	if err := os.Rename(dst+".tmp", dst); err != nil {
+		return err
+	}
+	s.prefs = map[string]bool{}
+	_, err := s.saveGesturesLocked(defaultGestures())
+	return err
+}

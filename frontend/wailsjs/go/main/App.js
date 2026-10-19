@@ -337,3 +337,7 @@ export function WebStop(arg1) {
 export function WebZoom(arg1, arg2) {
   return window['go']['main']['App']['WebZoom'](arg1, arg2);
 }
+
+export function ResetBrowserSettings() {
+  return window['go']['main']['App']['ResetBrowserSettings']();
+}

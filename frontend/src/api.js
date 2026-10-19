@@ -127,3 +127,5 @@ export const onboardingClipboard = nat(
   { count: 0, eligible: false },
 );
 export const onboardingSpotifyConnect = (id) => App.OnboardingSpotifyConnect(id);
+
+export const resetBrowserSettings = () => App.ResetBrowserSettings();

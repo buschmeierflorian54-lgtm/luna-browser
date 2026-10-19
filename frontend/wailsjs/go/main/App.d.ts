@@ -175,3 +175,5 @@ export function WebSnapshot(arg1:number):Promise<string>;
 export function WebStop(arg1:number):Promise<void>;
 
 export function WebZoom(arg1:number,arg2:number):Promise<void>;
+
+export function ResetBrowserSettings():Promise<void>;

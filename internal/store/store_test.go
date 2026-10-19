@@ -111,3 +111,27 @@ func TestOnboardingPreferencesSurviveRestart(t *testing.T) {
 		t.Fatal("cannot switch back to Luna Search")
 	}
 }
+
+func TestResetSettingsPreservesPersonalData(t *testing.T) {
+	s, _ := New(t.TempDir())
+	s.SetPref("onboardingComplete", true)
+	s.SetPref("googleSearch", true)
+	s.SetBookmark("https://example.com", "Example", true)
+	s.SetNote("example", "Note", "Keep me")
+	s.HistoryAdd("https://example.com", "Example")
+	s.SessionSave("saved tabs")
+	s.SetGestureBinding("S", "open_url", "https://example.com")
+	if err := s.ResetSettings(); err != nil {
+		t.Fatal(err)
+	}
+	restored, _ := New(s.dir)
+	if len(restored.Prefs()) != 0 {
+		t.Fatal("preferences survived reset")
+	}
+	if restored.Gestures()["S"] != defaultGestures()["S"] {
+		t.Fatal("gesture not reset")
+	}
+	if len(restored.Bookmarks()) != 1 || len(restored.Notes()) != 1 || len(restored.History("", 10)) != 1 || restored.SessionLoad() != "saved tabs" {
+		t.Fatal("personal data changed")
+	}
+}

@@ -284,3 +284,12 @@ func (a *App) SpotifyCancelNext()                    { a.autoNext.Cancel() }
 func (a *App) SpotifyNextStatus() spotify.NextStatus { return a.autoNext.Status() }
 
 func (a *App) SetErrorPalette(palette string) { web.SetErrorPalette(palette) }
+
+// ResetBrowserSettings deliberately preserves accounts, personal data and web sessions.
+func (a *App) ResetBrowserSettings() error {
+	if err := a.st.ResetSettings(); err != nil {
+		return err
+	}
+	web.ConfigureGesture("", true)
+	return nil
+}

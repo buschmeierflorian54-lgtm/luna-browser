@@ -2155,6 +2155,38 @@ document.addEventListener('click', async (ev) => {
       await api.historyRemove(d.url);
       renderSide();
       break;
+    case 'reset-browser': {
+      const choice = await notifications.ask({
+        kind: 'history',
+        title: 'Luna auf Standard zurücksetzen?',
+        message:
+          'Farben, Seitenleiste, Mausgesten und Browser-Einstellungen werden zurückgesetzt. Danach lädt Luna die Oberfläche neu und zeigt die Ersteinrichtung.',
+        note: 'Lesezeichen, Verlauf, Notizen, Chats, API-Schlüssel, Dienstverbindungen und Website-Anmeldungen bleiben erhalten. Dies ist keine vollständige Datenlöschung.',
+        confirmLabel: 'Jetzt zurücksetzen',
+      });
+      if (choice !== 'confirm') break;
+      a.disabled = true;
+      try {
+        await api.resetBrowserSettings();
+        for (const key of [
+          'fm-theme',
+          'luna-color-theme',
+          'luna-mcp-colors',
+          'fm-side-cfg',
+          'fm-side-w',
+          'fm-sp-collapsed',
+          'luna-chat-collapsed',
+          'luna-onboarding-step',
+        ])
+          localStorage.removeItem(key);
+        clearTimeout(sessT);
+        location.reload();
+      } catch (error) {
+        a.disabled = false;
+        toast('Zurücksetzen nicht abgeschlossen: ' + String(error));
+      }
+      break;
+    }
     case 'clear-history':
       if (!(await confirmClearHistory())) break;
       await api.historyClear();
