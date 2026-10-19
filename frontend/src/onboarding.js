@@ -18,7 +18,7 @@ const SERVICES = [
     label: 'Spotify Client ID',
     url: 'https://developer.spotify.com/dashboard',
     title: 'Deine Musik zieht mit ein.',
-    text: 'Suche Songs mit Luna Music und steuere die Spotify-App. Erstelle im Spotify Developer Dashboard eine App und kopiere ihre Client ID. Kein Client Secret erforderlich.',
+    text: 'Die Spotify API ist die offizielle Schnittstelle, über die Luna mit Spotify spricht. Luna nutzt sie für die Suche nach Songs, Künstlern und Alben sowie für Wiedergabeinformationen und die Warteschlange. Abgespielt wird über deine installierte Spotify-App, die Luna per AppleScript steuert.',
   },
   {
     id: 'screenshot',
@@ -49,6 +49,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     saved = false,
     configured = {},
     connected = false,
+    linkingSpotify = false,
     suspended = false;
   const drafts = new Map();
   const tabs = new Map(),
@@ -100,7 +101,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         step === 0 && configured.google
           ? `<p>Google funktioniert ohne Brave-Key. Deine Suchbegriffe werden an Google gesendet.</p>${btn('next', 'Mit Google weiter →', 'setup-primary')}`
           : `
-      ${step === 1 ? '<p class="setup-note">Trage bei Spotify diese Redirect URI ein: <code>http://127.0.0.1:8888/callback</code>. Für die Wiedergabe muss die Spotify-App installiert sein. Spotify kann zusätzliche Kontovoraussetzungen verlangen.</p>' : ''}
+      ${step === 1 ? `<div class="setup-spotify-guide"><h2>So verbindest du Spotify</h2><ol><li><b>Dashboard öffnen.</b> Melde dich mit deinem Spotify-Konto an und wähle „Create app“.</li><li><b>App anlegen.</b> Gib ihr einen Namen, zum Beispiel „Meine Luna“, und eine kurze Beschreibung. Wähle „Web API“, falls Spotify nach der verwendeten API fragt.</li><li><b>Rücksprungadresse eintragen.</b> Hinterlege unter „Redirect URIs“ genau <code>http://127.0.0.1:8888/callback</code> und speichere die App. Dorthin kehrt Spotify nach deiner Zustimmung zurück.</li><li><b>Client ID kopieren.</b> Du findest sie in den App-Einstellungen. Sie identifiziert deine App. Füge sie unten ein und bestätige sie. Luna benötigt kein Client Secret.</li><li><b>Konto verknüpfen.</b> Klicke danach auf „Spotify-Konto verknüpfen“ und bestätige bei Spotify die angezeigten Berechtigungen. Nach erfolgreicher Anmeldung geht Luna automatisch weiter.</li></ol><p class="setup-note">Spotify ist freiwillig. Für die Wiedergabe muss die Spotify-App auf diesem Mac installiert sein. Spotify kann je nach Konto und Entwicklungsmodus weitere Voraussetzungen verlangen.</p></div>` : ''}
       ${configured[s.id] || saved ? `<p class="setup-saved">✓ ${step === 1 ? 'Client ID' : 'Key'} ist gespeichert${step === 1 && connected ? ' · Konto verbunden' : ''}.</p>` : ''}
       <div class="setup-actions">${view === 'form' ? btn('portal', tabs.has(s.id) ? 'Anbieterseite wieder anzeigen' : `${esc(s.name)} öffnen & ${step === 1 ? 'Client ID' : 'Key'} holen`) : ''}${step !== 0 ? btn('skip', 'Überspringen', 'setup-quiet') : ''}</div>
       <form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' ? 'Fertig' : 'Speichern & weiter'}</button></div></form>
@@ -199,6 +200,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     }
     active = false;
     drafts.clear();
+    linkingSpotify = false;
     generation++;
     clearInterval(timer);
     for (const id of owned) await api.close(id);
@@ -312,6 +314,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     if (action === 'connect') {
       await openPortal(true);
       await api.onboardingSpotifyConnect(currentID);
+      linkingSpotify = true;
       message('Schließe die Spotify-Anmeldung links ab.');
       return;
     }
@@ -324,6 +327,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
         message('Speichere deinen Brave-Key oder wähle Google.');
         return;
       }
+      linkingSpotify = false;
       step += action === 'back' ? -1 : 1;
       view = 'form';
       copied = false;
@@ -335,7 +339,8 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     }
   }
   async function poll() {
-    if (!active || polling || !currentID || !service() || view === 'form') return;
+    if (!active || polling || !currentID || !service() || (view === 'form' && !linkingSpotify))
+      return;
     polling = true;
     const token = generation,
       s = service();
@@ -367,12 +372,23 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       if (s.id === 'spotify' && (configured.spotify || saved)) {
         const status = await api.spotifyAPIStatus();
         if (!active || token !== generation) return;
-        if (status.connected && !connected) {
+        if (
+          linkingSpotify &&
+          status.connected &&
+          !status.pending &&
+          status.message === 'Spotify ist verknüpft.'
+        ) {
           connected = true;
+          linkingSpotify = false;
           view = 'form';
+          copied = false;
+          saved = false;
+          currentID = 0;
+          step = 2;
           generation++;
+          storeStep();
           render();
-          message('Spotify ist verbunden.');
+          message('Spotify ist verbunden. Deine Musik ist bereit.');
         } else {
           const el = root.querySelector('[data-connection]');
           if (el && status.message) el.textContent = status.message;

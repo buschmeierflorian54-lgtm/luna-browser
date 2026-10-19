@@ -120,6 +120,10 @@ test('save errors retain input; later resumes without completion', async ({ page
 });
 test('Spotify login remains inside Luna and detects account connection', async ({ page }) => {
   await setup(page, { prefs: { googleSearch: true }, resume: 1 });
+  await expect(
+    page.getByText('Die Spotify API ist die offizielle Schnittstelle', { exact: false }),
+  ).toBeVisible();
+  await expect(page.locator('.setup-spotify-guide li')).toHaveCount(5);
   await page.locator('#setupKey').fill('client-id-test');
   await page.locator('#setupKey').press('Enter');
   await expect(page.locator('#setupKey')).toHaveValue('');
@@ -128,9 +132,25 @@ test('Spotify login remains inside Luna and detects account connection', async (
   await page.screenshot({ path: '/tmp/luna-setup-split.png', animations: 'disabled' });
   expect(await page.evaluate(() => window.calls.some((c) => c[0] === 'connect'))).toBe(true);
   await page.evaluate(() => {
-    window.spotify.connected = true;
+    window.spotify = {
+      configured: true,
+      connected: true,
+      pending: false,
+      message: 'Anmeldung abgebrochen.',
+    };
   });
-  await expect(page.getByText('Spotify ist verbunden.', { exact: true })).toBeVisible();
+  await page.waitForTimeout(550);
+  await expect(page.locator('.setup.split')).toBeVisible();
+  await page.evaluate(() => {
+    window.spotify.connected = true;
+    window.spotify.pending = false;
+    window.spotify.message = 'Spotify ist verknüpft.';
+  });
+  await expect(
+    page.getByRole('heading', { name: 'Zeichne ein S. Halte den Moment fest.' }),
+  ).toBeVisible();
+  await expect(page.locator('.setup.form')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('luna-onboarding-step'))).toBe('2');
 });
 
 for (const [provider, step] of [['groq', 3]])

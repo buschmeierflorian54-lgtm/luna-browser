@@ -372,3 +372,31 @@
     }
   }
 }
+
+.setup-spotify-guide {
+  margin: 22px 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--panel);
+}
+.setup-spotify-guide h2 {
+  font-size: 20px;
+  margin: 0 0 14px;
+}
+.setup-spotify-guide ol {
+  padding-left: 22px;
+  margin: 0;
+}
+.setup-spotify-guide li {
+  padding: 0 0 12px 7px;
+  line-height: 1.6;
+  color: var(--mute);
+}
+.setup-spotify-guide b {
+  color: var(--ink);
+}
+.setup-spotify-guide code {
+  overflow-wrap: anywhere;
+  user-select: text;
+}
