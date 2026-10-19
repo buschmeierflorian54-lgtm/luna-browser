@@ -1,5 +1,6 @@
 import { createOnboarding } from './onboarding.js';
 let onboarding = null;
+import { createCommandUI } from './command-ui.js';
 import { parseTabCommand, tabDomain, tabMatchesDomain } from './tab-command.js';
 import { initChat, refreshChatStatus } from './chat.js';
 import { startBackgroundHTML, startWaves } from './start-background.js';
@@ -225,6 +226,18 @@ function adoptPopup(id) {
 }
 /* ---------- Navigation: Startseite · Suche · Web ---------- */
 function visit(t, input, options = {}) {
+  if (/^(?:commands?|befehle)$/i.test(String(input).trim())) {
+    closeSugg();
+    $('#url').blur();
+    cmdUI.openPage();
+    return;
+  }
+  if (/^themes?$/i.test(String(input).trim())) {
+    closeSugg();
+    $('#url').blur();
+    cmdUI.openDrop();
+    return;
+  }
   if (/^chat:?$/i.test(String(input).trim())) {
     openChatPage(t);
     return;
@@ -1042,7 +1055,9 @@ async function cover(on) {
     } // Maße vor dem Einblenden erneut senden
   }
 }
+let cmdUI = null;
 function closeOverlays() {
+  cmdUI?.closeAll();
   closeMenu();
   closeSugg();
   closeOverlay();
@@ -1109,6 +1124,33 @@ $('#menu').addEventListener('click', (ev) => {
 
 /* ---------- Adressleiste & Vorschläge ---------- */
 const url = $('#url');
+cmdUI = createCommandUI({
+  urlbox: $('#urlbox'),
+  page: $('#page'),
+  cover,
+  getMode: themeMode,
+  pickColor: (id) => {
+    localStorage.removeItem(MCP_COLORS);
+    clearLegacyMCPColors();
+    applyColorTheme(id, true);
+    if (cur()?.mode === 'settings') renderSettingsView();
+  },
+  pickMode: (mode) => {
+    applyTheme(mode, true);
+    renderTabs();
+    if (cur()?.mode === 'settings') renderSettingsView();
+  },
+  fill: (text) => {
+    url.focus();
+    url.value = text;
+    url.dispatchEvent(new Event('input', { bubbles: true }));
+  },
+  run: (name) => {
+    if (name === 'chat') visit(cur(), 'chat:');
+    else if (name === 'einstellungen') askSettings(cur(), 'einstellungen');
+    else visit(cur(), QUICK_SITES[name]);
+  },
+});
 let suggOpen = false,
   suggToken = 0;
 function closeSugg() {
@@ -1221,6 +1263,18 @@ function armQuickSite(input, ev) {
     closeSugg();
     input.blur();
     visit(cur(), 'chat:');
+    return;
+  }
+  if (/^(?:commands?|befehle)$/.test(key) && !ev?.isComposing) {
+    closeSugg();
+    input.blur();
+    cmdUI.openPage();
+    return;
+  }
+  if (/^themes?$/.test(key) && !ev?.isComposing) {
+    closeSugg();
+    input.blur();
+    cmdUI.openDrop();
     return;
   }
   const target = QUICK_SITES[key];
