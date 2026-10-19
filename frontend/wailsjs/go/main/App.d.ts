@@ -104,6 +104,8 @@ export function SetBookmark(arg1:string,arg2:string,arg3:boolean):Promise<Array<
 
 export function SetDockIcon(arg1:string):Promise<void>;
 
+export function SetErrorPalette(arg1:string):Promise<void>;
+
 export function SetGesture(arg1:boolean):Promise<void>;
 
 export function SetGestureBinding(arg1:string,arg2:string,arg3:string):Promise<Record<string, store.GestureBinding>>;

@@ -194,6 +194,10 @@ export function SetDockIcon(arg1) {
   return window['go']['main']['App']['SetDockIcon'](arg1);
 }
 
+export function SetErrorPalette(arg1) {
+  return window['go']['main']['App']['SetErrorPalette'](arg1);
+}
+
 export function SetGesture(arg1) {
   return window['go']['main']['App']['SetGesture'](arg1);
 }
