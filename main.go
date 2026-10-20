@@ -99,6 +99,9 @@ func buildMenu(app *App) *menu.Menu {
 }
 
 func main() {
+	if handlePlatformCommand() {
+		return
+	}
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "--mcp":

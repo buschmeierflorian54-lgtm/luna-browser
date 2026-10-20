@@ -1,3 +1,4 @@
+import { WINDOWS, shortcut } from './platform.js';
 import { createOnboarding } from './onboarding.js';
 let onboarding = null;
 import { createCommandUI } from './command-ui.js';
@@ -622,6 +623,7 @@ api.onWeb((e) => {
   if (onboarding?.handleWeb(e)) return;
   const t = tabById(e.tab);
   switch (e.t) {
+    case 'command': runCmd(e.name); break;
     case 'state':
       if (!t) return;
       t.back = e.back;
@@ -823,7 +825,7 @@ function startHTML() {
     <form id="startForm" class="st-search" autocomplete="off">
       <svg class="st-si" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <input id="startQ" type="text" placeholder="Mit ${S.googleSearch ? 'Google' : 'Luna Search'} suchen oder Adresse eingeben" spellcheck="false" autocomplete="off" aria-label="Suchen">
-      <kbd>⌘L</kbd><span class="st-glow"></span>
+      <kbd>${shortcut('⌘L')}</kbd><span class="st-glow"></span>
     </form>
     <div class="st-status">${S.googleSearch ? '<span class="pill ok"><i></i>Google · bereit</span>' : S.hasKey ? '<span class="pill ok"><i></i>Luna Search · bereit</span>' : '<button class="pill warn" data-act="settings"><i></i>Luna Search einrichten</button>'}</div>
     <div class="st-quick">${QUICK.map((q, i) => `<button class="qa" data-act="cmd" data-cmd="${q[0]}" ${delay(i + 3)}><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${q[2]}</svg>${q[1]}</button>`).join('')}</div>
@@ -1132,23 +1134,23 @@ function openMenu() {
           '-',
         ]
       : []),
-    ['Neuer Tab', '⌘T', 'new-tab'],
-    ['Auf der Seite suchen', '⌘F', 'find'],
+    ['Neuer Tab', shortcut('⌘T'), 'new-tab'],
+    ['Auf der Seite suchen', shortcut('⌘F'), 'find'],
     '-',
-    ['Vergrößern', '⌘+', 'zoom-in'],
-    ['Verkleinern', '⌘−', 'zoom-out'],
-    ['Tatsächliche Größe (' + z + ' %)', '⌘0', 'zoom-reset'],
+    ['Vergrößern', shortcut('⌘+'), 'zoom-in'],
+    ['Verkleinern', shortcut('⌘−'), 'zoom-out'],
+    ['Tatsächliche Größe (' + z + ' %)', shortcut('⌘0'), 'zoom-reset'],
     '-',
-    ['Einstellungen …', '⌘,', 'settings'],
-    [isDark() ? 'Heller Modus' : 'Dunkelmodus', '⇧⌘D', 'toggle-theme'],
+    ['Einstellungen …', shortcut('⌘,'), 'settings'],
+    [isDark() ? 'Heller Modus' : 'Dunkelmodus', shortcut('⇧⌘D'), 'toggle-theme'],
     '-',
-    ['Notizzettel', '⌥⌘N', 'toggle-notes'],
-    ['Screenshot kopieren', '⌥⌘S', 'screenshot'],
-    ['Lesezeichen', '⌘⌥B', 'show-bookmarks'],
-    ['Verlauf', '⌘Y', 'show-history'],
-    ['Downloads', '⌘⌥L', 'show-downloads'],
+    ['Notizzettel', shortcut('⌥⌘N'), 'toggle-notes'],
+    ['Screenshot kopieren', shortcut('⌥⌘S'), 'screenshot'],
+    ['Lesezeichen', shortcut('⌘⌥B'), 'show-bookmarks'],
+    ['Verlauf', shortcut('⌘Y'), 'show-history'],
+    ['Downloads', shortcut('⌘⌥L'), 'show-downloads'],
     '-',
-    [S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', '⇧⌘B', 'toggle-bar'],
+    [S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', shortcut('⇧⌘B'), 'toggle-bar'],
   ];
   const m = $('#menu'),
     r = $('#bMenu').getBoundingClientRect();
@@ -1581,7 +1583,7 @@ registerPanel({
       return list
         .map(
           (b) =>
-            `<div class="si" data-bm="${esc(b.url)}"><button class="go" data-nav data-act="open-url" data-url="${esc(b.url)}" title="${esc(b.title)} – ⌘-Klick: neuer Tab"><span class="av" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</span><span class="stx"><b>${esc(b.title)}</b><small>${esc(hostOf(b.url) || shownUrl(b.url))}</small></span></button><span class="acts"><button class="ia" data-act="bm-edit" data-url="${esc(b.url)}" aria-label="Bearbeiten" title="Bearbeiten"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button><button class="ia" data-act="rm-bm" data-url="${esc(b.url)}" aria-label="Löschen" title="Löschen">${ICON.x}</button></span></div>`,
+            `<div class="si" data-bm="${esc(b.url)}"><button class="go" data-nav data-act="open-url" data-url="${esc(b.url)}" title="${esc(b.title)} – ${shortcut('⌘')}-Klick: neuer Tab"><span class="av" style="--h:${hueOf(b.title)}">${esc(initial(b.title))}</span><span class="stx"><b>${esc(b.title)}</b><small>${esc(hostOf(b.url) || shownUrl(b.url))}</small></span></button><span class="acts"><button class="ia" data-act="bm-edit" data-url="${esc(b.url)}" aria-label="Bearbeiten" title="Bearbeiten"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button><button class="ia" data-act="rm-bm" data-url="${esc(b.url)}" aria-label="Löschen" title="Löschen">${ICON.x}</button></span></div>`,
         )
         .join('');
     return q
@@ -1591,7 +1593,7 @@ registerPanel({
             '<path d="M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17l-5.4 2.8 1.1-6.1-4.5-4.3 6.1-.8z"/>',
           ),
           'Noch keine Lesezeichen',
-          'Merke dir Seiten mit dem Stern in der Adressleiste (⌘D).',
+          shortcut('Merke dir Seiten mit dem Stern in der Adressleiste (⌘D).'),
           '<button class="btn pri" data-act="bm-add">+ Lesezeichen hinzufügen</button>',
         );
   },
@@ -1632,7 +1634,7 @@ registerPanel({
         const g = dayLabel(v.last),
           head = g !== last ? `<div class="sgh">${esc(g)}</div>` : '';
         last = g;
-        return `${head}<div class="si"><button class="go" data-nav data-act="open-url" data-url="${esc(v.url)}" title="${esc(shownUrl(v.url))} – ⌘-Klick: neuer Tab"><span class="av" style="--h:${hueOf(hostOf(v.url))}">${esc(initial(v.title || hostOf(v.url)))}</span><span class="stx"><b>${esc(v.title || hostOf(v.url))}</b><small>${esc(hmOf(v.last))} · ${esc(hostOf(v.url))}</small></span></button><span class="acts"><button class="ia" data-act="rm-hist" data-url="${esc(v.url)}" aria-label="Eintrag entfernen" title="Entfernen">${ICON.x}</button></span></div>`;
+        return `${head}<div class="si"><button class="go" data-nav data-act="open-url" data-url="${esc(v.url)}" title="${esc(shownUrl(v.url))} – ${shortcut('⌘')}-Klick: neuer Tab"><span class="av" style="--h:${hueOf(hostOf(v.url))}">${esc(initial(v.title || hostOf(v.url)))}</span><span class="stx"><b>${esc(v.title || hostOf(v.url))}</b><small>${esc(hmOf(v.last))} · ${esc(hostOf(v.url))}</small></span></button><span class="acts"><button class="ia" data-act="rm-hist" data-url="${esc(v.url)}" aria-label="Eintrag entfernen" title="Entfernen">${ICON.x}</button></span></div>`;
       })
       .join('');
   },
@@ -2137,6 +2139,10 @@ async function runCmd(c) {
   }
 }
 api.onCmd(runCmd);
+if (WINDOWS && IS_NATIVE) {
+ const warning = document.createElement("div");
+ warning.className="windows-preview"; warning.textContent="Windows · Experimentell / instabil"; warning.title="Diese Windows-Version ist eine frühe Testversion. Bitte sichere wichtige Daten."; document.body.append(warning);
+}
 
 document.addEventListener('click', async (ev) => {
   const a = ev.target.closest('[data-act]');
@@ -2172,11 +2178,11 @@ document.addEventListener('click', async (ev) => {
       runCmd('toggle-side');
       break;
     case 'open-url':
-      ev.metaKey ? newTab(d.url, { background: true }) : visit(t, d.url);
+      (ev.metaKey || ev.ctrlKey) ? newTab(d.url, { background: true }) : visit(t, d.url);
       break;
     case 'sr-open':
       ev.preventDefault();
-      if (ev.metaKey) {
+      if ((ev.metaKey || ev.ctrlKey)) {
         newTab(d.url, { background: true });
         toast('In neuem Tab geöffnet');
       } else openWeb(t, d.url);
@@ -2632,11 +2638,11 @@ document.addEventListener('keydown', (ev) => {
         .querySelectorAll('.sr')
         .forEach((el) => el.classList.toggle('sel', +el.dataset.i === t.sel));
       document.querySelector('.sr.sel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    } else if (ev.key === 'Enter' && n && t.filter === 'all' && !ev.metaKey) {
+    } else if (ev.key === 'Enter' && n && t.filter === 'all' && !(ev.metaKey || ev.ctrlKey)) {
       ev.preventDefault();
       const r = t.data.results[t.sel];
       if (r) openWeb(t, r.url);
-    } else if (ev.key === 'Enter' && ev.metaKey && n) {
+    } else if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey) && n) {
       ev.preventDefault();
       const r = t.data.results[t.sel];
       if (r) {

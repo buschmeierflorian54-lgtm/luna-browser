@@ -2,6 +2,7 @@ package secret
 
 import (
 	"os"
+	"runtime"
 	"testing"
 )
 
@@ -17,11 +18,11 @@ func TestStore(t *testing.T) {
 		t.Fatalf("%q", v)
 	}
 	st, _ := os.Stat(s.Dir + "/k")
-	if st.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && st.Mode().Perm() != 0o600 {
 		t.Fatalf("Datei-Rechte %v", st.Mode().Perm())
 	}
 	dst, _ := os.Stat(s.Dir)
-	if dst.Mode().Perm() != 0o700 {
+	if runtime.GOOS != "windows" && dst.Mode().Perm() != 0o700 {
 		t.Fatalf("Ordner-Rechte %v", dst.Mode().Perm())
 	}
 	_ = s.Set("k", "neu")

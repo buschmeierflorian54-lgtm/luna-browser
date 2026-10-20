@@ -78,7 +78,7 @@ func (m *AutoNext) Schedule(ctx context.Context, uri, title string) error {
 	}
 	current := m.read()
 	if (current.Status != "playing" && current.Status != "paused") || !validURI(current.URI) || current.Duration <= 1 {
-		return errors.New("Spotify liefert über AppleScript keinen verlässlichen laufenden Song. Öffne Spotify auf diesem Mac und starte dort die Wiedergabe.")
+		return errors.New("Die lokale Mediensteuerung liefert keine verlässliche Spotify-Titel-ID. Nutze unter Windows die Spotify-Warteschlange; auf dem Mac starte Spotify und einen Titel.")
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()

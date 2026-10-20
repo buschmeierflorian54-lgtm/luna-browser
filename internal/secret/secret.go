@@ -23,8 +23,12 @@ func (s *Store) Set(name, value string) error {
 		return err
 	}
 	_ = os.Chmod(s.Dir, 0o700)
+	encoded, err := protect([]byte(value))
+	if err != nil {
+		return err
+	}
 	tmp := s.path(name + ".tmp")
-	if err := os.WriteFile(tmp, []byte(value), 0o600); err != nil {
+	if err := os.WriteFile(tmp, encoded, 0o600); err != nil {
 		return err
 	}
 	return os.Rename(tmp, s.path(name))
@@ -36,6 +40,10 @@ func (s *Store) Get(name string) (string, bool, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", false, nil
 	}
+	if err != nil {
+		return "", false, err
+	}
+	b, err = unprotect(b)
 	if err != nil {
 		return "", false, err
 	}

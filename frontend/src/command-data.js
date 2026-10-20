@@ -1,3 +1,4 @@
+import { WINDOWS, shortcut } from './platform.js';
 // Befehle der Adressleiste: Beschreibung, Demo und der Schalter, mit dem jeder einzeln an- oder ausgeschaltet wird.
 import { esc } from './ui.js';
 
@@ -59,7 +60,7 @@ export const COMMANDS = [
     text: 'Luna fragt kurz nach, ob du die Einstellungen öffnen möchtest, statt im Web zu suchen.',
     demo: 'einstellungen',
     result: 'Einstellungen öffnen?',
-    hint: 'Auch mit ⌘ , erreichbar.',
+    hint: `Auch mit ${shortcut('⌘ ,')} erreichbar.`,
     action: { run: 'einstellungen' },
   },
   {

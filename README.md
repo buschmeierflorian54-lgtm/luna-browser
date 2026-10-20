@@ -1,3 +1,11 @@
+> **Windows: EXPERIMENTELL / INSTABIL.** Die Windows-Version ist eine frühe Testversion.
+> [Windows laden und testen](docs/WINDOWS-TEST.md) · [Builds und Tests](https://github.com/fcore247/luna-browser/actions/workflows/build.yml)
+>
+> **Ein Projekt für macOS und Windows.** Gemeinsamer Quellcode und Versionsstand;
+> native Systemfunktionen pro Plattform. Releases werden erst freigegeben, wenn beide
+> Plattformen für denselben Commit erfolgreich gebaut und getestet wurden.
+> [Gemeinsamer Release-Ablauf](docs/RELEASES.md)
+
 <div align="center">
 
 <img src="docs/assets/luna-icon.svg" width="112" alt="Luna Icon">

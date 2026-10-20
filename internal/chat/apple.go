@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -28,6 +29,9 @@ func applePath() string {
 	return filepath.Join(filepath.Dir(exe), "luna-apple-model")
 }
 func probeApple() AppleStatus {
+	if runtime.GOOS != "darwin" {
+		return AppleStatus{Reason: "Apple Intelligence ist nur auf unterstützten Macs verfügbar. Unter Windows kannst du Groq oder OpenRouter verwenden."}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, applePath(), "--status").Output()

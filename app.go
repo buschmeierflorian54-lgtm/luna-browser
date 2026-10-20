@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -77,6 +76,7 @@ func (a *App) startup(ctx context.Context) {
 	a.secrets = secret.New(filepath.Join(dir, "browser-mac"))
 	a.chat = chat.New(filepath.Join(dir, "browser-mac"), a.secrets, func(c chat.Conversation) { b, _ := json.Marshal(c); a.emit("chat-update", string(b)) })
 	a.spotifyAPI = spotifyapi.New(a.secrets)
+	configurePlatform(a)
 	a.autoNext = spotify.NewAutoNext(func(status spotify.NextStatus) { b, _ := json.Marshal(status); a.emit("spotify-next", string(b)) })
 	sonosContext, stopSonos := context.WithCancel(ctx)
 	a.stopSonos = stopSonos
@@ -134,6 +134,7 @@ func (a *App) Screenshot(tab int) (string, error) {
 	}
 	return image, err
 }
+
 // GestureWriteSound startet oder beendet den Schreibton, solange in der Oberfläche eine Geste gezeichnet wird.
 func (a *App) GestureWriteSound(on bool) { web.WriteSound(on) }
 
@@ -171,11 +172,7 @@ func (a *App) SessionLoad() string                           { return a.st.Sessi
 
 // OpenFile öffnet eine heruntergeladene Datei; reveal zeigt sie stattdessen im Finder.
 func (a *App) OpenFile(path string, reveal bool) error {
-	args := []string{path}
-	if reveal {
-		args = []string{"-R", path}
-	}
-	return exec.Command("open", args...).Run()
+	return openFile(path, reveal)
 }
 
 /* Spotify (AppleScript) */
@@ -230,7 +227,7 @@ func pageGestureScript() string {
 func (a *App) SpotifyAPIStatus() spotifyapi.Status       { return a.spotifyAPI.Status() }
 func (a *App) SpotifyAPIConfigure(clientID string) error { return a.spotifyAPI.Configure(clientID) }
 func (a *App) SpotifyAPIConnect() error {
-	return a.spotifyAPI.Connect(func(u string) error { return exec.Command("open", u).Run() })
+	return a.spotifyAPI.Connect(func(u string) error { return openExternal(u) })
 }
 func (a *App) SpotifyAPIDisconnect() error { return a.spotifyAPI.Disconnect() }
 func (a *App) SpotifySearch(q string) (*spotifyapi.Results, error) {
@@ -247,6 +244,7 @@ func (a *App) SonosConfigure(enabled bool, selected []string) (sonos.Status, err
 }
 
 func (a *App) shutdown(ctx context.Context) {
+	closePlatform()
 	if a.chat != nil {
 		a.chat.Close()
 	}

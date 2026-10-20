@@ -1,0 +1,128 @@
+name: Build and test both platforms
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-26
+            target: macos-arm64
+          - os: windows-2022
+            target: windows-amd64-EXPERIMENTAL
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        if: runner.os == 'Windows'
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install frontend and test browser
+        working-directory: frontend
+        run: |
+          npm ci
+          npx playwright install chromium
+      - name: Frontend integration tests
+        working-directory: frontend
+        run: npm test
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+      - name: Go tests
+        run: go test ./...
+      - name: Build Windows native host
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (Get-Content wails.json | ConvertFrom-Json).info.productVersion
+          dotnet publish native/windows/Luna.Windows.csproj -c Release -r win-x64 --self-contained true -p:Version=$version -o build/bin/native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Native Windows WebView2 integration tests
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process build/bin/native/Luna.Windows.exe -ArgumentList '--self-test' -PassThru -RedirectStandardOutput native-test.log -RedirectStandardError native-test-errors.log
+          if (!$p.WaitForExit(90000)) { $p.Kill(); throw 'Native tests timed out' }
+          Get-Content native-test.log
+          Get-Content native-test-errors.log
+          if ($p.ExitCode -ne 0) { throw "Native tests failed: $($p.ExitCode)" }
+          if (!(Select-String -Path native-test.log -Pattern NATIVE_TESTS_PASSED -Quiet)) { throw 'Native tests did not complete' }
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.16.0
+      - name: Build macOS
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          version=$(node -p 'require("./wails.json").info.productVersion')
+          wails build -platform darwin/arm64 -ldflags "-X browser-mac/internal/buildinfo.Version=$version"
+          codesign --verify --deep --strict 'build/bin/Luna Browser.app'
+          mkdir -p build/ci
+          ditto -c -k --sequesterRsrc --keepParent 'build/bin/Luna Browser.app' "build/ci/Luna-Browser-$version-macos-arm64.zip"
+          echo "${GITHUB_SHA}" > build/ci/source-commit.txt
+      - name: Build and package Windows (unstable)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (Get-Content wails.json | ConvertFrom-Json).info.productVersion
+          wails build -platform windows/amd64 -webview2 download -ldflags "-X browser-mac/internal/buildinfo.Version=$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Wails may clean build/bin; republish the host into the final bundle.
+          dotnet publish native/windows/Luna.Windows.csproj -c Release -r win-x64 --self-contained true -p:Version=$version -o build/bin/native
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @{version=$version;platform='windows-amd64';experimental=$true;commit=$env:GITHUB_SHA} | ConvertTo-Json | Set-Content build/bin/luna-package.json
+          Copy-Item docs/WINDOWS-TEST.md build/bin/WINDOWS-EXPERIMENTAL.txt
+          New-Item -ItemType Directory -Force build/ci | Out-Null
+          Compress-Archive -Path build/bin/* -DestinationPath "build/ci/Luna-Browser-$version-windows-amd64.zip"
+          $env:GITHUB_SHA | Set-Content build/ci/source-commit.txt
+      - name: Test packaged Windows app startup
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $app = Start-Process 'build/bin/Luna Browser.exe' -PassThru
+          try {
+            Start-Sleep 8
+            if ($app.HasExited) { throw "Luna exited: $($app.ExitCode)" }
+            $app.Refresh()
+            if ($app.MainWindowHandle -eq 0) { throw 'No native Luna window' }
+          } finally {
+            if (!$app.HasExited) { Stop-Process -Id $app.Id -Force }
+          }
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: diagnostics-${{ matrix.target }}
+          path: |
+            frontend/test-results/
+            native-test*.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: luna-${{ matrix.target }}
+          path: build/ci/*
+          retention-days: 30
+          if-no-files-found: error
+  release-ready:
+    name: Both platforms ready
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo 'Both platform builds and all tests passed for this commit. Release packaging may proceed.'

@@ -16,3 +16,9 @@ frontend/playwright-report/
 # Downloaded update framework and release archives
 /build/sparkle/
 /build/releases/
+
+# Native Windows output
+native/windows/bin/
+native/windows/obj/
+/build/ci/
+/work/

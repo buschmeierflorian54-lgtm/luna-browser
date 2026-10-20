@@ -15,6 +15,7 @@
   },
   "info": {
     "productName": "Luna Browser",
-    "productVersion": "1.1.26"
+    "productVersion": "1.2.0",
+    "comments": "Windows: experimental / unstable"
   }
 }

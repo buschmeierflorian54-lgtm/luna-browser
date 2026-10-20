@@ -1,4 +1,23 @@
-# Automatische macOS-Updates
+# Gemeinsame Updates: macOS und Windows
+
+Ab dem gemeinsamen Projekt ersetzt [docs/RELEASES.md](docs/RELEASES.md) den bisherigen
+Mac-only-Release-Ablauf. `scripts/release.sh RUN_ID` verarbeitet ausschließlich einen
+vollständig erfolgreichen CI-Lauf für beide Plattformen und bereitet ein Draft-Release vor.
+Mit `--publish` wird dieses Release nach allen Uploads gemeinsam sichtbar.
+Windows ist weiterhin **experimentell / instabil**.
+
+macOS nutzt den bestehenden Sparkle-Schlüssel; Windows prüft ein signiertes Manifest
+mit demselben öffentlichen Ed25519-Schlüssel, prüft SHA-256 und Größe des ZIPs und
+installiert nach bewusstem Klick auf das Update. Beide Clients nutzen dasselbe
+GitHub-Latest-Release. Ein Release ist gleichzeitig verfügbar; die einzelnen Geräte
+finden es bei der nächsten Prüfung (oder sofort über „Nach Updates suchen“).
+
+Der private Schlüssel verbleibt im Schlüsselbund dieses Macs. CI erhält keine
+privaten Schlüssel. Während der Testphase werden nur CI-Artefakte erzeugt; ein Push
+allein veröffentlicht weiterhin **kein** Update.
+
+## Bestehende macOS-Technik
+
 
 Luna verwendet Sparkle 2.10.0 im Hauptprozess. Das Framework wird beim Build aus
 seinem offiziellen Release geladen und anhand einer fest hinterlegten SHA-256
@@ -15,23 +34,6 @@ geprüft. Die Lizenz liegt im eingebetteten Framework.
 - Privater Schlüssel: macOS-Schlüsselbund, Sparkle-Account `luna-browser-updates`.
   Nicht löschen: Er wird für zukünftige Releases benötigt. Nicht ins Repo exportieren.
 - Keine Übermittlung des optionalen Sparkle-Systemprofils.
-
-## Neue Version veröffentlichen
-
-1. `info.productVersion` in `wails.json` erhöhen (z. B. 1.1.1).
-2. `wails build` ausführen, Tests durchführen und Änderungen committen/pushen.
-3. `sh scripts/release.sh` auf diesem Mac ausführen. Das Skript prüft die
-   App-Signatur und den öffentlichen Schlüssel, erstellt/signiert das Appcast,
-   lädt ZIP und Feed in ein Draft-Release und veröffentlicht beide gemeinsam.
-
-Ein Git-Push allein ist **kein** App-Update. Nur veröffentlichte Releases mit
-signiertem Archiv und Appcast werden verteilt. Das Skript überschreibt keine
-bestehenden Releases. Es verpackt die Architektur des Build-Macs (aktuell arm64).
-
-Die aktuelle App ist ad-hoc codesigniert und nicht Apple-notarisiert. Ed25519
-sichert Updates, ersetzt aber keine Developer-ID-Signatur/Notarisierung für die
-erste Installation auf fremden Macs. Vor breiter Verteilung Developer ID und
-Notarisierung ergänzen. Alte Versionen ohne Sparkle benötigen einmal die neue App.
 
 ## Downloadseite und Erstinstallation
 

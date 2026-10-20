@@ -6,6 +6,7 @@ import { EventsOn } from '../wailsjs/runtime/runtime.js';
 // Der Entwicklungs-Zugang im normalen Browser (http://localhost:34115) teilt sich die nativen Tab-Ansichten mit dem
 // App-Fenster. Damit er dessen Seiten nicht verschiebt oder umschaltet, sendet er native Befehle nur mit ?native=1.
 const NATIVE_OK =
+  !!window.chrome?.webview ||
   !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.external) ||
   new URLSearchParams(location.search).has('native');
 export const IS_NATIVE = NATIVE_OK;

@@ -25,3 +25,5 @@
 @import './styles/settings-select.css';
 
 @import './styles/chat.css';
+
+.windows-preview { position: fixed; bottom: 7px; left: 9px; z-index: 100000; pointer-events: none; font-size: 10px; font-weight: 650; color: #754a0a; background: #fff1cf; padding: 3px 7px; border-radius: 6px; }
