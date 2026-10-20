@@ -56,7 +56,9 @@ sealed class Host : Form
     static void Event(object value) => Output(new { @event = value });
     async Task ReadCommands()
     {
-        while (await Console.In.ReadLineAsync() is { } line)
+        // Console.In is synchronized and can block even for ReadLineAsync.
+        // Keep pipe reads off the STA so WebView2 keeps painting while Go is idle.
+        while (await Task.Run(() => Console.ReadLine()) is { } line)
         {
             long id = 0;
             try

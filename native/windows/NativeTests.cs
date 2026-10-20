@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -46,7 +47,41 @@ static class NativeTests
             await Call("load", new { tab = 2, url = $"http://127.0.0.1:{port}/next" });
             await Call("show", new { tab = 2 }); await Call("close", new { tab = 2 }); await Call("show", new { tab = 1 });
             await Call("show", new { tab = -1 }); await Call("close", new { tab = 1 });
+            await TestIPC($"http://127.0.0.1:{port}/");
         }
         finally { cancel.Cancel(); listener.Stop(); await server; }
     }
+    static async Task TestIPC(string url) {
+        var info=new ProcessStartInfo(Environment.ProcessPath!,Environment.ProcessId.ToString()) {UseShellExecute=false,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true};
+        using var child=Process.Start(info)!;
+        long id=0;
+        async Task<JsonElement> Call(string op,object args){
+            var expected=++id;
+            await child.StandardInput.WriteLineAsync(JsonSerializer.Serialize(new{id=expected,op,args}));
+            while(true){
+                var line=await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(25));
+                if(line==null)throw new Exception("Native IPC closed: "+await child.StandardError.ReadToEndAsync());
+                using var doc=JsonDocument.Parse(line);var r=doc.RootElement;
+                if(!r.TryGetProperty("id",out var responseID)||responseID.GetInt64()!=expected)continue;
+                if(r.TryGetProperty("error",out var error))throw new Exception(error.GetString());
+                return r.GetProperty("result").Clone();
+            }
+        }
+        try {
+            await Call("frame",new{x=0,y=0,width=800,height=500});
+            await Call("load",new{tab=3,url});
+            await Call("show",new{tab=3});
+            var deadline=DateTime.UtcNow.AddSeconds(20);bool ready=false;
+            while(DateTime.UtcNow<deadline){if((await Call("evaluate",new{tab=3,source="document.title"})).GetString()=="Luna Test"){ready=true;break;}await Task.Delay(100);}
+            Assert(ready,"Cross-process tab failed to navigate");
+            await Call("evaluate",new{tab=3,source="window.__ticks=0;setInterval(()=>window.__ticks++,30);'ready'"});
+            await Task.Delay(1500); // no pipe input: the STA must still pump browser events
+            var ticks=(await Call("evaluate",new{tab=3,source="String(window.__ticks)"})).GetString();
+            Assert(int.TryParse(ticks,out var n)&&n>10,"Native IPC blocked the browser UI while idle");
+        } finally {
+            child.StandardInput.Close();
+            if(!child.WaitForExit(5000))child.Kill(true);
+        }
+    }
+
 }

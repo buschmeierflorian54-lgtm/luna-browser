@@ -55,3 +55,5 @@ func handlePlatformCommand() bool {
 	}
 	return true
 }
+
+func platformTitle() string { return "Luna Browser · Windows-Testversion (instabil)" }

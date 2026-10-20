@@ -16,3 +16,5 @@ func configurePlatform(a *App)      {}
 func closePlatform()                {}
 
 func handlePlatformCommand() bool { return false }
+
+func platformTitle() string { return "Luna Browser" }

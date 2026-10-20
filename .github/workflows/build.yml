@@ -42,9 +42,6 @@ jobs:
         run: |
           npm ci
           npx playwright install chromium
-      - name: Frontend integration tests
-        working-directory: frontend
-        run: npm test
       - name: Build frontend
         working-directory: frontend
         run: npm run build
@@ -107,6 +104,9 @@ jobs:
           } finally {
             if (!$app.HasExited) { Stop-Process -Id $app.Id -Force }
           }
+      - name: Frontend integration tests
+        working-directory: frontend
+        run: npm test
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
