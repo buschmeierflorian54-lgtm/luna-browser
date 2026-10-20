@@ -103,20 +103,6 @@
     }
   })();
 
-  /* ---------- Maus-Parallax & Glow ---------- */
-  const stage = $('#stage'), glow = $('#glow');
-  let gx = innerWidth / 2, gy = innerHeight / 2, tx = gx, ty = gy;
-  if (!reduce && matchMedia('(hover:hover)').matches) {
-    addEventListener('pointermove', (e) => {
-      tx = e.clientX; ty = e.clientY;
-      const r = stage.getBoundingClientRect();
-      const nx = ((e.clientX - (r.left + r.width / 2)) / innerWidth) * 2, ny = ((e.clientY - (r.top + r.height / 2)) / innerHeight) * 2;
-      stage.style.setProperty('--mx', Math.max(-1, Math.min(1, nx)).toFixed(3));
-      stage.style.setProperty('--my', Math.max(-1, Math.min(1, ny)).toFixed(3));
-    }, { passive: true });
-    (function loop() { gx += (tx - gx) * 0.08; gy += (ty - gy) * 0.08; glow.style.transform = `translate(${gx}px,${gy}px)`; requestAnimationFrame(loop); })();
-  } else glow.style.display = 'none';
-
   /* ---------- Einblenden beim Scrollen ---------- */
   const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
   $$('.reveal').forEach((el) => io.observe(el));
