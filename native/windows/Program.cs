@@ -107,8 +107,12 @@ sealed class Host : Form
         if (parent != IntPtr.Zero) return;
         EnumWindows((hwnd, _) => { GetWindowThreadProcessId(hwnd, out var pid); if (pid == parentPID && IsWindowVisible(hwnd)) { parent = hwnd; return false; } return true; }, IntPtr.Zero);
         if (parent == IntPtr.Zero) throw new InvalidOperationException("Luna-Fenster ist noch nicht bereit.");
-        SetParent(Handle, parent);
+        // Keep WinForms' managed window model consistent with the native child
+        // window. SetParent alone leaves Form treating this as a top-level
+        // activation target, competing with Wails for keyboard focus.
+        TopLevel = false;
         SetWindowLongPtr(Handle, -16, new IntPtr(0x40000000L | 0x04000000L | 0x02000000L));
+        SetParent(Handle, parent);
         ApplyFrame();
     }
     void ApplyFrame()
@@ -215,7 +219,17 @@ sealed class Host : Form
             case "load":
                 var url = Str(a, "url"); if (!Uri.TryCreate(url, UriKind.Absolute, out var u) || !(u.Scheme == "https" || u.Scheme == "http" || url == "about:blank")) throw new InvalidOperationException("Diese Adresse wird nicht unterstützt.");
                 (await Tab(id)).CoreWebView2.Navigate(url); return null;
-            case "show": active = id; foreach (var (tid, v) in tabs) v.Visible = tid == id; if (id < 0) Hide(); else if (tabs.TryGetValue(id, out var shown)) { Show(); shown.BringToFront(); shown.Focus(); } return null;
+            case "show":
+                var changed = active != id || !Visible;
+                active = id;
+                foreach (var (tid, v) in tabs) v.Visible = tid == id;
+                if (id < 0) Hide();
+                else if (tabs.TryGetValue(id, out var shown)) {
+                    Show(); shown.BringToFront();
+                    // Layout refreshes must preserve focus inside page inputs.
+                    if (changed) shown.Focus();
+                }
+                return null;
             case "frame": frame = new Rectangle((int)Num(a, "x"), (int)Num(a, "y"), (int)Num(a, "width"), (int)Num(a, "height")); ApplyFrame(); return null;
             case "close": if (tabs.Remove(id, out var closed)) { Controls.Remove(closed); closed.Dispose(); loading.Remove(id); failed.Remove(id); gestureIDs.Remove(id); } return null;
             case "back": if (Existing().CanGoBack) Existing().GoBack(); return null;

@@ -11,14 +11,14 @@ static class NativeTests
         var parent = new Form { Width = 1000, Height = 700, Text = "Luna Native Tests" };
         parent.Shown += async (_, _) =>
         {
-            try { await Test(); Console.WriteLine("NATIVE_TESTS_PASSED"); Environment.ExitCode = 0; }
+            try { await Test(parent); Console.WriteLine("NATIVE_TESTS_PASSED"); Environment.ExitCode = 0; }
             catch (Exception e) { Console.Error.WriteLine(e); Environment.ExitCode = 1; }
             finally { parent.Close(); }
         };
         Application.Run(parent);
     }
     static void Assert(bool value, string reason) { if (!value) throw new Exception(reason); }
-    static async Task Test()
+    static async Task Test(Form parent)
     {
         var queue = new CommandQueue();
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -46,6 +46,16 @@ static class NativeTests
             await Call("gesture", new { source = "", on = true });
             await Call("load", new { tab = 1, url = $"http://127.0.0.1:{port}/" });
             await Call("show", new { tab = 1 });
+            Assert(!host.TopLevel, "Embedded host still uses top-level WinForms activation");
+            // A repeated show is a layout refresh, not a user tab switch. In
+            // particular it must not pull focus out of the browser chrome.
+            using (var chromeInput = new TextBox { Top = 550, Width = 200 }) {
+                parent.Controls.Add(chromeInput);
+                parent.Activate(); chromeInput.Focus();
+                Assert(chromeInput.Focused, "Could not focus browser chrome test input");
+                await Call("show", new { tab = 1 });
+                Assert(chromeInput.Focused, "Repeated native show stole keyboard focus");
+            }
             var deadline = DateTime.UtcNow.AddSeconds(25); string? title = null;
             while (DateTime.UtcNow < deadline) { title = (string?)await Call("evaluate", new { tab = 1, source = "document.title" }); if (title == "Luna Test") break; await Task.Delay(100); }
             Assert(title == "Luna Test", "Native WebView2 navigation failed");

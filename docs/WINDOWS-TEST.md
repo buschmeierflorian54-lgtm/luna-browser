@@ -50,6 +50,16 @@ für einen unbekannten Herausgeber zeigen. Keine Sicherheitseinstellungen global
 - MCP zuerst ohne und dann mit Windows-Hello-Bestätigung prüfen.
 - Fehler mit Version, Windows-Version und Schritten im Repo melden.
 
+### Tastatureingabe in eingebetteten Seiten (1.2.1)
+
+Der Windows-Host wird auch im WinForms-Fenstermodell als untergeordnetes
+Fenster eingebettet. Wiederholte Anzeige-/Layoutaufrufe setzen den Fokus nicht
+erneut auf die Webansicht. Dadurch konkurriert das eingebettete Fenster nicht
+mehr als eigenständiges Fenster um die Aktivierung; Eingaben bleiben im
+ausgewählten Feld. Native Tests prüfen die Einbettung und den Fokuserhalt bei
+wiederholter Anzeige. Zusätzlich wurde die Texteingabe auf einer lokalen
+Webseite im vollständigen Windows-Browser geprüft.
+
 ### Einrichtung bei langsamen Starts
 
 Die Einrichtung wartet nicht mehr auf die erste Windows-Spotify-Abfrage. Die
