@@ -205,6 +205,10 @@ test('drawing during the demo stops it and silences the write sound', async ({ p
   await setup(page, { prefs: { googleSearch: true }, resume: 2, liveAnimation: true });
   await expect(page.locator('.setup-gesture-stage')).toHaveClass(/demo-run/, { timeout: 4000 });
   await expect(page.locator('.setup-mouse')).toHaveClass(/pressed/, { timeout: 3000 });
+  // Pressed animation begins before the writing sound; interrupt the actual sound.
+  await expect
+    .poll(() => page.evaluate(() => window.calls.some((c) => c[0] === 'write' && c[1] === true)))
+    .toBe(true);
   const area = await page.locator('.setup-gesture-stage').boundingBox();
   await page.mouse.move(area.x + 30, area.y + 30);
   await page.mouse.down();

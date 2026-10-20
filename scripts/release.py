@@ -36,7 +36,7 @@ def main():
     if output.exists():
         raise SystemExit(f"Refusing to overwrite existing release staging: {output}")
     run("sh", "scripts/setup-sparkle.sh")
-    expected = plistlib.loads((ROOT / "build/darwin/Info.plist").read_bytes())["SUPublicEDKey"]
+    expected = plistlib.loads((ROOT / "build/darwin/Info.plist").read_bytes(), fmt=plistlib.FMT_XML)["SUPublicEDKey"]
     actual = run("build/sparkle/bin/generate_keys", "--account", "luna-browser-updates", "-p", capture=True).strip()
     if actual != expected:
         raise SystemExit("Signing key does not match installed clients.")
@@ -55,7 +55,7 @@ def main():
         appdir = temp / "app"
         run("ditto", "-x", "-k", str(macdir/maczip), str(appdir))
         app = appdir / "Luna Browser.app"
-        info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+        info = plistlib.loads((app / "Contents/Info.plist").read_bytes(), fmt=plistlib.FMT_XML)
         if info["CFBundleShortVersionString"] != version or info["SUPublicEDKey"] != expected:
             raise SystemExit("macOS artifact version/signing identity mismatch.")
         run("codesign", "--verify", "--deep", "--strict", str(app))

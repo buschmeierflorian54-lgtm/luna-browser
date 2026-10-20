@@ -22,3 +22,6 @@ native/windows/bin/
 native/windows/obj/
 /build/ci/
 /work/
+
+native-test*.log
+**/__pycache__/

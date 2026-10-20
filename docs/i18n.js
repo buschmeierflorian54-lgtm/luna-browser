@@ -3,6 +3,7 @@
   'use strict';
   const language = (navigator.languages?.[0] || navigator.language || 'en').toLowerCase().split('-')[0] === 'de' ? 'de' : 'en';
   const translations = {
+    'Windows-Testversion · experimentell und instabil': 'Windows preview · experimental and unstable',
     'Luna Browser – Mach es dir im Web gemütlich': 'Luna Browser – Make yourself at home on the web',
     'Farbwelten': 'Color themes', 'Für Apple-Silicon-Macs · macOS 13+': 'For Apple Silicon Macs · macOS 13+',
     'Mach es dir im Web': 'Make yourself at home', 'gemütlich.': 'on the web.',

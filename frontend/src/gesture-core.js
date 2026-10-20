@@ -236,6 +236,7 @@
       raf = 0,
       fade = null,
       shotTimer = 0,
+      shotRAF = 0,
       drawing = false;
 
     // Meldet Anfang und Ende des Zeichnens (für den Schreibton).
@@ -555,17 +556,24 @@
           }
           var shotPoint = { x: mx / pts.length, y: my / pts.length };
           removeCanvas();
-          // WKWebView kann Animationsframes pausieren. Ein kurzer Timer lässt die
-          // entfernte Spur verschwinden, ohne die Aufnahme an rAF zu koppeln.
-          shotTimer = setTimeout(function () {
-            shotTimer = 0;
+          // Let two paints remove the trail. Hidden/throttled WebViews still
+          // capture through a bounded fallback when animation frames stop.
+          function capture() {
+            if (!shotTimer) return;
+            clearTimeout(shotTimer);
+            cancelAnimationFrame(shotRAF);
+            shotTimer = shotRAF = 0;
             try {
               if (onLetter) onLetter(letter);
               else onS(shotPoint);
             } catch (x) {
-              /* nie die Seite stören */
+              /* never disturb the page */
             }
-          }, 120);
+          }
+          shotTimer = setTimeout(capture, 500);
+          shotRAF = requestAnimationFrame(function () {
+            shotRAF = requestAnimationFrame(capture);
+          });
           pts = null;
           swallow = Date.now() + 450;
           fired = false;
@@ -656,7 +664,8 @@
       target.removeEventListener('click', click, true);
       window.removeEventListener('blur', end);
       clearTimeout(shotTimer);
-      shotTimer = 0;
+      cancelAnimationFrame(shotRAF);
+      shotTimer = shotRAF = 0;
       setDrawing(false);
       removeCanvas();
     };

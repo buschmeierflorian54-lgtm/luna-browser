@@ -143,7 +143,9 @@ export function createOnboarding({ onFinish, refreshSearch }) {
           try {
             const preview = await api.screenshot(-1);
             if (active && step === 2)
-              message(`Geschafft! Dein Screenshot ist kopiert. Mit ${shortcut('⌘ V')} kannst du ihn einfügen.`);
+              message(
+                `Geschafft! Dein Screenshot ist kopiert. Mit ${shortcut('⌘ V')} kannst du ihn einfügen.`,
+              );
             if (preview && active && step === 2)
               await playPolaroid(
                 'data:image/jpeg;base64,' + preview,

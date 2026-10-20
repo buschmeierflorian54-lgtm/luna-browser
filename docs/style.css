@@ -324,3 +324,6 @@ aside{border-left:3px solid var(--acc);padding-left:16px;margin-top:22px}aside b
   *,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
   .reveal{opacity:1;transform:none}.gest-s path{stroke-dashoffset:0}
 }
+
+.windows-test-note{font-size:.8rem;margin:12px 0;color:var(--muted)}
+.windows-test-note a{color:inherit;text-underline-offset:3px}

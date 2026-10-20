@@ -623,7 +623,9 @@ api.onWeb((e) => {
   if (onboarding?.handleWeb(e)) return;
   const t = tabById(e.tab);
   switch (e.t) {
-    case 'command': runCmd(e.name); break;
+    case 'command':
+      runCmd(e.name);
+      break;
     case 'state':
       if (!t) return;
       t.back = e.back;
@@ -1150,7 +1152,11 @@ function openMenu() {
     ['Verlauf', shortcut('⌘Y'), 'show-history'],
     ['Downloads', shortcut('⌘⌥L'), 'show-downloads'],
     '-',
-    [S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden', shortcut('⇧⌘B'), 'toggle-bar'],
+    [
+      S.bar ? 'Lesezeichenleiste ausblenden' : 'Lesezeichenleiste einblenden',
+      shortcut('⇧⌘B'),
+      'toggle-bar',
+    ],
   ];
   const m = $('#menu'),
     r = $('#bMenu').getBoundingClientRect();
@@ -2140,8 +2146,11 @@ async function runCmd(c) {
 }
 api.onCmd(runCmd);
 if (WINDOWS && IS_NATIVE) {
- const warning = document.createElement("div");
- warning.className="windows-preview"; warning.textContent="Windows · Experimentell / instabil"; warning.title="Diese Windows-Version ist eine frühe Testversion. Bitte sichere wichtige Daten."; document.body.append(warning);
+  const warning = document.createElement('div');
+  warning.className = 'windows-preview';
+  warning.textContent = 'Windows · Experimentell / instabil';
+  warning.title = 'Diese Windows-Version ist eine frühe Testversion. Bitte sichere wichtige Daten.';
+  document.body.append(warning);
 }
 
 document.addEventListener('click', async (ev) => {
@@ -2178,11 +2187,11 @@ document.addEventListener('click', async (ev) => {
       runCmd('toggle-side');
       break;
     case 'open-url':
-      (ev.metaKey || ev.ctrlKey) ? newTab(d.url, { background: true }) : visit(t, d.url);
+      ev.metaKey || ev.ctrlKey ? newTab(d.url, { background: true }) : visit(t, d.url);
       break;
     case 'sr-open':
       ev.preventDefault();
-      if ((ev.metaKey || ev.ctrlKey)) {
+      if (ev.metaKey || ev.ctrlKey) {
         newTab(d.url, { background: true });
         toast('In neuem Tab geöffnet');
       } else openWeb(t, d.url);

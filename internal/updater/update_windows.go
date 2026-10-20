@@ -66,6 +66,8 @@ func Start() {
 	})
 }
 
+var errNoRelease = errors.New("Noch kein Windows-Update veröffentlicht. Diese Testversion ist experimentell / instabil.")
+
 var client = &http.Client{Timeout: 3 * time.Minute}
 
 func get(url string, limit int64) ([]byte, error) {
@@ -74,6 +76,9 @@ func get(url string, limit int64) ([]byte, error) {
 		return nil, e
 	}
 	defer res.Body.Close()
+	if res.StatusCode == http.StatusNotFound {
+		return nil, errNoRelease
+	}
 	if res.StatusCode != 200 {
 		return nil, fmt.Errorf("Update-Kanal meldet HTTP %d", res.StatusCode)
 	}
@@ -94,6 +99,13 @@ func Check() {
 	mu.Unlock()
 	defer func() { mu.Lock(); state["canCheck"] = true; state["lastCheck"] = time.Now().Unix(); mu.Unlock() }()
 	raw, e := get(Repository+"/releases/latest/download/windows-update.json", 16384)
+	if errors.Is(e, errNoRelease) {
+		mu.Lock()
+		state["phase"] = "idle"
+		state["message"] = e.Error()
+		mu.Unlock()
+		return
+	}
 	if e != nil {
 		fail(e)
 		return
