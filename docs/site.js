@@ -3,6 +3,8 @@
    kleine Live-Demos und ein Installationsdialog. */
 (() => {
   'use strict';
+  const { t, language } = window.lunaI18n;
+  const locale = language === 'de' ? 'de-DE' : 'en-US';
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -13,10 +15,10 @@
 
   /* ---------- Farbwelten ---------- */
   const THEMES = [
-    ['luna', 'Luna Rosé', 325, 38], ['lavender', 'Lavendel', 265, 42], ['ocean', 'Ozean', 210, 55],
-    ['mint', 'Minze', 163, 40], ['forest', 'Wald', 140, 30], ['sand', 'Sand', 38, 42],
-    ['peach', 'Pfirsich', 22, 58], ['cherry', 'Kirschblüte', 350, 46], ['arctic', 'Arktis', 188, 43],
-    ['graphite', 'Graphit', 220, 5],
+    ['luna', 'Luna Rosé', 325, 38], ['lavender', t('Lavendel'), 265, 42], ['ocean', t('Ozean'), 210, 55],
+    ['mint', t('Minze'), 163, 40], ['forest', t('Wald'), 140, 30], ['sand', 'Sand', 38, 42],
+    ['peach', t('Pfirsich'), 22, 58], ['cherry', t('Kirschblüte'), 350, 46], ['arctic', t('Arktis'), 188, 43],
+    ['graphite', t('Graphit'), 220, 5],
   ];
   // handabgestimmte Originalpalette von Luna Rosé
   const LUNA = {
@@ -79,16 +81,16 @@
   /* ---------- Uhr & Begrüßung im Hero ---------- */
   function tickClock() {
     const d = new Date(), hr = d.getHours();
-    $('#clock').textContent = d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-    $('#greet').textContent = hr < 5 ? 'Gute Nacht' : hr < 11 ? 'Guten Morgen' : hr < 17 ? 'Guten Tag' : hr < 22 ? 'Guten Abend' : 'Gute Nacht';
-    $('#date').textContent = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('#clock').textContent = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+    $('#greet').textContent = hr < 5 ? t('Gute Nacht') : hr < 11 ? t('Guten Morgen') : hr < 17 ? t('Guten Tag') : hr < 22 ? t('Guten Abend') : t('Gute Nacht');
+    $('#date').textContent = d.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
   }
   tickClock(); setInterval(tickClock, 15000);
 
   // Adressleiste tippt sich selbst
   (async function typeAddr() {
     const el = $('#addrTyped');
-    const words = ['Suchen oder Adresse eingeben', 'theme', 'play bohemian rhapsody', 'spotify daft punk', 'tab open youtube.com'];
+    const words = [t('Suchen oder Adresse eingeben'), 'theme', 'play bohemian rhapsody', 'spotify daft punk', 'tab open youtube.com'];
     if (reduce) return;
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     let i = 0;
@@ -143,8 +145,8 @@
   vio.observe(chatCard);
   (async function chatLoop() {
     const u = $('#msgU'), a = $('#msgA'), at = $('#msgAt');
-    const Q = 'Fasse diese Seite kurz zusammen';
-    const A = 'Das ist Lunas Startseite: Uhr, Suche und deine Musik, alles ruhig an einem Ort. Ich laufe lokal auf deinem Mac, ganz ohne Konto.';
+    const Q = t('Fasse diese Seite kurz zusammen');
+    const A = t('Das ist Lunas Startseite: Uhr, Suche und deine Musik, alles ruhig an einem Ort. Ich laufe lokal auf deinem Mac, ganz ohne Konto.');
     if (reduce) { u.textContent = Q; at.textContent = A; return; }
     for (;;) {
       await until(chatCard);
@@ -214,7 +216,7 @@
   modal.addEventListener('click', (e) => { if (e.target === modal) { const r = modal.getBoundingClientRect(); if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) modal.close(); } });
   $('#copy').addEventListener('click', async () => {
     const status = $('#copyStatus');
-    try { await navigator.clipboard.writeText(command); status.textContent = 'Kopiert. Jetzt im Terminal einfügen und Enter drücken.'; }
-    catch { const sel = getSelection(), range = document.createRange(); range.selectNodeContents($('#installCommand')); sel.removeAllRanges(); sel.addRange(range); status.textContent = 'Bitte den markierten Befehl mit ⌘ C kopieren.'; }
+    try { await navigator.clipboard.writeText(command); status.textContent = t('Kopiert. Jetzt im Terminal einfügen und Enter drücken.'); }
+    catch { const sel = getSelection(), range = document.createRange(); range.selectNodeContents($('#installCommand')); sel.removeAllRanges(); sel.addRange(range); status.textContent = t('Bitte den markierten Befehl mit ⌘ C kopieren.'); }
   });
 })();
