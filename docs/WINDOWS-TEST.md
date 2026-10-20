@@ -49,3 +49,21 @@ für einen unbekannten Herausgeber zeigen. Keine Sicherheitseinstellungen global
 - Sonos im lokalen Netzwerk und Windows-Firewallabfrage prüfen.
 - MCP zuerst ohne und dann mit Windows-Hello-Bestätigung prüfen.
 - Fehler mit Version, Windows-Version und Schritten im Repo melden.
+
+### Einrichtung bei langsamen Starts
+
+Die Einrichtung wartet nicht mehr auf die erste Windows-Spotify-Abfrage. Die
+Anbieterseite zeigt ihre Bedienelemente bereits während des WebView2-Starts;
+Fensteranzeige und Zwischenablage-Abfragen werden nicht hinter langsamen
+Browser- oder Medienanfragen eingereiht.
+
+Bei der Ersteinrichtung erscheint nach 10 Sekunden im Startbildschirm oder nach
+2 Sekunden beim Laden der Brave-Seite ein Hinweis. „Ich will es trotzdem
+probieren“ lässt die Einrichtung weiterlaufen und unterdrückt weitere Hinweise
+für diese Sitzung. Eine langsame Verbindung kann den Hinweis ebenfalls auslösen.
+
+„Luna entfernen“ verschiebt die erkannten Dateien des entpackten Windows-Pakets
+nach dem Beenden in den Papierkorb. Eigene Dateien im übergeordneten Ordner und
+Browserdaten bleiben erhalten. Bei einem unvollständigen Paket zeigt Luna eine
+Anleitung zum manuellen Entfernen. Das Verhalten auf den betroffenen echten
+Windows-Rechnern muss mit dem neuen Testbuild erneut geprüft werden.

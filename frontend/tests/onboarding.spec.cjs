@@ -1,9 +1,15 @@
 const { test, expect } = require('@playwright/test');
 const harness = `<!doctype html><html data-theme="dark"><head><link rel="stylesheet" href="/src/styles/foundation.css"></head><body><main id="existing"><button>Existing browser</button></main><script type="module">import {createOnboarding} from '/src/onboarding.js';window.wizard=createOnboarding({onFinish(){window.finished=true},async refreshSearch(){window.refreshed=true}});await window.wizard.start();</script></body></html>`;
 async function setup(page, initial = {}) {
+  page.on('pageerror', (error) => console.error('SETUP PAGE ERROR:', error.message));
   await page.addInitScript((initial) => {
     window.preferences = initial.prefs || {};
-    window.clip = { count: 4, eligible: false, host: 'api-dashboard.search.brave.com' };
+    window.clip = {
+      count: 4,
+      eligible: false,
+      loading: false,
+      host: 'api-dashboard.search.brave.com',
+    };
     window.calls = [];
     window.savedKeys = {};
     window.spotify = {};
@@ -11,7 +17,7 @@ async function setup(page, initial = {}) {
     if (initial.resume !== undefined)
       localStorage.setItem('luna-onboarding-step', String(initial.resume));
   }, initial);
-  await page.route('**/src/api.js', (route) =>
+  await page.route('**/src/api.js*', (route) =>
     route.fulfill({
       contentType: 'application/javascript',
       body: `
@@ -24,7 +30,7 @@ async function setup(page, initial = {}) {
  export const spotifyAPIStatus=async()=>window.spotify;
  export const chatStatus=async()=>({providers:window.providerStatus});
  export const onboardingClipboard=async()=>window.clip;
- export const load=async(id,url)=>window.calls.push(['load',id,url]);
+ export const load=async(id,url)=>{window.calls.push(['load',id,url]);if(window.stallLoad)await new Promise(()=>{})};
  export const show=async(id)=>window.calls.push(['show',id]);
  export const close=async(id)=>window.calls.push(['close',id]);
  export const setFrame=async(...args)=>window.calls.push(['frame',...args]);
@@ -241,4 +247,62 @@ test('drawing S on the onboarding page invokes screenshot without touching saved
   expect(await page.evaluate(() => window.calls.filter((c) => c[0] === 'screenshot'))).toEqual([
     ['screenshot', -1],
   ]);
+});
+
+test('slow Brave load warns after two seconds and continue preserves setup', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => {
+    window.clip.loading = true;
+  });
+  await page.clock.install({ time: new Date(0) });
+  await page.clock.pauseAt(new Date(1000));
+  await page.getByRole('button', { name: 'Luna kennenlernen' }).click();
+  await page.getByRole('button', { name: 'Luna Search öffnen' }).click();
+  await page.clock.runFor(1999);
+  await expect(page.locator('.slow-setup')).toHaveCount(0);
+  await page.clock.runFor(1);
+  await expect(page.locator('.slow-setup')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Luna entfernen', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => window.calls.filter((c) => c[0] === 'show').at(-1))).toEqual([
+    'show',
+    -1,
+  ]);
+  await page.getByRole('button', { name: 'Ich will es trotzdem probieren' }).click();
+  await expect(page.locator('.setup.portal')).toBeVisible();
+  await expect(page.locator('.slow-setup')).toHaveCount(0);
+  await page.clock.runFor(6000);
+  await expect(page.locator('.slow-setup')).toHaveCount(0);
+});
+
+test('Brave load completion cancels warning and leaving step cancels timer', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => {
+    window.clip.loading = true;
+  });
+  await page.clock.install({ time: new Date(0) });
+  await page.clock.pauseAt(new Date(1000));
+  await page.getByRole('button', { name: 'Luna kennenlernen' }).click();
+  await page.getByRole('button', { name: 'Luna Search öffnen' }).click();
+  await page.clock.runFor(1000);
+  await page.evaluate(() => window.wizard.handleWeb({ t: 'state', tab: 910000, loading: false }));
+  await page.clock.runFor(2000);
+  await expect(page.locator('.slow-setup')).toHaveCount(0);
+  await page.evaluate(() => window.wizard.handleWeb({ t: 'state', tab: 910000, loading: true }));
+  await page.getByRole('button', { name: 'Key eingeben', exact: true }).click();
+  await page.clock.runFor(2500);
+  await expect(page.locator('.slow-setup')).toHaveCount(0);
+});
+
+test('cold WebView2 startup leaves provider controls and exit responsive', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => {
+    window.stallLoad = true;
+    window.clip.loading = true;
+  });
+  await page.getByRole('button', { name: 'Luna kennenlernen' }).click();
+  await page.getByRole('button', { name: 'Luna Search öffnen' }).click();
+  await expect(page.getByRole('button', { name: 'Key eingeben', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Später fortsetzen' }).click();
+  await expect(page.locator('.setup')).toHaveCount(0);
+  await expect(page.locator('#existing')).not.toHaveAttribute('inert', '');
 });

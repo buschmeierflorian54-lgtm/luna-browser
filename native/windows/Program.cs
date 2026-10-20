@@ -26,6 +26,23 @@ static class Program
     }
 }
 
+// Browser mutations remain ordered, but slow WebView2/media work must not
+// block visibility, frame updates, clipboard polling or Windows Hello controls.
+sealed class CommandQueue
+{
+    Task tail = Task.CompletedTask;
+    public Task Enqueue(Func<Task> work, bool independent)
+    {
+        if (independent) return work();
+        return tail = After(tail, work);
+    }
+    static async Task After(Task previous, Func<Task> work)
+    {
+        try { await previous; } catch { /* Each command reports its own failure. */ }
+        await work();
+    }
+}
+
 sealed class Host : Form
 {
     readonly int parentPID;
@@ -54,6 +71,7 @@ sealed class Host : Form
     }
     static void Output(object value) { lock (typeof(Program)) Console.WriteLine(JsonSerializer.Serialize(value)); }
     static void Event(object value) => Output(new { @event = value });
+    readonly CommandQueue commands = new();
     async Task ReadCommands()
     {
         // Console.In is synchronized and can block even for ReadLineAsync.
@@ -65,8 +83,16 @@ sealed class Host : Form
             {
                 using var doc = JsonDocument.Parse(line); var root = doc.RootElement;
                 id = root.GetProperty("id").GetInt64();
-                var result = await Execute(root.GetProperty("op").GetString()!, root.GetProperty("args"));
-                Output(new { id, result });
+                var op = root.GetProperty("op").GetString()!;
+                var args = root.GetProperty("args").Clone();
+                var requestID = id;
+                bool independent = op is "show" or "frame" or "focus" or "clipboard" or "spotifyState" or "spotifyCommand" or "authenticate";
+                _ = commands.Enqueue(async () => {
+                    try {
+                        var result = await Execute(op, args);
+                        Output(new { id = requestID, result });
+                    } catch (Exception error) { Output(new { id = requestID, error = error.Message }); }
+                }, independent);
             }
             catch (Exception e) { Output(new { id, error = e.Message }); }
         }
@@ -217,9 +243,9 @@ sealed class Host : Form
             case "authenticate": Attach(); if (await UserConsentVerifier.CheckAvailabilityAsync() != UserConsentVerifierAvailability.Available) return "unavailable"; var verified = await UserConsentVerifierInterop.RequestVerificationForWindowAsync(parent, Str(a, "reason")); return verified == UserConsentVerificationResult.Verified ? "verified" : "denied";
             case "clipboard": return ClipboardStatus(id, Str(a, "provider"), Int(a, "previousCount", -1));
             case "volume": using (var enumerator = new MMDeviceEnumerator()) using (var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)) return new { volume = device.AudioEndpointVolume.Mute ? 0 : (int)Math.Round(device.AudioEndpointVolume.MasterVolumeLevelScalar * 100), device = device.ID };
-            case "spotifyState": return await SpotifyState();
-            case "spotifyCommand": return await SpotifyCommand(Str(a, "command"), Num(a, "value"));
-            case "icon": Attach(); using (var stream = new MemoryStream(Convert.FromBase64String(Str(a, "data")))) using (var bitmap = new Bitmap(stream)) { var h = bitmap.GetHicon(); try { taskIcon?.Dispose(); taskIcon = (Icon)Icon.FromHandle(h).Clone(); SendMessage(parent, 0x80, new IntPtr(1), taskIcon.Handle); SendMessage(parent, 0x80, IntPtr.Zero, taskIcon.Handle); } finally { DestroyIcon(h); } } return true;
+            case "spotifyState": return await SpotifyState().WaitAsync(TimeSpan.FromSeconds(4));
+            case "spotifyCommand": return await SpotifyCommand(Str(a, "command"), Num(a, "value")).WaitAsync(TimeSpan.FromSeconds(8));
+            case "icon": Attach(); using (var stream = new MemoryStream(Convert.FromBase64String(Str(a, "data")))) using (var bitmap = new Bitmap(stream)) { var h = bitmap.GetHicon(); try { taskIcon?.Dispose(); taskIcon = (Icon)Icon.FromHandle(h).Clone(); SendMessageTimeout(parent, 0x80, new IntPtr(1), taskIcon.Handle, 2, 250, out _); SendMessageTimeout(parent, 0x80, IntPtr.Zero, taskIcon.Handle, 2, 250, out _); } finally { DestroyIcon(h); } } return true;
             case "palette": return null; // WebView2 renders its own error pages in the selected color scheme.
             default: throw new InvalidOperationException("Unbekannte Windows-Anfrage: " + op);
         }
@@ -237,15 +263,21 @@ sealed class Host : Form
         tabs.TryGetValue(id, out var tab); Uri.TryCreate(tab?.Source?.ToString(), UriKind.Absolute, out var uri);
         var count = GetClipboardSequenceNumber(); var eligible = id == active && Visible && GetForegroundWindow() == parent && uri != null && !(loading.GetValueOrDefault(id) || failed.GetValueOrDefault(id)) && TrustedKeyPage(uri, provider);
         var text = eligible && previous >= 0 && count != (uint)previous && Clipboard.ContainsText() ? Clipboard.GetText() : null;
-        return new { count, eligible, host = uri?.Host ?? "", loading = loading.GetValueOrDefault(id), error = failed.GetValueOrDefault(id), text = text?.Length <= 4096 ? text : null };
+        return new { count, eligible, host = uri?.Host ?? "", loading = tab == null || loading.GetValueOrDefault(id), error = failed.GetValueOrDefault(id), text = text?.Length <= 4096 ? text : null };
     }
     internal static bool TrustedKeyPage(Uri u, string provider) { if (u.Scheme != "https") return false; var p = u.AbsolutePath.TrimEnd('/'); return provider switch { "brave" => u.Host == "api-dashboard.search.brave.com" && p == "/app/keys", "groq" => u.Host == "console.groq.com" && p == "/keys", "openrouter" => u.Host == "openrouter.ai" && (p == "/settings/keys" || (p.StartsWith("/workspace/") && p.EndsWith("/keys"))), "spotify" => u.Host == "developer.spotify.com" && p.StartsWith("/dashboard/"), _ => false }; }
     static async Task<GlobalSystemMediaTransportControlsSession?> Spotify() { var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync(); return manager.GetSessions().FirstOrDefault(s => s.SourceAppUserModelId.Contains("Spotify", StringComparison.OrdinalIgnoreCase)); }
-    static async Task<object> SpotifyState() { var session = await Spotify(); if (session == null) return new { status = "off" }; var media = await session.TryGetMediaPropertiesAsync(); var p = session.GetPlaybackInfo(); var timeline = session.GetTimelineProperties(); var position = timeline.Position; if (p.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing) position += DateTimeOffset.UtcNow - timeline.LastUpdatedTime; return new { status = p.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing ? "playing" : "paused", title = media.Title, artist = media.Artist, album = media.AlbumTitle, duration = (int)timeline.EndTime.TotalSeconds, position = (int)Math.Clamp(position.TotalSeconds, 0, timeline.EndTime.TotalSeconds), shuffle = p.IsShuffleActive ?? false, repeat = p.AutoRepeatMode != null && p.AutoRepeatMode != global::Windows.Media.MediaPlaybackAutoRepeatMode.None, volume = SpotifyVolume(null) }; }
+    static Task<object>? pendingSpotifyState;
+    static Task<object> SpotifyState() {
+        if (pendingSpotifyState == null || pendingSpotifyState.IsCompleted) pendingSpotifyState = ReadSpotifyState();
+        return pendingSpotifyState;
+    }
+    static async Task<object> ReadSpotifyState() { var session = await Spotify(); if (session == null) return new { status = "off" }; var media = await session.TryGetMediaPropertiesAsync(); var p = session.GetPlaybackInfo(); var timeline = session.GetTimelineProperties(); var position = timeline.Position; if (p.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing) position += DateTimeOffset.UtcNow - timeline.LastUpdatedTime; return new { status = p.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing ? "playing" : "paused", title = media.Title, artist = media.Artist, album = media.AlbumTitle, duration = (int)timeline.EndTime.TotalSeconds, position = (int)Math.Clamp(position.TotalSeconds, 0, timeline.EndTime.TotalSeconds), shuffle = p.IsShuffleActive ?? false, repeat = p.AutoRepeatMode != null && p.AutoRepeatMode != global::Windows.Media.MediaPlaybackAutoRepeatMode.None, volume = SpotifyVolume(null) }; }
     static int SpotifyVolume(float? value) { using var devices = new MMDeviceEnumerator(); using var device = devices.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia); var sessions = device.AudioSessionManager.Sessions; for (int i = 0; i < sessions.Count; i++) { using var session = sessions[i]; try { if (!Process.GetProcessById((int)session.GetProcessID).ProcessName.Equals("Spotify", StringComparison.OrdinalIgnoreCase)) continue; if (value.HasValue) session.SimpleAudioVolume.Volume = value.Value; return (int)Math.Round(session.SimpleAudioVolume.Volume * 100); } catch (ArgumentException) { } } return 0; }
     static async Task<object?> SpotifyCommand(string command, double value) { var session = await Spotify() ?? throw new InvalidOperationException("Spotify öffnen und einen Titel starten."); bool ok; switch (command) { case "playpause": ok = await session.TryTogglePlayPauseAsync(); break; case "next": ok = await session.TrySkipNextAsync(); break; case "previous": ok = await session.TrySkipPreviousAsync(); break; case "seek": ok = await session.TryChangePlaybackPositionAsync(TimeSpan.FromSeconds(Math.Max(0, value)).Ticks); break; case "shuffle": ok = await session.TryChangeShuffleActiveAsync(!(session.GetPlaybackInfo().IsShuffleActive ?? false)); break; case "repeat": ok = await session.TryChangeAutoRepeatModeAsync(session.GetPlaybackInfo().AutoRepeatMode == global::Windows.Media.MediaPlaybackAutoRepeatMode.None ? global::Windows.Media.MediaPlaybackAutoRepeatMode.List : global::Windows.Media.MediaPlaybackAutoRepeatMode.None); break; case "volume": SpotifyVolume((float)Math.Clamp(value / 100, 0, 1)); return null; default: throw new InvalidOperationException("Unbekannter Spotify-Befehl."); } if (!ok) throw new InvalidOperationException("Spotify unterstützt diesen Windows-Medienbefehl nicht."); return null; }
     protected override void Dispose(bool disposing) { if (disposing) { lifetime.Dispose(); penPlayer?.Dispose(); penStream?.Dispose(); soundPlayer?.Dispose(); soundStream?.Dispose(); taskIcon?.Dispose(); } base.Dispose(disposing); }
     delegate bool EnumCallback(IntPtr hwnd, IntPtr param);
+    [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam, uint flags, uint timeout, out UIntPtr result);
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumCallback cb, IntPtr param);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out int pid);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);

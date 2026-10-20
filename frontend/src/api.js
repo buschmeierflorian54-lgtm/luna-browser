@@ -135,3 +135,6 @@ export const onboardingClipboard = nat(
 export const onboardingSpotifyConnect = (id) => App.OnboardingSpotifyConnect(id);
 
 export const resetBrowserSettings = () => App.ResetBrowserSettings();
+
+// Only available to Luna’s trusted application UI.
+export const removeLuna = () => window.go.main.App.RemoveLuna();

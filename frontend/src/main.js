@@ -1,3 +1,4 @@
+import { createLoadWatchdog, showSlowSetup, slowSetupVisible } from './slow-setup.js';
 import { WINDOWS, shortcut } from './platform.js';
 import { createOnboarding } from './onboarding.js';
 let onboarding = null;
@@ -129,7 +130,7 @@ function nativeShow(id) {
     onboarding.layout();
     return;
   }
-  if (isOverlayOpen() || S.cover > 0) id = -1;
+  if (slowSetupVisible() || isOverlayOpen() || S.cover > 0) id = -1;
   if (splashing) {
     pendingShow = id;
     return;
@@ -2678,6 +2679,23 @@ document.addEventListener('keydown', (ev) => {
 const splash = $('#splash');
 const splashT0 = window.__browserSplashStarted ?? performance.now();
 let splashDismissal = null;
+const startupWatchdog = createLoadWatchdog(
+  Math.max(0, 10000 - (performance.now() - splashT0)),
+  () => {
+    if (!splashing || S.onboardingComplete) return;
+    showSlowSetup({
+      hideNative() {
+        api.show(-1);
+        onboarding?.suspend(true);
+      },
+      resume() {
+        onboarding?.suspend(false);
+        if (!splashing) nativeShow(pendingShow);
+      },
+    });
+  },
+);
+if (IS_NATIVE) startupWatchdog.start();
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function waitLoaded(t) {
   // die aktive Seite lädt schon im Hintergrund; kurz warten, damit sie beim Öffnen fertig ist
@@ -2687,6 +2705,7 @@ function dismissSplash() {
   if (splashDismissal) return splashDismissal;
   splashDismissal = (async () => {
     await wait(Math.max(0, 3000 - (performance.now() - splashT0)));
+    startupWatchdog.stop();
     splashing = false;
     nativeShow(pendingShow);
     splash.setAttribute('aria-busy', 'false');
@@ -2726,6 +2745,7 @@ onboarding = createOnboarding({
         S.autoNextAlways = !!p.spotifyAutoNextAlways;
         S.googleSearch = !!p.googleSearch;
         S.onboardingComplete = !!p.onboardingComplete;
+        if (S.onboardingComplete) startupWatchdog.stop();
         return [
           await api.keyStatus(),
           !!p.restoreSession,
@@ -2761,7 +2781,10 @@ onboarding = createOnboarding({
         if (t && t.native && t.mode === 'web') nativeShow(t.id);
       },
     });
-    await step('Spotify verbinden …', 0.58, () => initSpotify());
+    // Optional Windows media-session discovery must never gate first-run setup.
+    if (WINDOWS)
+      initSpotify().catch((error) => console.warn('Spotify ist noch nicht bereit:', error));
+    else await step('Spotify verbinden …', 0.58, () => initSpotify());
     await step(
       S.restore ? 'Tabs wiederherstellen …' : 'Startseite vorbereiten …',
       0.8,

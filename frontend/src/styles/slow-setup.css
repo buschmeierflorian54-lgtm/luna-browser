@@ -1,0 +1,47 @@
+.slow-setup {
+  --wails-draggable: no-drag;
+  border: 1px solid #988395;
+  border-radius: 24px;
+  padding: 32px;
+  max-width: 540px;
+  width: calc(100vw - 64px);
+  background: var(--boot-bg, #f2f8f4);
+  color: var(--boot-ink, #44845a);
+  box-shadow: 0 24px 100px #0005;
+  font: 16px/1.6 system-ui;
+}
+.slow-setup::backdrop {
+  background: #10101899;
+  backdrop-filter: blur(12px);
+}
+.slow-setup h1 {
+  font-size: 27px;
+  line-height: 1.25;
+  margin: 0 0 18px;
+}
+.slow-setup > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+.slow-setup button {
+  font: inherit;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.slow-setup button:first-child {
+  font-weight: 700;
+}
+.slow-setup button:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 3px;
+}
+.slow-setup [role='status'] {
+  font-size: 14px;
+  margin-bottom: 0;
+}

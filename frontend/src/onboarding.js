@@ -1,3 +1,4 @@
+import { createLoadWatchdog, showSlowSetup, slowSetupVisible } from './slow-setup.js';
 import { WINDOWS, shortcut } from './platform.js';
 import './gesture-core.js';
 import * as api from './api.js';
@@ -55,6 +56,21 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     connected = false,
     linkingSpotify = false,
     suspended = false;
+  let slowNotice = false;
+  const braveWatchdog = createLoadWatchdog(2000, () => {
+    if (!active || service()?.id !== 'brave') return;
+    showSlowSetup({
+      hideNative() {
+        slowNotice = true;
+        api.show(-1);
+        api.focusUI();
+      },
+      resume() {
+        slowNotice = false;
+        showNative();
+      },
+    });
+  });
   let practiceTimer, detachPractice, demoTimer, demoTick, demoWriting;
   // Stoppt die Maus-Demo samt Tönen (beim Zeichnen des Nutzers, bei Schrittwechsel und beim Beenden).
   function stopDemo() {
@@ -83,7 +99,17 @@ export function createOnboarding({ onFinish, refreshSearch }) {
   }
   function showNative() {
     if (!active) return;
-    if ((view === 'portal' || view === 'split') && currentID && !suspended) {
+    if (slowSetupVisible()) {
+      api.show(-1);
+      return;
+    }
+    if (
+      (view === 'portal' || view === 'split') &&
+      currentID &&
+      !suspended &&
+      !slowNotice &&
+      !slowSetupVisible()
+    ) {
       const r = root.querySelector('.setup-web')?.getBoundingClientRect();
       if (r)
         api.setFrame(
@@ -97,6 +123,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
   }
   function render() {
     if (!root) return;
+    if (service()?.id !== 'brave' || view === 'form') braveWatchdog.stop();
     clearTimeout(practiceTimer);
     stopDemo();
     detachPractice?.();
@@ -273,7 +300,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     root.setAttribute('aria-modal', 'true');
     document.body.append(root);
     for (const el of document.body.children)
-      if (el !== root && !['SCRIPT', 'STYLE'].includes(el.tagName)) {
+      if (el !== root && !el.matches('.slow-setup') && !['SCRIPT', 'STYLE'].includes(el.tagName)) {
         el.dataset.setupInert = el.inert ? 'kept' : 'added';
         el.inert = true;
       }
@@ -315,6 +342,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       } catch {}
     }
     active = false;
+    braveWatchdog.stop();
     drafts.clear();
     linkingSpotify = false;
     generation++;
@@ -323,7 +351,9 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     stopDemo();
     detachPractice?.();
     detachPractice = null;
-    for (const id of owned) await api.close(id);
+    // Closing the setup UI must not wait for a cold or stalled native host.
+    api.show(-1);
+    for (const id of owned) api.close(id).catch(() => {});
     tabs.clear();
     owned.clear();
     parents.clear();
@@ -340,20 +370,28 @@ export function createOnboarding({ onFinish, refreshSearch }) {
   async function openPortal(split = false) {
     const s = service();
     if (!s) return;
-    generation++;
+    if (s.id === 'brave') braveWatchdog.start();
+    const token = ++generation;
     lastCount = null;
     suspended = false;
-    if (!tabs.has(s.id)) {
+    const fresh = !tabs.has(s.id);
+    if (fresh) {
       const id = 910000 + step;
       tabs.set(s.id, id);
       owned.add(id);
-      await api.load(id, s.url);
     }
     currentID = tabs.get(s.id);
-    // Establish a baseline without reading clipboard contents before showing the page.
-    lastCount = (await api.onboardingClipboard(currentID, s.id))?.count ?? null;
+    const id = currentID;
+    // Render controls before waiting for WebView2's first cold start.
     view = split ? 'split' : 'portal';
     render();
+    if (fresh) await api.load(id, s.url);
+    if (!active || token !== generation) return;
+    const baseline = await api.onboardingClipboard(id, s.id);
+    if (!active || token !== generation) return;
+    lastCount = baseline?.count ?? null;
+    if (s.id === 'brave' && baseline?.loading === false) braveWatchdog.stop();
+    showNative();
   }
   async function saveKey(event) {
     event.preventDefault();
@@ -468,6 +506,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     try {
       const state = await api.onboardingClipboard(currentID, s.id, lastCount ?? -1);
       if (!active || token !== generation) return;
+      if (s.id === 'brave' && state.loading === false) braveWatchdog.stop();
       const host = root.querySelector('[data-host]');
       if (host && state.host) host.textContent = state.host;
       if (state.error)
@@ -526,6 +565,11 @@ export function createOnboarding({ onFinish, refreshSearch }) {
   });
   function handleWeb(e) {
     if (!active) return false;
+    if (owned.has(e.tab) && service()?.id === 'brave') {
+      if (e.t === 'loaded' || (e.t === 'state' && e.loading === false)) braveWatchdog.stop();
+      else if (e.t === 'state' && e.loading && (view === 'portal' || view === 'split'))
+        braveWatchdog.start();
+    }
     if (e.t === 'popup' && owned.has(e.opener)) {
       owned.add(e.tab);
       parents.set(e.tab, e.opener);

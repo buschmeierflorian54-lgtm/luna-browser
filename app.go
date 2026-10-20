@@ -69,8 +69,12 @@ func (a *App) startup(ctx context.Context) {
 	web.SetEmitter(func(j string) { a.emit("web", j) })
 	// Mausgeste (Kreis): Skript in jede Seite, Ein/Aus aus den Einstellungen (Standard: an)
 	a.gesture = pageGestureScript()
-	web.SetWriteSound(writeSound)
-	web.ConfigureGesture(a.gesture, a.st.Prefs()["circleGesture"] || !hasPref(a.st.Prefs(), "circleGesture"))
+	// A cold Windows native-host launch must not hold the Wails startup callback.
+	gestureEnabled := a.st.Prefs()["circleGesture"] || !hasPref(a.st.Prefs(), "circleGesture")
+	go func() {
+		web.SetWriteSound(writeSound)
+		web.ConfigureGesture(a.gesture, gestureEnabled)
+	}()
 
 	// Eigene Suchmaschine (Brave-API); der Schlüssel wird bei jeder Anfrage frisch aus der geschützten Datei gelesen.
 	a.secrets = secret.New(filepath.Join(dir, "browser-mac"))

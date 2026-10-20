@@ -20,6 +20,15 @@ static class NativeTests
     static void Assert(bool value, string reason) { if (!value) throw new Exception(reason); }
     static async Task Test()
     {
+        var queue = new CommandQueue();
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var order = new List<int>();
+        var slow = queue.Enqueue(async () => { await release.Task; order.Add(1); }, false);
+        var next = queue.Enqueue(() => { order.Add(2); return Task.CompletedTask; }, false);
+        await queue.Enqueue(() => { order.Add(0); return Task.CompletedTask; }, true).WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(order.SequenceEqual(new[] { 0 }), "Visibility/clipboard controls waited for a slow native operation");
+        release.SetResult(); await Task.WhenAll(slow,next);
+        Assert(order.SequenceEqual(new[] { 0,1,2 }), "Browser operation ordering changed");
         Assert(Host.TrustedKeyPage(new Uri("https://console.groq.com/keys"), "groq"), "Trusted provider rejected");
         Assert(!Host.TrustedKeyPage(new Uri("https://console.groq.com.evil.invalid/keys"), "groq"), "Spoofed provider accepted");
         Assert(!Host.TrustedKeyPage(new Uri("http://console.groq.com/keys"), "groq"), "Insecure provider accepted");
