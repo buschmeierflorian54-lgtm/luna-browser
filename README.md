@@ -17,7 +17,7 @@
 Ein Browser für den Mac, der sich nach dir richtet: mit deinen Farben, deiner Musik,
 Mausgesten und einer KI, die auf Wunsch mitdenkt.
 
-[**⬇️ Luna installieren**](#so-kommt-luna-auf-deinen-mac) &nbsp;·&nbsp; [Webseite](https://lunaai.dev) &nbsp;·&nbsp; [Alle Versionen](https://github.com/fcore247/luna-browser/releases)
+[**⬇️ Luna installieren**](#so-kommt-luna-auf-deinen-mac) &nbsp;·&nbsp; [Webseite](https://luna-browser.com) &nbsp;·&nbsp; [Alle Versionen](https://github.com/fcore247/luna-browser/releases)
 
 <sub>Für Apple-Silicon-Macs (M1 oder neuer) mit macOS 13 oder neuer</sub>
 
