@@ -41,6 +41,7 @@ type Manager struct {
 	store    *secret.Store
 	cfg      Config
 	server   *http.Server
+	listener net.Listener
 	cancel   context.CancelFunc
 	dispatch Dispatch
 	message  string
@@ -94,6 +95,10 @@ func (m *Manager) Configure(on bool) error {
 	m.cfg = cfg
 	m.message = ""
 	if !on {
+		if m.listener != nil {
+			_ = m.listener.Close()
+			m.listener = nil
+		}
 		if m.cancel != nil {
 			m.cancel()
 		}
@@ -104,6 +109,7 @@ func (m *Manager) Configure(on bool) error {
 		return nil
 	}
 	if listener != nil {
+		m.listener = listener
 		ctx, cancel := context.WithCancel(context.Background())
 		m.cancel = cancel
 		srv := NewServer(func(callCtx context.Context, name string, args map[string]any) (any, error) {
@@ -132,6 +138,10 @@ func (m *Manager) Configure(on bool) error {
 func (m *Manager) Close() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.listener != nil {
+		_ = m.listener.Close()
+		m.listener = nil
+	}
 	if m.cancel != nil {
 		m.cancel()
 	}

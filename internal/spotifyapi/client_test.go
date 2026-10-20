@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -93,7 +94,7 @@ func TestOAuthSearchRefreshDisconnect(t *testing.T) {
 		t.Fatal("token exposed")
 	}
 	info, _ := os.Stat(filepath.Join(dir, credentialFile))
-	if info.Mode().Perm() != 0600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0600 {
 		t.Fatal("file permissions")
 	}
 	restored := New(secret.New(dir))

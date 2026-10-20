@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -125,7 +126,7 @@ func TestLifecycle(t *testing.T) {
 		t.Fatal("not started")
 	}
 	info, err := os.Stat(filepath.Join(dir, configFile))
-	if err != nil || info.Mode().Perm() != 0600 {
+	if err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0600) {
 		t.Fatal("unsafe file permissions", err)
 	}
 	if err := m.Configure(false); err != nil {
@@ -136,6 +137,14 @@ func TestLifecycle(t *testing.T) {
 	}
 	if err := m.Configure(true); err != nil {
 		t.Fatal("restart", err)
+	}
+	for i := 0; i < 25; i++ {
+		if err := m.Configure(false); err != nil {
+			t.Fatal(err)
+		}
+		if err := m.Configure(true); err != nil {
+			t.Fatalf("immediate restart %d: %v", i, err)
+		}
 	}
 }
 func TestSetupDoesNotIncludeSecrets(t *testing.T) {
