@@ -18,7 +18,7 @@ test('Windows labels and unavailable local Spotify fallback', async ({ browser }
   );
   await page.route('**/__platform_test', (route) =>
     route.fulfill({
-      contentType: 'text/html',
+      contentType: 'text/html; charset=utf-8',
       body: `<body><div id="toolbar"></div><script type="module">
     import { WINDOWS, shortcut } from '/src/platform.js';
     import { spotifySettingsHTML } from '/src/spotify-view.js';
