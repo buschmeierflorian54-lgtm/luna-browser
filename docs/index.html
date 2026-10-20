@@ -1,9 +1,227 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="Luna Browser für macOS. Dein Browser mit Farbwelten, Musik, Mausgesten und KI. Download und einfache Installation."><title>Luna Browser — Dein Mac. Deine Luna.</title><link rel="icon" href="assets/luna-icon.svg"><link rel="stylesheet" href="style.css"></head>
-<body><nav><a class="brand" href="#"><img src="assets/luna-icon.svg" alt="" width="35" height="35">Luna Browser</a><a href="https://github.com/fcore247/luna-browser">Auf GitHub ↗</a></nav>
-<main><section class="hero"><div class="intro"><span class="eyebrow">FÜR DEINEN MAC GEMACHT</span><h1>Ein bisschen mehr<br><em>dein Browser.</em></h1><p>Deine Farben. Deine Musik. Dein Tempo.<br>Luna bringt alles an einen Ort, der sich nach dir anfühlt.</p><button class="download primary">Luna herunterladen <span>↗</span></button><small>Apple Silicon · macOS 13 oder neuer</small></div>
-<div class="preview" aria-label="Illustration der Luna-Startseite"><div class="windowbar"><i></i><i></i><i></i><span>Ein neuer Tag mit Luna</span></div><div class="address">⌕ <span>Suchen oder Adresse eingeben</span><b>☆</b></div><div class="scene"><div class="clock">09:41 <img src="assets/wordmark.svg" alt="luna browser"></div><h2>Schön, dass du da bist.</h2><div class="search">⌕ <span>Was möchtest du entdecken?</span><kbd>⌘ L</kbd></div><div class="pills"><span>☆ Lesezeichen</span><span>♫ Luna Music</span><span>✧ Sira</span></div><div class="waves"></div></div><span class="preview-label">Eine Vorschau auf dein neues Zuhause im Web.</span></div></section>
-<section class="details"><span class="eyebrow">WENIGER UMWEGE. MEHR DU.</span><div class="feature"><span>01 / DEIN LOOK</span><h2>Eine Farbe für<br>jede Stimmung.</h2><p>Zehn Farbwelten, Hell und Dunkel. Gestalte Luna so, wie es zu deinem Mac und zu dir passt.</p><div class="swatches" aria-label="Beispiele der Farbwelten"><i></i><i></i><i></i><i></i></div></div><div class="feature"><span>02 / DEINE MUSIK</span><h2>Ein Song.<br>Ein kurzer Befehl.</h2><p>Spotify-Suche, Wiedergabe und Warteschlange direkt im Browser. Mit deinem verbundenen Spotify-Konto.</p><code>play Applaus Applaus</code></div><div class="feature"><span>03 / DEIN FLOW</span><h2>Kleine Gesten.<br>Kurze Wege.</h2><p>Mausgesten, flexible Seitenmenüs und KI-Werkzeuge. Sira nutzt Apple Intelligence auf unterstützten Macs.</p><code>tab open youtube.com</code></div></section>
-<section class="closing"><img src="assets/wordmark.svg" alt="luna browser"><h2>Mach es dir im Web gemütlich.</h2><button class="download primary">Download für macOS ↗</button><p>Updates kommen künftig direkt in Luna an.</p></section></main>
-<footer><span>Luna Browser · Ein unabhängiges macOS-Projekt.</span><a href="https://github.com/fcore247/luna-browser">Quellcode & Releases ↗</a></footer>
-<dialog id="downloadDialog" aria-labelledby="installTitle"><button class="close" aria-label="Anleitung schließen">×</button><span class="eyebrow">IN DREI SCHRITTEN ZU LUNA</span><h2 id="installTitle">Hallo, Luna.</h2><p class="lead">So installierst du den Browser auf deinem Mac.</p><ol><li><b>Terminal öffnen</b><p>Drücke <kbd>⌘</kbd> + <kbd>Leertaste</kbd>, tippe <strong>Terminal</strong> und drücke Enter.</p></li><li><b>Befehl kopieren</b><p>Der Befehl lädt die aktuelle DMG von GitHub, prüft die Prüfsumme und öffnet zwei Fenster: den Ordner <strong>Programme</strong> und ein Fenster mit dem Luna-Symbol. Kein Administrator-Passwort nötig.</p><div class="command"><pre id="installCommand"></pre><button id="copy">Befehl kopieren</button></div></li><li><b>Einfügen und starten</b><p>Füge den Befehl mit <kbd>⌘ V</kbd> ins Terminal ein und drücke <kbd>Enter</kbd>. Es öffnen sich der Ordner <strong>Programme</strong> und ein Fenster mit Luna. <strong>Ziehe Luna in den Ordner „Programme“</strong> und lass das Terminal offen. Sobald Luna kopiert ist, räumt das Skript auf und startet sie.</p></li></ol><p id="copyStatus" role="status"></p><aside><b>Gut zu wissen</b><p>Apple Silicon (M1 oder neuer), macOS 13+. Die App ist noch nicht Apple-notarisiert. Falls macOS den ersten Start blockiert, prüfe die Meldung unter Systemeinstellungen → Datenschutz & Sicherheit. Der Installer verändert keine Sicherheitseinstellungen. Beende eine bereits laufende Luna-Version vorher.</p></aside><div class="manual"><p><strong>Bitte nicht die DMG-Datei einzeln laden.</strong> Luna ist noch nicht von Apple notarisiert: Eine im Browser geladene DMG löst eine Sicherheitsmeldung aus. Der Befehl oben lädt Luna ohne diese Markierung.</p><a href="install.sh">Installationsskript ansehen ↗</a></div></dialog><script src="site.js"></script></body></html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luna Browser – Mach es dir im Web gemütlich</title>
+<meta name="description" content="Luna ist ein gemütlicher Browser für den Mac: zehn Farbwelten, Mausgesten, Spotify und eine KI, die auf Wunsch mitdenkt.">
+<meta name="theme-color" content="#f3e1ec">
+<meta property="og:title" content="Luna Browser – Mach es dir im Web gemütlich">
+<meta property="og:description" content="Zehn Farbwelten, Mausgesten, Spotify und KI – ein Browser, der sich nach dir richtet.">
+<meta property="og:image" content="https://lunaai.dev/assets/media/poster.jpg">
+<link rel="icon" href="assets/luna-icon.svg">
+<link rel="preload" href="assets/fonts/manrope-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- SVG-Sprites: Icon und handgeschriebener Schriftzug folgen der Farbwelt -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="icon" viewBox="64 64 896 896">
+    <rect x="64" y="64" width="896" height="896" rx="210" fill="var(--tile)"/>
+    <rect x="77" y="77" width="870" height="870" rx="198" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
+    <path transform="translate(290 130) scale(9)" d="M5 65 C17 54 34 26 29 15 C24 4 15 23 14 44 C12 61 12 77 23 72 Q33 65 44 65" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="wm" viewBox="-8 0 420 96">
+    <g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="wm-g">
+      <path transform="translate(0 0)" d="M5 65 C17 54 34 26 29 15 C24 4 15 23 14 44 C12 61 12 77 23 72 L32 64"/>
+      <path transform="translate(31 0)" d="M0 64 Q9 52 12 45 L6 64 C0 81 16 76 25 48 L19 66 Q16 80 31 64"/>
+      <path transform="translate(61 0)" d="M0 64 L10 45 L5 67 C13 45 29 36 25 53 L21 66 Q18 79 34 64"/>
+      <path transform="translate(94 0)" d="M25 49 C13 36 -2 57 3 69 C8 81 22 62 25 47 L21 66 Q19 80 35 65"/>
+      <path transform="translate(149 0)" d="M0 65 C13 53 30 23 23 14 C17 7 10 26 9 46 L6 66 C4 82 26 73 27 55 C28 42 16 44 11 54 Q20 67 36 56"/>
+      <path transform="translate(184 0)" d="M0 64 L9 46 Q7 58 19 47 Q26 44 23 51 L18 65 Q15 78 29 64"/>
+      <path transform="translate(213 0)" d="M25 49 C12 36 -1 55 3 67 C8 81 28 66 25 51 Q28 60 36 54"/>
+      <path transform="translate(247 0)" d="M0 58 L8 46 C-1 74 5 81 16 61 L23 47 C15 76 23 80 34 62 Q43 46 36 45 Q31 46 37 55 L44 56"/>
+      <path transform="translate(291 0)" d="M0 64 Q13 52 18 44 C9 52 31 64 18 72 Q8 78 5 69 Q16 75 30 64"/>
+      <path transform="translate(322 0)" d="M0 64 C23 61 29 44 17 45 C3 46 -1 72 12 74 Q24 76 34 64"/>
+      <path transform="translate(355 0)" d="M0 64 L9 46 Q7 58 19 47 Q26 44 23 51 L18 65 Q15 81 37 66"/>
+    </g>
+  </symbol>
+  <symbol id="spot" viewBox="0 0 24 24"><path d="M6 9.5c4-1.2 8.5-.8 12 1.2M7 13c3.3-.9 7-.5 9.8 1M8 16.3c2.6-.6 5.3-.3 7.5.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div class="glow" id="glow" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <a class="brand" href="#top" aria-label="Luna Browser"><svg class="brand-icon"><use href="#icon"/></svg><svg class="brand-wm"><use href="#wm"/></svg></a>
+  <nav class="links" aria-label="Hauptmenü">
+    <a href="#features">Features</a><a href="#farben">Farbwelten</a><a href="#trailer">Trailer</a><a href="#download">Download</a>
+  </nav>
+  <div class="nav-tools">
+    <button class="mode" id="mode" aria-label="Hell oder Dunkel wechseln" title="Hell / Dunkel"><svg viewBox="0 0 24 24"><path class="moon" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/><g class="sun"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></g></svg></button>
+    <a class="gh" href="https://github.com/fcore247/luna-browser">GitHub ↗</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="hero">
+    <svg class="hero-waves" viewBox="0 0 1600 500" preserveAspectRatio="none" aria-hidden="true">
+      <path class="wv1" d="M0 200 C260 140 420 250 700 210 C980 170 1180 80 1600 160 L1600 500 L0 500Z"/>
+      <path class="wv2" d="M0 300 C300 250 520 340 820 300 C1100 260 1300 210 1600 270 L1600 500 L0 500Z"/>
+      <path class="wv3" d="M0 400 C280 370 560 440 880 405 C1160 375 1380 350 1600 390 L1600 500 L0 500Z"/>
+    </svg>
+
+    <div class="hero-copy reveal">
+      <span class="pill"><i></i> Für Apple-Silicon-Macs · macOS 13+</span>
+      <h1>Mach es dir im Web <span class="script">gemütlich.</span></h1>
+      <p class="lead">Luna ist ein Browser für den Mac, der sich nach dir richtet: mit deinen Farben, deiner Musik, Mausgesten und einer KI, die auf Wunsch mitdenkt.</p>
+      <div class="cta-row">
+        <button class="btn primary download">Luna installieren <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></button>
+        <a class="btn ghost" href="#trailer"><svg viewBox="0 0 24 24" class="play"><path d="M8 5.5v13l10.5-6.5z"/></svg>Trailer ansehen</a>
+      </div>
+      <div class="try">
+        <span>Probier’s aus – wähl deine Farbwelt:</span>
+        <div class="dots" id="dots" role="radiogroup" aria-label="Farbwelt"></div>
+      </div>
+    </div>
+
+    <div class="stage" id="stage" aria-label="Illustration der Luna-Startseite">
+      <div class="float f-spot"><div class="art"></div><div><b>One More Time</b><span>Daft Punk</span></div><div class="eq"><i></i><i></i><i></i><i></i></div></div>
+      <div class="float f-cmd"><span class="chev">›</span> play bohemian rhapsody</div>
+      <div class="float f-note"><b>Notiz</b><span>Luna-Seite<br>fertig machen ✓</span></div>
+      <div class="float f-shot"><div class="shot-pic"></div><em>Neuer Tab · 21:41</em></div>
+      <div class="float f-theme"><i style="--c:hsl(325 38% 70%)"></i><i style="--c:hsl(265 42% 70%)"></i><i style="--c:hsl(210 55% 70%)"></i><i style="--c:hsl(163 40% 70%)"></i><i style="--c:hsl(22 58% 70%)"></i></div>
+
+      <div class="win" id="win">
+        <div class="win-tabs"><span class="lights"><i></i><i></i><i></i></span><div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>Neuer Tab</div><span class="plus">+</span></div>
+        <div class="win-bar">
+          <div class="nv"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg></div>
+          <div class="addr"><span id="addrTyped">Suchen oder Adresse eingeben</span><svg class="st" viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/></svg><span class="sd"><svg><use href="#spot"/></svg></span></div>
+          <div class="wpill"><span class="wa">S</span><span><b>Spotify</b><em>Keine Wiedergabe</em></span></div>
+        </div>
+        <div class="win-page">
+          <svg class="pw" viewBox="0 0 1600 400" preserveAspectRatio="none"><path class="wv1" d="M0 120 C260 80 420 150 700 120 C980 90 1180 40 1600 90 L1600 400 L0 400Z"/><path class="wv2" d="M0 220 C300 180 520 250 820 220 C1100 190 1300 150 1600 200 L1600 400 L0 400Z"/><path class="wv3" d="M0 300 C280 275 560 330 880 305 C1160 280 1380 260 1600 290 L1600 400 L0 400Z"/></svg>
+          <svg class="p-icon"><use href="#icon"/></svg>
+          <div class="p-clock"><b id="clock">21:41</b><i></i><svg class="p-wm"><use href="#wm"/></svg></div>
+          <div class="p-greet"><b id="greet">Guten Abend</b><span id="date">Dienstag, 20. Oktober</span></div>
+          <div class="p-search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>Mit Luna Search suchen oder Adresse eingeben<kbd>⌘L</kbd></div>
+          <div class="p-chips"><span>☆ Lesezeichen</span><span>◷ Verlauf</span><span>↓ Downloads</span><span>☾ Erscheinungsbild</span><span>⚙ Einstellungen</span></div>
+        </div>
+      </div>
+    </div>
+    <a class="scroll" href="#features" aria-label="Weiter nach unten"><i></i></a>
+  </section>
+
+  <!-- ============ TICKER ============ -->
+  <div class="ticker" aria-hidden="true"><div class="ticker-in">
+    <span>theme</span><span>play bohemian rhapsody</span><span>spotify daft punk</span><span>chat</span><span>tab open youtube.com</span><span>einstellungen</span><span>commands</span>
+    <span>theme</span><span>play bohemian rhapsody</span><span>spotify daft punk</span><span>chat</span><span>tab open youtube.com</span><span>einstellungen</span><span>commands</span>
+    <span>theme</span><span>play bohemian rhapsody</span><span>spotify daft punk</span><span>chat</span><span>tab open youtube.com</span><span>einstellungen</span><span>commands</span>
+  </div></div>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section" id="features">
+    <div class="sec-head reveal"><span class="eyebrow">Was Luna besonders macht</span><h2>Ruhig, weil Luna dich nicht <span class="script">zuschüttet.</span></h2><p>Alles andere richtest du dir selbst ein, in deinem Tempo und mit deinen Farben.</p></div>
+
+    <div class="bento">
+      <article class="card c-themes reveal" id="farben">
+        <div class="card-head"><span class="eyebrow">01 · Farbwelten</span><h3>Zehn Looks. Ein Klick.</h3><p>Luna Rosé, Lavendel, Ozean, Minze und mehr – jede passt sich an Hell und Dunkel an, sogar das Icon im Dock färbt sich mit. Probier es gleich hier aus.</p></div>
+        <div class="theme-grid" id="themeGrid"></div>
+      </article>
+
+      <article class="card c-cmd reveal">
+        <div class="card-head"><span class="eyebrow">02 · Befehle</span><h3>Tippen statt klicken.</h3><p>Viele Befehle starten sofort, ganz ohne Enter.</p></div>
+        <div class="cmd">
+          <div class="cmd-bar"><span class="chev">›</span><span id="cmdText"></span><i class="caret"></i></div>
+          <div class="cmd-out" id="cmdOut"></div>
+        </div>
+      </article>
+
+      <article class="card c-gest reveal">
+        <div class="card-head"><span class="eyebrow">03 · Mausgesten</span><h3>Mal einen Buchstaben.</h3><p>Maustaste halten und in die Luft zeichnen. Ein <b>S</b> macht einen Screenshot, ein Kreis öffnet deinen Notizzettel. Zeichne es gleich selbst:</p></div>
+        <div class="gest" id="gest">
+          <canvas id="trail"></canvas>
+          <svg class="gest-s" viewBox="0 0 300 220" aria-hidden="true"><path id="gPath" d="M205 38 C175 8 85 10 80 62 C75 112 150 112 200 140 C245 166 225 208 150 208 C105 208 80 190 70 170"/></svg>
+          <div class="gest-badge" id="gBadge"><kbd>S</kbd>Screenshot</div>
+          <div class="gest-polaroid" id="gPol"><div></div><em>Neuer Tab</em></div>
+          <span class="gest-hint" id="gHint">Halte die Maustaste und zeichne</span>
+        </div>
+      </article>
+
+      <article class="card c-music reveal">
+        <div class="card-head"><span class="eyebrow">04 · Musik</span><h3>Musik, die mitkommt.</h3><p>Spotify direkt in Luna: Suche, Warteschlange und Wiedergabe. Auf Wunsch gleicht Luna die Lautstärke mit deinen Sonos-Lautsprechern ab.</p></div>
+        <div class="player">
+          <div class="np"><div class="cover"><span>D</span></div><div class="np-i"><b>One More Time</b><span>Daft Punk · Discovery</span><div class="bar"><i></i></div><div class="t"><span id="tNow">1:12</span><span>5:20</span></div></div><div class="eq big"><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="sonos"><img src="assets/era100.png" alt="" width="46" height="58" loading="lazy"><div><b>Sonos Era 100</b><span>Wohnzimmer · synchron</span>
+            <div class="vol"><label>Mac</label><div class="vb"><i class="v1"></i></div></div><div class="vol"><label>Sonos</label><div class="vb"><i class="v2"></i></div></div></div></div>
+        </div>
+      </article>
+
+      <article class="card c-ai reveal">
+        <div class="card-head"><span class="eyebrow">05 · KI</span><h3>KI, wenn du sie willst.</h3><p><b>Sira</b> läuft komplett auf deinem Mac mit Apples eigener KI, ohne Konto und ohne Schlüssel.</p></div>
+        <div class="chat">
+          <div class="model"><i></i>Sira · läuft lokal auf deinem Mac</div>
+          <div class="msg u" id="msgU"></div>
+          <div class="msg a" id="msgA"><b>Sira</b><span id="msgAt"></span></div>
+        </div>
+      </article>
+
+      <article class="card c-priv reveal">
+        <div class="card-head"><span class="eyebrow">06 · Privatsphäre</span><h3>Deine Daten bleiben bei dir.</h3></div>
+        <ul class="ticks">
+          <li><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Lesezeichen, Verlauf, Notizen und Chats liegen lokal auf deinem Mac.</li>
+          <li><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>API-Schlüssel werden nie in der Oberfläche angezeigt.</li>
+          <li><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Der KI-Zugriff für andere Apps ist standardmäßig aus und braucht Touch ID.</li>
+          <li><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Updates kommen signiert direkt in der App an.</li>
+        </ul>
+      </article>
+    </div>
+
+    <div class="mini reveal">
+      <div><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/></svg><b>Tabs &amp; Tabgruppen</b></div>
+      <div><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/></svg><b>Lesezeichen &amp; Verlauf</b></div>
+      <div><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg><b>Downloads</b></div>
+      <div><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg><b>Suche auf der Seite</b></div>
+      <div><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></svg><b>Sitzung wiederherstellen</b></div>
+    </div>
+  </section>
+
+  <!-- ============ TRAILER ============ -->
+  <section class="section trailer" id="trailer">
+    <div class="sec-head reveal"><span class="eyebrow">In 30 Sekunden</span><h2>Luna im <span class="script">Schnelldurchlauf.</span></h2></div>
+    <div class="video reveal" id="video">
+      <video id="vid" preload="none" playsinline poster="assets/media/poster.jpg" src="assets/media/trailer-de.mp4"></video>
+      <button class="vplay" id="vplay" aria-label="Trailer abspielen"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg></button>
+      <div class="vlang" role="group" aria-label="Sprache"><button class="on" data-src="assets/media/trailer-de.mp4">DE</button><button data-src="assets/media/trailer-en.mp4">EN</button></div>
+    </div>
+  </section>
+
+  <!-- ============ SHOWCASE ============ -->
+  <section class="section showcase">
+    <div class="sec-head reveal"><span class="eyebrow">So sieht es aus</span><h2>Dein neues <span class="script">Zuhause</span> im Web.</h2></div>
+    <div class="shots">
+      <figure class="reveal"><img src="assets/start.png" alt="Die Startseite von Luna mit Uhr, Suche und Musik" loading="lazy"><figcaption>Startseite</figcaption></figure>
+      <figure class="reveal"><img src="assets/themes.png" alt="Die Adressleiste klappt nach unten auf und zeigt alle zehn Farbwelten" loading="lazy"><figcaption>Farbwelten</figcaption></figure>
+      <figure class="reveal"><img src="assets/befehle.png" alt="Die Befehlsseite mit Karten, die jeden Befehl erklären" loading="lazy"><figcaption>Befehle</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="closing" id="download">
+    <svg class="close-waves" viewBox="0 0 1600 500" preserveAspectRatio="none" aria-hidden="true">
+      <path class="wv1" d="M0 200 C260 140 420 250 700 210 C980 170 1180 80 1600 160 L1600 500 L0 500Z"/>
+      <path class="wv2" d="M0 300 C300 250 520 340 820 300 C1100 260 1300 210 1600 270 L1600 500 L0 500Z"/>
+      <path class="wv3" d="M0 400 C280 370 560 440 880 405 C1160 375 1380 350 1600 390 L1600 500 L0 500Z"/>
+    </svg>
+    <div class="closing-in reveal">
+      <svg class="big-icon"><use href="#icon"/></svg>
+      <svg class="big-wm"><use href="#wm"/></svg>
+      <h2>Mach es dir im Web <span class="script">gemütlich.</span></h2>
+      <button class="btn primary big download">Luna installieren <svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg></button>
+      <p>Apple-Silicon-Mac (M1 oder neuer) · macOS 13 oder neuer · Updates kommen direkt in Luna an</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>Luna Browser · Gebaut mit ♥ von Florian · Ein unabhängiges macOS-Projekt.</span>
+  <a href="https://github.com/fcore247/luna-browser">Quellcode &amp; Releases ↗</a>
+</footer>
+
+<dialog id="downloadDialog" aria-labelledby="installTitle"><button class="close" aria-label="Anleitung schließen">×</button><span class="eyebrow">In drei Schritten zu Luna</span><h2 id="installTitle">Hallo, <span class="script">Luna.</span></h2><p class="lead">So installierst du den Browser auf deinem Mac.</p><ol><li><b>Terminal öffnen</b><p>Drücke <kbd>⌘</kbd> + <kbd>Leertaste</kbd>, tippe <strong>Terminal</strong> und drücke Enter.</p></li><li><b>Befehl kopieren</b><p>Der Befehl lädt die aktuelle DMG von GitHub, prüft die Prüfsumme und öffnet zwei Fenster: den Ordner <strong>Programme</strong> und ein Fenster mit dem Luna-Symbol. Kein Administrator-Passwort nötig.</p><div class="command"><pre id="installCommand"></pre><button id="copy">Befehl kopieren</button></div></li><li><b>Einfügen und starten</b><p>Füge den Befehl mit <kbd>⌘ V</kbd> ins Terminal ein und drücke <kbd>Enter</kbd>. Es öffnen sich der Ordner <strong>Programme</strong> und ein Fenster mit Luna. <strong>Ziehe Luna in den Ordner „Programme“</strong> und lass das Terminal offen. Sobald Luna kopiert ist, räumt das Skript auf und startet sie.</p></li></ol><p id="copyStatus" role="status"></p><aside><b>Gut zu wissen</b><p>Apple Silicon (M1 oder neuer), macOS 13+. Die App ist noch nicht Apple-notarisiert. Falls macOS den ersten Start blockiert, prüfe die Meldung unter Systemeinstellungen → Datenschutz &amp; Sicherheit. Der Installer verändert keine Sicherheitseinstellungen. Beende eine bereits laufende Luna-Version vorher.</p></aside><div class="manual"><p><strong>Bitte nicht die DMG-Datei einzeln laden.</strong> Luna ist noch nicht von Apple notarisiert: Eine im Browser geladene DMG löst eine Sicherheitsmeldung aus. Der Befehl oben lädt Luna ohne diese Markierung.</p><a href="install.sh">Installationsskript ansehen ↗</a></div></dialog>
+
+<script src="site.js"></script>
+</body>
+</html>
