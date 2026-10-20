@@ -1056,6 +1056,44 @@ async function cover(on) {
     } // Maße vor dem Einblenden erneut senden
   }
 }
+/* ---------- Leiser Update-Hinweis: Punkt am Menü und Eintrag im Menü, ohne Fenster ---------- */
+S.update = { version: '', ready: false };
+async function pollUpdate() {
+  let status = null;
+  try {
+    status = await api.updateStatus();
+  } catch {
+    return;
+  }
+  const version = status?.pendingVersion || '';
+  S.update = {
+    version,
+    ready: !!status?.installReady,
+  };
+  $('#bMenu')?.classList.toggle('has-update', !!version);
+  if (!version) return;
+  let announced = '';
+  try {
+    announced = localStorage.getItem('luna-update-announced') || '';
+  } catch {
+    /* ohne Speicher: Hinweis erscheint nach jedem Start erneut */
+  }
+  if (announced !== version) {
+    try {
+      localStorage.setItem('luna-update-announced', version);
+    } catch {
+      /* egal */
+    }
+    toast(
+      S.update.ready
+        ? `Luna ${version} ist bereit. Im Menü findest du „Update installieren“.`
+        : `Luna ${version} ist verfügbar und wird geladen.`,
+    );
+  }
+}
+setTimeout(pollUpdate, 5000);
+setInterval(pollUpdate, 10 * 60 * 1000);
+window.addEventListener('focus', () => setTimeout(pollUpdate, 500));
 let cmdUI = null;
 function closeOverlays() {
   cmdUI?.closeAll();
@@ -1082,6 +1120,18 @@ function openMenu() {
   const t = cur(),
     z = Math.round((t?.zoom || 1) * 100);
   const items = [
+    ...(S.update.version
+      ? [
+          [
+            S.update.ready
+              ? `Update ${S.update.version} installieren`
+              : `Update ${S.update.version} ansehen`,
+            S.update.ready ? 'Neustart' : '',
+            'install-update',
+          ],
+          '-',
+        ]
+      : []),
     ['Neuer Tab', '⌘T', 'new-tab'],
     ['Auf der Seite suchen', '⌘F', 'find'],
     '-',
@@ -1109,6 +1159,7 @@ function openMenu() {
         : `<button class="mi" data-cmd="${it[2]}"><span>${it[0]}</span><small>${it[1]}</small></button>`,
     )
     .join('');
+  m.querySelector('[data-cmd="install-update"]')?.classList.add('update');
   m.style.display = 'block';
   m.style.top = r.bottom + 6 + 'px';
   m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px';
@@ -2034,6 +2085,10 @@ async function runCmd(c) {
       break;
     case 'show-bookmarks':
       openSide('bookmarks');
+      break;
+    case 'install-update':
+      toast('Luna startet mit dem Update neu …');
+      await api.installUpdate();
       break;
     case 'show-downloads':
       openSide('downloads');

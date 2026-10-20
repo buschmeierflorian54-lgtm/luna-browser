@@ -60,6 +60,8 @@ export function HistoryClear():Promise<void>;
 
 export function HistoryRemove(arg1:string):Promise<void>;
 
+export function InstallUpdate():Promise<void>;
+
 export function MCPCommandActive(arg1:string):Promise<boolean>;
 
 export function MCPConfigure(arg1:boolean):Promise<browsermcp.Status>;

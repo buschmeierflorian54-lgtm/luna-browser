@@ -417,3 +417,38 @@
 .cmd-set-card b {
   font-size: 15px;
 }
+
+/* ---------- Leiser Update-Hinweis ---------- */
+#bMenu {
+  position: relative;
+}
+#bMenu.has-update::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--cmd-on, #2fae6b);
+  box-shadow: 0 0 0 2px var(--panel);
+  animation: update-pulse 2.4s ease-in-out infinite;
+}
+@keyframes update-pulse {
+  50% {
+    transform: scale(1.25);
+  }
+}
+.mi.update {
+  background: color-mix(in srgb, var(--cmd-on, #2fae6b) 16%, transparent);
+  color: var(--ink);
+}
+.mi.update:hover {
+  background: var(--cmd-on, #2fae6b);
+  color: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  #bMenu.has-update::after {
+    animation: none;
+  }
+}

@@ -89,6 +89,7 @@ export function createSettings({
     const action = event.target.closest('[data-update-action]')?.dataset.updateAction;
     if (!action) return;
     try {
+      if (action === 'install') await api.installUpdate();
       if (action === 'check') await api.checkUpdates();
       if (action === 'automatic') await api.setAutomaticUpdates(!updateState.automatic);
       await refreshUpdates();
@@ -182,10 +183,11 @@ export function createSettings({
       ${mcpSettingsHTML(mcpStatus)}
       <section id="set-updates" class="sp-card"><h2>Updates</h2>
         <div class="swrow"><div><b>Luna Browser ${esc(updateState.version || '')}</b><span>Updates direkt aus unseren GitHub Releases.</span></div><span class="muted">macOS</span></div>
-        <div class="swrow"><div><b>Automatische Updates</b><span>Alle vier Stunden prüfen und Updates automatisch laden. Für einen nötigen Neustart meldet sich Luna.</span></div><button class="btn" role="switch" aria-label="Automatische Updates" aria-checked="${!!updateState.automatic}" data-update-action="automatic" ${!updateState.ready ? 'disabled' : ''}>${updateState.automatic ? 'Ein' : 'Aus'}</button></div>
+        <div class="swrow"><div><b>Automatische Updates</b><span>Einmal täglich prüfen und Updates automatisch laden. Luna meldet sich leise mit einem Punkt am Menü, wenn eines bereit ist.</span></div><button class="btn" role="switch" aria-label="Automatische Updates" aria-checked="${!!updateState.automatic}" data-update-action="automatic" ${!updateState.ready ? 'disabled' : ''}>${updateState.automatic ? 'Ein' : 'Aus'}</button></div>
         <p role="status">${esc(updateState.message || 'Update-Status wird geladen …')}</p>
         <p class="muted small">${updateState.lastCheck ? 'Zuletzt geprüft: ' + esc(new Date(updateState.lastCheck * 1000).toLocaleString('de-DE')) : 'Noch keine Prüfung durchgeführt.'}</p>
-        <button class="btn pri" data-update-action="check" ${!updateState.canCheck ? 'disabled' : ''}>Nach Updates suchen</button>
+        ${updateState.installReady ? `<button class="btn pri" data-update-action="install">Jetzt neu starten · Version ${esc(updateState.pendingVersion || '')}</button>` : ''}
+        <button class="btn ${updateState.installReady ? '' : 'pri'}" data-update-action="check" ${!updateState.canCheck ? 'disabled' : ''}>Nach Updates suchen</button>
         <p class="muted small">Downloads werden vor der Installation anhand ihrer digitalen Update-Signatur geprüft.</p>
       </section>
       <section id="set-data" class="sp-card"><h2>Daten</h2>

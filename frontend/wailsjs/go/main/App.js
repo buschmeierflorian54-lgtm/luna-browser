@@ -106,6 +106,10 @@ export function HistoryRemove(arg1) {
   return window['go']['main']['App']['HistoryRemove'](arg1);
 }
 
+export function InstallUpdate() {
+  return window['go']['main']['App']['InstallUpdate']();
+}
+
 export function MCPCommandActive(arg1) {
   return window['go']['main']['App']['MCPCommandActive'](arg1);
 }

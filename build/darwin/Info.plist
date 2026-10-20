@@ -27,7 +27,7 @@
         <string>BeP9pRxpsVP/tRcegOtIg/3cmerQikSUDv2F2fU19Yw=</string>
         <key>SUEnableAutomaticChecks</key><true/>
         <key>SUAutomaticallyUpdate</key><true/>
-        <key>SUScheduledCheckInterval</key><integer>14400</integer>
+        <key>SUScheduledCheckInterval</key><integer>86400</integer>
         <key>SUSendProfileInfo</key><false/>
         <key>SUShowReleaseNotes</key><false/>
         <key>NSAppTransportSecurity</key>
