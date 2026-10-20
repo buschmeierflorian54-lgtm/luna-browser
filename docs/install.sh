@@ -16,9 +16,9 @@ mounted=false
 cleanup() { if $mounted; then hdiutil detach "$work/volume" -quiet || true; fi; rm -rf "$work"; }
 trap cleanup EXIT
 fetch() { curl --fail --location --retry 2 --connect-timeout 20 --max-time 600 --proto '=https' --proto-redir '=https' "$1" -o "$2"; }
-repo=https://github.com/buschmeierflorian54-lgtm/luna-browser
+repo=https://github.com/fcore247/luna-browser
 printf 'Aktuelle Luna-Version ermitteln …\n'
-fetch https://api.github.com/repos/buschmeierflorian54-lgtm/luna-browser/releases/latest "$work/release.json"
+fetch https://api.github.com/repos/fcore247/luna-browser/releases/latest "$work/release.json"
 tag=$(/usr/bin/plutil -extract tag_name raw -o - "$work/release.json")
 [[ $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Ungültige Versionsinformation.'
 asset=Luna-Browser-macos-arm64.dmg

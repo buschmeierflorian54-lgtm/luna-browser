@@ -9,7 +9,7 @@
 Ein Browser für den Mac, der sich nach dir richtet: mit deinen Farben, deiner Musik,
 Mausgesten und einer KI, die auf Wunsch mitdenkt.
 
-[**⬇️ Luna installieren**](#so-kommt-luna-auf-deinen-mac) &nbsp;·&nbsp; [Webseite](https://lunaai.dev) &nbsp;·&nbsp; [Alle Versionen](https://github.com/buschmeierflorian54-lgtm/luna-browser/releases)
+[**⬇️ Luna installieren**](#so-kommt-luna-auf-deinen-mac) &nbsp;·&nbsp; [Webseite](https://lunaai.dev) &nbsp;·&nbsp; [Alle Versionen](https://github.com/fcore247/luna-browser/releases)
 
 <sub>Für Apple-Silicon-Macs (M1 oder neuer) mit macOS 13 oder neuer</sub>
 
@@ -82,7 +82,7 @@ Sitzung, die auf Wunsch beim nächsten Start wieder da ist.
 füge diesen Befehl ein und drücke Enter:
 
 ```sh
-( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/buschmeierflorian54-lgtm/luna-browser/main/docs/install.sh -o "$installer" && /bin/bash "$installer" )
+( installer=$(mktemp) && trap 'rm -f "$installer"' EXIT && curl --fail --location --proto '=https' --proto-redir '=https' https://raw.githubusercontent.com/fcore247/luna-browser/main/docs/install.sh -o "$installer" && /bin/bash "$installer" )
 ```
 
 Das passiert dann:

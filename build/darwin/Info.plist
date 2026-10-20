@@ -22,7 +22,7 @@
         <key>LSMinimumSystemVersion</key>
         <string>13.0</string>
         <key>SUFeedURL</key>
-        <string>https://github.com/buschmeierflorian54-lgtm/luna-browser/releases/latest/download/appcast.xml</string>
+        <string>https://github.com/fcore247/luna-browser/releases/latest/download/appcast.xml</string>
         <key>SUPublicEDKey</key>
         <string>BeP9pRxpsVP/tRcegOtIg/3cmerQikSUDv2F2fU19Yw=</string>
         <key>SUEnableAutomaticChecks</key><true/>

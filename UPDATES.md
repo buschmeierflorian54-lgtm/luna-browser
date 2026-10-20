@@ -4,7 +4,7 @@ Luna verwendet Sparkle 2.10.0 im Hauptprozess. Das Framework wird beim Build aus
 seinem offiziellen Release geladen und anhand einer fest hinterlegten SHA-256
 geprüft. Die Lizenz liegt im eingebetteten Framework.
 
-- Feed: https://github.com/buschmeierflorian54-lgtm/luna-browser/releases/latest/download/appcast.xml
+- Feed: https://github.com/fcore247/luna-browser/releases/latest/download/appcast.xml
 - Automatische Prüfung alle vier Stunden während Luna läuft; Sparkle verwaltet
   den Zeitplan und Downloads/Installation, wenn möglich im Hintergrund.
 - Manuelle Prüfung: App-Menü → **Nach Updates suchen …**.

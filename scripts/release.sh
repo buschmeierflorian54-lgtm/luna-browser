@@ -3,7 +3,7 @@
 # The private signing key stays in the login Keychain; never commit/export it.
 set -eu
 cd "$(dirname "$0")/.."
-repo=buschmeierflorian54-lgtm/luna-browser
+repo=fcore247/luna-browser
 app="build/bin/Luna Browser.app"
 version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
 case "$version" in ''|*[!0-9.]*) echo 'Invalid version' >&2; exit 1;; esac
