@@ -1,3 +1,4 @@
+import { WINDOWS } from './platform.js';
 import { chatSettingsHTML } from './chat.js';
 import { gesturesHTML } from './gestures.js';
 import * as api from './api.js';
@@ -175,14 +176,14 @@ export function createSettings({
         <input id="keyIn" type="password" placeholder="${S.hasKey ? 'Neuen Schlüssel einfügen, um ihn zu ersetzen' : 'Brave-API-Schlüssel einfügen'}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Brave-API-Schlüssel">
         <div class="row"><button class="btn pri" data-act="key-save">Speichern</button><button class="btn" data-act="key-test" ${S.hasKey ? '' : 'disabled'}>Verbindung testen</button><button class="btn" data-act="key-clear" ${S.hasKey ? '' : 'disabled'}>Entfernen</button></div>
         <div id="keyMsg" class="kmsg ${setMsg.kind}">${esc(setMsg.text)}</div>
-        <p class="muted small">Der Schlüssel liegt in einer Datei im App-Ordner, die nur dein Benutzer lesen kann (Rechte 0600). Er wird nie angezeigt und nur an Brave gesendet.</p>
+        <p class="muted small">${WINDOWS ? 'Der Schlüssel wird mit Windows-DPAPI für dein Benutzerkonto verschlüsselt gespeichert.' : 'Der Schlüssel liegt in einer Datei im App-Ordner, die nur dein Benutzer lesen kann (Rechte 0600).'} Er wird nie angezeigt und nur an Brave gesendet.</p>
       </section>
       ${spotifySettingsHTML(spotifyAccount, S.autoNextAlways)}
       ${sonosSettingsHTML(sonosState)}
       ${chatSettingsHTML()}
       ${mcpSettingsHTML(mcpStatus)}
       <section id="set-updates" class="sp-card"><h2>Updates</h2>
-        <div class="swrow"><div><b>Luna Browser ${esc(updateState.version || '')}</b><span>Updates direkt aus unseren GitHub Releases.</span></div><span class="muted">macOS</span></div>
+        <div class="swrow"><div><b>Luna Browser ${esc(updateState.version || '')}</b><span>Updates direkt aus unseren GitHub Releases.</span></div><span class="muted">${WINDOWS ? 'Windows · experimentell / instabil' : 'macOS'}</span></div>
         <div class="swrow"><div><b>Automatische Updates</b><span>Einmal täglich prüfen und Updates automatisch laden. Luna meldet sich leise mit einem Punkt am Menü, wenn eines bereit ist.</span></div><button class="btn" role="switch" aria-label="Automatische Updates" aria-checked="${!!updateState.automatic}" data-update-action="automatic" ${!updateState.ready ? 'disabled' : ''}>${updateState.automatic ? 'Ein' : 'Aus'}</button></div>
         <p role="status">${esc(updateState.message || 'Update-Status wird geladen …')}</p>
         <p class="muted small">${updateState.lastCheck ? 'Zuletzt geprüft: ' + esc(new Date(updateState.lastCheck * 1000).toLocaleString('de-DE')) : 'Noch keine Prüfung durchgeführt.'}</p>

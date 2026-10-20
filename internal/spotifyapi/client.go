@@ -377,7 +377,7 @@ func (c *Client) AddToQueue(ctx context.Context, uri string) error {
 				if name == "" {
 					name = "dem aktiven Lautsprecher"
 				}
-				return fmt.Errorf("Spotify blockiert das Hinzufügen auf %s (eingeschränktes Connect-Gerät). Wähle in Spotify diesen Mac als Wiedergabegerät oder verwalte die Warteschlange in der Lautsprecher-App.", name)
+				return fmt.Errorf("Spotify blockiert das Hinzufügen auf %s (eingeschränktes Connect-Gerät). Wähle in Spotify diesen Computer als Wiedergabegerät oder verwalte die Warteschlange in der Lautsprecher-App.", name)
 			}
 		}
 		return errors.New("Spotify erlaubt die Warteschlange nicht. Dafür sind Premium und die Berechtigung zur Wiedergabe-Steuerung erforderlich. Verbinde dein Konto gegebenenfalls erneut.")

@@ -247,7 +247,7 @@ func (m *Manager) Scan() Status {
 	sort.Slice(m.state.Devices, func(i, j int) bool { return m.state.Devices[i].Name < m.state.Devices[j].Name })
 	m.state.Scanning = false
 	if len(m.state.Devices) == 0 {
-		m.state.Message = "Keine Sonos-Lautsprecher gefunden. Verbinde deinen Mac mit demselben WLAN."
+		m.state.Message = "Keine Sonos-Lautsprecher gefunden. Verbinde deinen Computer mit demselben WLAN."
 	}
 	return m.state
 }

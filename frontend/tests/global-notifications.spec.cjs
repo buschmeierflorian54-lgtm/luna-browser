@@ -2,7 +2,13 @@ const { test } = require('@playwright/test');
 const path = require('node:path');
 const fs = require('fs');
 test('global-notifications', async ({ browser }) => {
-  const p = await browser.newPage({ viewport: { width: 1280, height: 950 } });
+  // This flow specifically exercises the macOS-only local Spotify fallback.
+  // Windows capability boundaries are covered separately in platform.spec.cjs.
+  const p = await browser.newPage({
+    viewport: { width: 1280, height: 950 },
+    userAgent:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/151.0.0.0 Safari/537.36',
+  });
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
   const src = fs.readFileSync(path.join(__dirname, '../src/api.js'), 'utf8');
@@ -271,11 +277,19 @@ test('global-notifications', async ({ browser }) => {
   });
   await p.locator('[data-act="reset-browser"]').click();
   await p.getByRole('button', { name: 'Abbrechen', exact: true }).click();
-  if (await p.evaluate(() => sessionStorage.getItem('reset-called'))) throw Error('reset ran on cancel');
+  if (await p.evaluate(() => sessionStorage.getItem('reset-called')))
+    throw Error('reset ran on cancel');
   await p.locator('[data-act="reset-browser"]').click();
-  await Promise.all([p.waitForNavigation({ waitUntil: 'domcontentloaded' }), p.getByRole('button', { name: 'Jetzt zurücksetzen', exact: true }).click()]);
-  await p.waitForFunction(() => sessionStorage.getItem('reset-called') === 'yes' && !localStorage.getItem('luna-color-theme'));
-  if (await p.evaluate(() => localStorage.getItem('luna-chat-active')) !== 'keep-chat') throw Error('chat selection erased');
+  await Promise.all([
+    p.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+    p.getByRole('button', { name: 'Jetzt zurücksetzen', exact: true }).click(),
+  ]);
+  await p.waitForFunction(
+    () =>
+      sessionStorage.getItem('reset-called') === 'yes' && !localStorage.getItem('luna-color-theme'),
+  );
+  if ((await p.evaluate(() => localStorage.getItem('luna-chat-active'))) !== 'keep-chat')
+    throw Error('chat selection erased');
   if (errors.length) throw Error(errors.join('\n'));
   console.log(
     'PASS: music sidebar search, play, add, queue tab, query persistence, no overflow or JS errors.',

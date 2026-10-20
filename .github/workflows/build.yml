@@ -101,6 +101,15 @@ jobs:
             if ($app.HasExited) { throw "Luna exited: $($app.ExitCode)" }
             $app.Refresh()
             if ($app.MainWindowHandle -eq 0) { throw 'No native Luna window' }
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $shot = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
+            $graphics = [System.Drawing.Graphics]::FromImage($shot)
+            try {
+              $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+              $shot.Save((Join-Path $PWD 'build/ci/windows-startup.png'))
+            } finally { $graphics.Dispose(); $shot.Dispose() }
+
           } finally {
             if (!$app.HasExited) { Stop-Process -Id $app.Id -Force }
           }

@@ -1,3 +1,4 @@
+import { WINDOWS } from './platform.js';
 import * as api from './api.js';
 import { createBrowserNotifications } from './notifications.js';
 
@@ -104,6 +105,14 @@ export function initAutoNext({
       try {
         await api.spotifyQueue(uri);
       } catch (e) {
+        if (WINDOWS) {
+          toast(
+            String(e?.message || e) +
+              ' Die lokale Luna-Vormerkung ist unter Windows noch nicht verfügbar.',
+            10000,
+          );
+          return false;
+        }
         // Read the saved choice each time, including after disabling in Settings.
         const prefs = await api.prefs().catch(() => ({}));
         if (prefs?.spotifyAutoNextAlways) {

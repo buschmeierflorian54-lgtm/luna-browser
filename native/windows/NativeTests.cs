@@ -30,7 +30,7 @@ static class NativeTests
         var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         var port = ((IPEndPoint)listener.LocalEndpoint).Port;
         using var cancel = new CancellationTokenSource();
-        var server = Task.Run(async () => { try { while (!cancel.IsCancellationRequested) { using var client = await listener.AcceptTcpClientAsync(cancel.Token); using var stream = client.GetStream(); var buffer = new byte[8192]; await stream.ReadAsync(buffer, cancel.Token); var body = Encoding.UTF8.GetBytes("<!doctype html><title>Luna Test</title><h1>Native browser works</h1><input id='field'><a href='/next'>Next</a>"); var header = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n"); await stream.WriteAsync(header, cancel.Token); await stream.WriteAsync(body, cancel.Token); } } catch (OperationCanceledException) { } });
+        var server = Serve(listener, cancel.Token);
         try
         {
             await Call("frame", new { x = 0, y = 0, width = 800, height = 500 });
@@ -45,11 +45,39 @@ static class NativeTests
             await Call("appearance", new { mode = "dark" });
             var shot = (string?)await Call("screenshot", new { tab = 1 }); Assert(Convert.FromBase64String(shot!).Length > 100, "Screenshot missing"); Assert(Clipboard.ContainsImage(), "Screenshot not copied");
             await Call("load", new { tab = 2, url = $"http://127.0.0.1:{port}/next" });
+            deadline=DateTime.UtcNow.AddSeconds(20);bool secondReady=false;
+            while(DateTime.UtcNow<deadline){if((string?)await Call("evaluate",new{tab=2,source="document.title"})=="Luna Test"){secondReady=true;break;}await Task.Delay(100);}
+            Assert(secondReady,"Second native tab did not navigate");
+
             await Call("show", new { tab = 2 }); await Call("close", new { tab = 2 }); await Call("show", new { tab = 1 });
             await Call("show", new { tab = -1 }); await Call("close", new { tab = 1 });
             await TestIPC($"http://127.0.0.1:{port}/");
         }
         finally { cancel.Cancel(); listener.Stop(); await server; }
+    }
+    static async Task Serve(TcpListener listener,CancellationToken token) {
+        var clients=new List<Task>();
+        try {
+            while(!token.IsCancellationRequested) {
+                var client=await listener.AcceptTcpClientAsync(token);
+                clients.Add(ServeClient(client,token));
+            }
+        } catch(OperationCanceledException) {} finally { await Task.WhenAll(clients); }
+    }
+    static async Task ServeClient(TcpClient client,CancellationToken token) {
+        using(client) using(var timeout=CancellationTokenSource.CreateLinkedTokenSource(token)) {
+            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            try {
+                using var stream=client.GetStream();var buffer=new byte[8192];
+                if(await stream.ReadAsync(buffer,timeout.Token)==0)return;
+                var body=Encoding.UTF8.GetBytes("<!doctype html><title>Luna Test</title><h1>Native browser works</h1><input id='field'><a href='/next'>Next</a>");
+                var header=Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n");
+                await stream.WriteAsync(header,timeout.Token);await stream.WriteAsync(body,timeout.Token);
+            } catch(Exception e) when(e is IOException or SocketException or OperationCanceledException) {
+                // Chromium can abandon favicon requests and speculative connections.
+                // A disconnected client must not stop the test server for other tabs.
+            }
+        }
     }
     static async Task TestIPC(string url) {
         var info=new ProcessStartInfo(Environment.ProcessPath!,Environment.ProcessId.ToString()) {UseShellExecute=false,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,CreateNoWindow=true};
