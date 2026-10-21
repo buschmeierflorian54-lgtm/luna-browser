@@ -120,7 +120,9 @@ test('personalization is usable in the real settings page and updates the start 
   const mocks = {
     IS_NATIVE: 'false',
     prefs: 'async()=>({onboardingComplete:true})',
-    keyStatus: 'async()=>false',
+    keyStatus: 'async()=>true',
+    search:
+      'async()=>({millis:10,results:[{title: "Luna Hintergrund",url:"https://example.com",host:"example.com",desc:"Ergebnis vor dem eigenen Bild"}]})',
     bookmarks: 'async()=>[]',
     downloads: 'async()=>[]',
     notes: 'async()=>[]',
@@ -148,8 +150,30 @@ test('personalization is usable in the real settings page and updates the start 
   await expect(page).toHaveTitle('Florins Browser');
   await page.locator('.personal-settings').scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('personalization-settings.png') });
+  await page
+    .locator('[data-personal-media]')
+    .setInputFiles(path.resolve(__dirname, '../../build/appicon.png'));
+  await expect(page.locator('[data-personal-background="image"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await page.locator('#newtab').click();
   await expect(page.locator('.st-custom-name')).toHaveText('Florins Browser');
+  await expect(page.locator('#start .personal-background img')).toBeVisible();
+  await page.locator('#url').fill('luna hintergrund');
+  await page.locator('#url').press('Enter');
+  await expect(page.locator('#searchView .sr-t')).toHaveText('Luna Hintergrund');
+  const backdrop = page.locator('#searchView .personal-background img');
+  await expect(backdrop).toBeVisible();
+  await expect
+    .poll(() => backdrop.evaluate((img) => img.complete && img.naturalWidth > 0))
+    .toBe(true);
+  await expect(page.locator('#searchView .st-waves')).toHaveCount(0);
+  await expect(page.locator('#searchView .sr')).toHaveCSS('opacity', '1');
+  await page.screenshot({ path: testInfo.outputPath('search-personal-background.png') });
+  await page.locator('#newtab').click();
+  await expect(page.locator('#searchView')).toBeHidden();
+  await expect(page.locator('#start .personal-background img')).toBeVisible();
   expect(errors).toEqual([]);
 });
 

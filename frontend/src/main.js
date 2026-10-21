@@ -998,14 +998,18 @@ function renderSearchView() {
   resizeBackground();
   const observer = new ResizeObserver(resizeBackground);
   observer.observe(el);
+  const stopPersonal = mountPersonalBackground(el);
   const waves = el.querySelector('.st-waves');
-  const stopWaves = startWaves(
-    waves,
-    waves.parentElement,
-    matchMedia('(prefers-reduced-motion: reduce)').matches,
-  );
+  const stopWaves = waves
+    ? startWaves(
+        waves,
+        waves.parentElement,
+        !personal().motion || matchMedia('(prefers-reduced-motion: reduce)').matches,
+      )
+    : () => {};
   stopSearchBackground = () => {
     observer.disconnect();
+    stopPersonal();
     stopWaves();
   };
   el.scrollTop = t.sLoading ? 0 : top;
@@ -3190,4 +3194,5 @@ applyBrowserName();
 window.addEventListener('luna-personalization', () => {
   applyBrowserName();
   renderStart();
+  renderSearchView();
 });
