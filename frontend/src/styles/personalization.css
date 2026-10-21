@@ -96,6 +96,6 @@
   overflow-wrap: anywhere;
   max-width: 500px;
 }
-#start.start-motion-paused .st-bg * {
+.start-motion-paused .st-bg * {
   animation-play-state: paused !important;
 }

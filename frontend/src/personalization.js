@@ -178,7 +178,7 @@ export function startVisible(host) {
   return (
     !document.hidden &&
     !host.hidden &&
-    !host.closest('[inert]') &&
+    !host.closest('[hidden], [inert]') &&
     !document.querySelector('.setup, .slow-setup')
   );
 }
