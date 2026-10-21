@@ -259,10 +259,54 @@ sealed class Host : Form
             case "volume": using (var enumerator = new MMDeviceEnumerator()) using (var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)) return new { volume = device.AudioEndpointVolume.Mute ? 0 : (int)Math.Round(device.AudioEndpointVolume.MasterVolumeLevelScalar * 100), device = device.ID };
             case "spotifyState": return await SpotifyState().WaitAsync(TimeSpan.FromSeconds(4));
             case "spotifyCommand": return await SpotifyCommand(Str(a, "command"), Num(a, "value")).WaitAsync(TimeSpan.FromSeconds(8));
-            case "icon": Attach(); using (var stream = new MemoryStream(Convert.FromBase64String(Str(a, "data")))) using (var bitmap = new Bitmap(stream)) { var h = bitmap.GetHicon(); try { taskIcon?.Dispose(); taskIcon = (Icon)Icon.FromHandle(h).Clone(); SendMessageTimeout(parent, 0x80, new IntPtr(1), taskIcon.Handle, 2, 250, out _); SendMessageTimeout(parent, 0x80, IntPtr.Zero, taskIcon.Handle, 2, 250, out _); } finally { DestroyIcon(h); } } return true;
+            case "icon": SetAppIcon(Convert.FromBase64String(Str(a, "data"))); return true;
             case "palette": return null; // WebView2 renders its own error pages in the selected color scheme.
             default: throw new InvalidOperationException("Unbekannte Windows-Anfrage: " + op);
         }
+    }
+    void SetAppIcon(byte[] data) {
+        Attach();
+        using var stream = new MemoryStream(data);
+        using var source = new Bitmap(stream);
+        using var bitmap = new Bitmap(source, new Size(256, 256));
+        using var png = new MemoryStream();
+        bitmap.Save(png, ImageFormat.Png);
+        var bytes = png.ToArray();
+        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Luna Browser", "Icons");
+        Directory.CreateDirectory(directory);
+        var digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes))[..16];
+        var path = Path.Combine(directory, "luna-" + digest + ".ico");
+        if (!File.Exists(path)) {
+            using var writer = new BinaryWriter(File.Create(path));
+            writer.Write((ushort)0); writer.Write((ushort)1); writer.Write((ushort)1);
+            writer.Write((byte)0); writer.Write((byte)0); writer.Write((byte)0); writer.Write((byte)0);
+            writer.Write((ushort)1); writer.Write((ushort)32); writer.Write(bytes.Length); writer.Write(22);
+            writer.Write(bytes);
+        }
+        var h = bitmap.GetHicon();
+        try {
+            taskIcon?.Dispose(); taskIcon = (Icon)Icon.FromHandle(h).Clone();
+            SendMessageTimeout(parent, 0x80, new IntPtr(1), taskIcon.Handle, 2, 250, out _);
+            SendMessageTimeout(parent, 0x80, IntPtr.Zero, taskIcon.Handle, 2, 250, out _);
+        } finally { DestroyIcon(h); }
+        // Update existing shortcuts for this executable only, without creating new pins.
+        var executable = Process.GetProcessById(parentPID).MainModule?.FileName;
+        var shellType = Type.GetTypeFromProgID("WScript.Shell");
+        if (shellType == null || executable == null) return;
+        dynamic shell = Activator.CreateInstance(shellType)!;
+        try {
+            var roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            foreach (var folder in new[] { Path.Combine(roaming, "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned", "TaskBar"), Path.Combine(roaming, "Microsoft", "Windows", "Start Menu", "Programs") }) {
+                if (!Directory.Exists(folder)) continue;
+                foreach (var shortcutPath in Directory.EnumerateFiles(folder, "*.lnk")) {
+                    dynamic shortcut = shell.CreateShortcut(shortcutPath);
+                    try {
+                        if (!string.Equals((string)shortcut.TargetPath, executable, StringComparison.OrdinalIgnoreCase)) continue;
+                        shortcut.IconLocation = path + ",0"; shortcut.Save();
+                    } finally { Marshal.FinalReleaseComObject(shortcut); }
+                }
+            }
+        } finally { Marshal.FinalReleaseComObject(shell); }
     }
     void PlayPen(bool on) {
         try {

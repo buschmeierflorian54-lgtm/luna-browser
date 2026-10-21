@@ -1,3 +1,10 @@
+import {
+  browserName,
+  personal,
+  applyBrowserName,
+  wirePersonalSettings,
+  mountPersonalBackground,
+} from './personalization.js';
 import { createLoadWatchdog, showSlowSetup, slowSetupVisible } from './slow-setup.js';
 import { WINDOWS, shortcut } from './platform.js';
 import { createOnboarding } from './onboarding.js';
@@ -18,7 +25,14 @@ import { createBrowserNotifications } from './notifications.js';
 import { initMusicPanel } from './music-panel.js';
 import { initAutoNext } from './music-autonext.js';
 import { initQueueDrop } from './spotify-queue.js';
-import { COLOR_THEMES, applyColorTheme, colorTheme, themeIconURL } from './color-themes.js';
+import {
+  COLOR_THEMES,
+  applyColorTheme,
+  colorTheme,
+  themeIconURL,
+  setCustomIcon,
+  resetCustomIcon,
+} from './color-themes.js';
 import { lunaPageAction } from './page-control.js';
 import { updateSonosSettings } from './sonos-view.js';
 import './style.css';
@@ -817,10 +831,10 @@ function startHTML() {
   <div class="st-scroll"><div class="st-wrap">
     <header class="st-hero">
       <div class="st-logo-w"><img class="st-logo" src="${themeIconURL()}" alt="" draggable="false"><span class="st-halo"></span></div>
-      <div class="st-brand-widget" role="group" aria-label="Uhrzeit und Luna Browser">
+      <div class="st-brand-widget" role="group" aria-label="Uhrzeit und ${esc(browserName())}">
         <div class="st-clock" id="stClock" aria-label="Uhrzeit"></div>
         <span class="st-brand-divider" aria-hidden="true"></span>
-        ${lunaWordmark}
+        ${browserName() === 'Luna Browser' ? lunaWordmark : `<span class="st-custom-name">${esc(browserName())}</span>`}
       </div>
       <h1 class="st-greet">${GREET()}</h1>
       <p class="st-date">${esc(date)}</p>
@@ -851,7 +865,8 @@ function stopStartMotion() {
 // Wabernde Wellen: mehrere übereinanderliegende Sinus-Bänder, die langsam fließen und auf die Maus reagieren.
 function startMotion(el) {
   stopStartMotion();
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduce = !personal().motion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  startStop.push(mountPersonalBackground(el));
   const cv = el.querySelector('.st-waves');
   if (cv) startStop.push(startWaves(cv, cv.parentElement, reduce));
   const clock = $('#stClock');
@@ -916,6 +931,8 @@ async function renderStart() {
     return;
   }
   const sig = [
+    JSON.stringify(personal()),
+    themeIconURL(),
     S.hasKey,
     S.googleSearch,
     S.bookmarks.map((b) => b.url + '\u0001' + b.title).join('|'),
@@ -2292,6 +2309,8 @@ document.addEventListener('click', async (ev) => {
         for (const key of [
           'fm-theme',
           'luna-color-theme',
+          'luna-personalization',
+          'luna-custom-icon',
           'luna-mcp-colors',
           'fm-side-cfg',
           'fm-side-w',
@@ -3159,4 +3178,16 @@ const chatUI = initChat({
   toast,
   notifications,
   openURL: (url) => newTab(url),
+});
+
+wirePersonalSettings({
+  refresh: renderSettingsView,
+  setIcon: setCustomIcon,
+  resetIcon: resetCustomIcon,
+  toast,
+});
+applyBrowserName();
+window.addEventListener('luna-personalization', () => {
+  applyBrowserName();
+  renderStart();
 });

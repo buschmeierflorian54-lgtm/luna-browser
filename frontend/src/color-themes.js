@@ -114,7 +114,16 @@ export function applyColorTheme(id = colorTheme(), persist = false) {
 }
 function syncErrorPalette() {
   const css = getComputedStyle(document.documentElement);
-  setErrorPalette(JSON.stringify(Object.fromEntries(['panel', 'ink', 'mute', 'acc', 'pri', 'pri-fg'].map(key => [key, css.getPropertyValue('--' + key).trim()]))));
+  setErrorPalette(
+    JSON.stringify(
+      Object.fromEntries(
+        ['panel', 'ink', 'mute', 'acc', 'pri', 'pri-fg'].map((key) => [
+          key,
+          css.getPropertyValue('--' + key).trim(),
+        ]),
+      ),
+    ),
+  );
 }
 export function colorThemesHTML() {
   const current = colorTheme();
@@ -123,15 +132,25 @@ export function colorThemesHTML() {
 
 let currentIcon = '',
   iconGeneration = 0;
+const CUSTOM_ICON_KEY = 'luna-custom-icon';
+function customIcon() {
+  try {
+    return localStorage.getItem(CUSTOM_ICON_KEY) || '';
+  } catch {
+    return '';
+  }
+}
 export function themeIconURL() {
-  return currentIcon || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconSVG);
+  return (
+    customIcon() || currentIcon || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconSVG)
+  );
 }
 function updateThemeIcon([id, , h, s]) {
   const svg =
     id === 'luna'
       ? iconSVG
       : iconSVG.replace('#bd749d', `hsl(${h},${s}%,58%)`).replace('#79365e', `hsl(${h},${s}%,32%)`);
-  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  const url = customIcon() || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   if (currentIcon === url) return;
   currentIcon = url;
   document.querySelectorAll('.st-logo').forEach((img) => {
@@ -155,4 +174,56 @@ function updateThemeIcon([id, , h, s]) {
     });
   };
   img.src = url;
+}
+
+export async function setCustomIcon(file) {
+  if (
+    !['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+    file.size > 20 * 1024 * 1024
+  )
+    throw Error('Bitte wähle ein PNG-, JPG- oder WebP-Foto bis 20 MB.');
+  const bitmap = await createImageBitmap(file);
+  const small = document.createElement('canvas');
+  small.width = small.height = 384;
+  const side = Math.min(bitmap.width, bitmap.height);
+  small
+    .getContext('2d')
+    .drawImage(
+      bitmap,
+      (bitmap.width - side) / 2,
+      (bitmap.height - side) / 2,
+      side,
+      side,
+      0,
+      0,
+      384,
+      384,
+    );
+  bitmap.close();
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1024;
+  canvas.getContext('2d').drawImage(small, 0, 0, 1024, 1024);
+  const url = canvas.toDataURL('image/png');
+  if (url.length > 2 * 1024 * 1024)
+    throw Error('Das Foto ist zu detailreich. Bitte wähle ein kleineres Bild.');
+  const previous = customIcon();
+  localStorage.setItem(CUSTOM_ICON_KEY, url);
+  ++iconGeneration; // Cancel any older asynchronous theme-icon render.
+  try {
+    await setDockIcon(url.split(',')[1]);
+  } catch (error) {
+    if (previous) localStorage.setItem(CUSTOM_ICON_KEY, previous);
+    else localStorage.removeItem(CUSTOM_ICON_KEY);
+    throw error;
+  }
+  ++iconGeneration;
+  currentIcon = url;
+  document.querySelectorAll('.st-logo').forEach((img) => {
+    img.src = url;
+  });
+}
+export function resetCustomIcon() {
+  localStorage.removeItem(CUSTOM_ICON_KEY);
+  currentIcon = '';
+  applyColorTheme();
 }
