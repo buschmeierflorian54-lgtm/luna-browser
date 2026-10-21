@@ -72,3 +72,17 @@ Webseiten erhalten keine Wails-/Go-Bindings und können nur Gesten melden.
 
 Apple Intelligence ist nicht auf Windows portierbar. Das wird ausdrücklich angezeigt.
 Die Windows-Testliste und alle bekannten Einschränkungen stehen in WINDOWS-TEST.md.
+
+## Personalisierte Hintergründe
+
+`docs/youtube-background.html` muss vor Auslieferung der Personalisierung über
+GitHub Pages unter `https://luna-browser.com/youtube-background.html` verfügbar
+sein. Die HTTPS-Seite gibt dem eingebetteten YouTube-Player einen gültigen
+Web-Ursprung, auch wenn Luna selbst unter einem nativen URL-Schema läuft.
+Sie übermittelt nur Wiedergabestatus an das Elternfenster; Luna prüft Herkunft
+und sendendes Fenster. Es werden keine Luna-Zugangsdaten an die Seite gesendet.
+
+Name (Startseite/Fenstertitel), Icon und Hintergrundauswahl werden im lokalen
+Profil gespeichert. Fotos/Videos liegen in IndexedDB und werden nicht hochgeladen.
+YouTube verbindet sich erst bei sichtbarer Startseite und aktivierter Bewegung.
+App-Paketname, Update-Identität und signierte Bundle-Metadaten bleiben unverändert.

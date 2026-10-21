@@ -1,3 +1,4 @@
+import { personalSettingsHTML } from './personalization.js';
 import { WINDOWS } from './platform.js';
 import { chatSettingsHTML } from './chat.js';
 import { gesturesHTML } from './gestures.js';
@@ -130,6 +131,7 @@ export function createSettings({
           )
           .join('')}</div>
         ${colorThemesHTML()}
+        ${personalSettingsHTML()}
         <div class="swrow"><div><b>Lesezeichenleiste anzeigen</b><span>${S.bar ? 'Die Leiste unter der Adressleiste ist sichtbar.' : 'Aus: Lesezeichen findest du weiter in der Seitenleiste und auf der Startseite.'}</span></div>
           <button class="switch ${S.bar ? 'on' : ''}" role="switch" aria-checked="${S.bar}" aria-label="Lesezeichenleiste anzeigen" data-act="pref-bar"><i></i></button></div>
       </section>

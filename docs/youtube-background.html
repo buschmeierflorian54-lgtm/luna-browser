@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>Luna Video Background</title>
+    <style>
+      html,
+      body,
+      #player {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #111;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="player"></div>
+    <script>
+      const id = new URLSearchParams(location.search).get("v");
+      function reportError() {
+        parent.postMessage({ type: "luna-youtube-error" }, "*");
+      }
+      function onYouTubeIframeAPIReady() {
+        if (!/^[a-zA-Z0-9_-]{11}$/.test(id || "")) {
+          reportError();
+          return;
+        }
+        new YT.Player("player", {
+          videoId: id,
+          host: "https://www.youtube-nocookie.com",
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            playsinline: 1,
+            loop: 1,
+            playlist: id,
+            origin: location.origin,
+          },
+          events: {
+            onReady: (e) => {
+              parent.postMessage({ type: "luna-youtube-ready" }, "*");
+              e.target.mute();
+              e.target.playVideo();
+            },
+            onError: reportError,
+            onAutoplayBlocked: reportError,
+          },
+        });
+      }
+    </script>
+    <script
+      src="https://www.youtube.com/iframe_api"
+      onerror="reportError()"
+    ></script>
+  </body>
+</html>

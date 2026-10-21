@@ -1,3 +1,4 @@
+import { watchStartVisibility } from './personalization.js';
 import { COLOR_THEMES, colorTheme } from './color-themes.js';
 export const startBackgroundHTML = `<div class="st-bg" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><canvas class="st-waves"></canvas></div>`;
 export function startWaves(canvas, host, still) {
@@ -60,9 +61,18 @@ export function startWaves(canvas, host, still) {
       ctx.fill();
     });
   };
+  let visible = false,
+    lastFrame = -Infinity;
   const t0 = performance.now();
   const loop = (now) => {
-    draw((now - t0) / 1000);
+    if (!visible || still) {
+      raf = 0;
+      return;
+    }
+    if (now - lastFrame >= 1000 / 30) {
+      draw((now - t0) / 1000);
+      lastFrame = now;
+    }
     raf = requestAnimationFrame(loop);
   };
   const ro = new ResizeObserver(resize);
@@ -74,10 +84,19 @@ export function startWaves(canvas, host, still) {
     ty = ((e.clientY - r.top) / r.height - 0.5) * 2;
   };
   host.parentElement.addEventListener('pointermove', onMove);
-  if (!still) raf = requestAnimationFrame(loop);
+  const unwatch = watchStartVisibility(host.parentElement, (active) => {
+    visible = active;
+    host.parentElement.classList.toggle('start-motion-paused', !active || still);
+    if (active && !still && !raf) raf = requestAnimationFrame(loop);
+    else if (!active) {
+      cancelAnimationFrame(raf);
+      raf = 0;
+    }
+  });
   return () => {
     cancelAnimationFrame(raf);
     ro.disconnect();
+    unwatch();
     host.parentElement?.removeEventListener('pointermove', onMove);
   };
 }
