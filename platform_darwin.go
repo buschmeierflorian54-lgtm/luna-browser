@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os/exec"
 )
 
@@ -20,3 +21,5 @@ func handlePlatformCommand() bool { return false }
 func platformTitle() string { return "Luna Browser" }
 
 func platformWindowSize() (int, int) { return 1280, 820 }
+
+func platformWindowReady(context.Context) {}
