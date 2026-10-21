@@ -6,7 +6,7 @@ import {
   mountPersonalBackground,
 } from './personalization.js';
 import { createLoadWatchdog, showSlowSetup, slowSetupVisible } from './slow-setup.js';
-import { WINDOWS, shortcut } from './platform.js';
+import { WINDOWS, shortcut, windowsCommand } from './platform.js';
 import { createOnboarding } from './onboarding.js';
 let onboarding = null;
 import { createCommandUI } from './command-ui.js';
@@ -991,16 +991,31 @@ function syncSharedBackground() {
     page.prepend(sharedBackground);
   }
   const custom = p.background !== 'waves';
+  page.style.setProperty(
+    '--background-overlay',
+    Math.max(0, Math.min(85, Number(p.contrast) || 0)) + '%',
+  );
   const key = JSON.stringify([p.background, p.youtube, p.motion, p.fileName, p.mediaRevision]);
   if (key !== sharedBackgroundKey) {
     stopSharedBackground?.();
     sharedBackgroundKey = key;
-    sharedBackground.innerHTML = custom ? startBackgroundHTML : '';
-    stopSharedBackground = custom ? mountPersonalBackground(sharedBackground) : null;
+    sharedBackground.innerHTML = startBackgroundHTML;
+    const waves = sharedBackground.querySelector('.st-waves');
+    stopSharedBackground = custom
+      ? mountPersonalBackground(sharedBackground)
+      : startWaves(
+          waves,
+          waves.parentElement,
+          !p.motion || matchMedia('(prefers-reduced-motion: reduce)').matches,
+        );
   }
+  if (p.textContrast !== 'auto') page.dataset.backgroundTone = p.textContrast;
+  else if (p.background === 'youtube' || p.background === 'waves')
+    delete page.dataset.backgroundTone;
   // Internal Luna pages share one player. Native websites do not need a background.
-  sharedBackground.hidden =
-    !custom || !['start', 'search', 'settings', 'chat'].includes(cur()?.mode);
+  sharedBackground.hidden = !(
+    custom ? ['start', 'search', 'settings', 'chat'] : ['settings']
+  ).includes(cur()?.mode);
   page.classList.toggle('has-personal-background', custom);
 }
 let stopSearchBackground;
@@ -2658,6 +2673,12 @@ document.addEventListener('mousedown', (ev) => {
 });
 document.addEventListener('keydown', (ev) => {
   if (onboarding?.active) return;
+  const command = WINDOWS && !ev.defaultPrevented && windowsCommand(ev);
+  if (command) {
+    ev.preventDefault();
+    runCmd(command);
+    return;
+  }
   if (bmDlg) {
     if (ev.key === 'Escape') {
       ev.preventDefault();
@@ -3213,9 +3234,14 @@ wirePersonalSettings({
   toast,
 });
 applyBrowserName();
-window.addEventListener('luna-personalization', () => {
+window.addEventListener('luna-personalization', (event) => {
   applyBrowserName();
   syncSharedBackground();
+  if (
+    event.detail &&
+    Object.keys(event.detail).every((key) => ['contrast', 'textContrast'].includes(key))
+  )
+    return;
   renderStart();
   renderSearchView();
 });

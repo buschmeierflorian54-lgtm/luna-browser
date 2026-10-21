@@ -86,3 +86,16 @@ Name (Startseite/Fenstertitel), Icon und Hintergrundauswahl werden im lokalen
 Profil gespeichert. Fotos/Videos liegen in IndexedDB und werden nicht hochgeladen.
 YouTube verbindet sich erst bei sichtbarer Startseite und aktivierter Bewegung.
 App-Paketname, Update-Identität und signierte Bundle-Metadaten bleiben unverändert.
+
+
+### Internes Veröffentlichungstool
+
+Nach dem Merge den sauberen, zu veröffentlichenden `main`-Commit auschecken und aus dem Repository ausführen:
+
+```sh
+python3 scripts/publish-update.py --notes-file work/release-notes.md --wait --publish
+```
+
+Das Tool findet den CI-Lauf genau dieses Commits, wartet auf beide Plattformen, prüft/erstellt den unveränderlichen Release-Zweig, hält den Mac während der Arbeit wach und ruft die Signierung und Veröffentlichung auf. Anschließend vergleicht es die öffentlichen Update-Metadaten mit den signierten lokalen Dateien. Private Schlüssel bleiben im Schlüsselbund. Ohne `--publish` entsteht nur ein Entwurf; `--dry-run` liest ausschließlich den Status.
+
+Das Tool gehört zum Entwicklungsablauf und wird nicht in Luna eingebaut. Ein fehlgeschlagener CI-Lauf oder ein abweichender Release-Zweig stoppt die Veröffentlichung. Vorhandene Release-Staging-Verzeichnisse werden weiterhin nicht überschrieben; nach einem abgebrochenen Signier-/Upload-Schritt den erhaltenen Stand prüfen, bevor erneut veröffentlicht wird.

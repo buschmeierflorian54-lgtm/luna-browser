@@ -100,6 +100,7 @@ test('local video survives reload and pauses while hidden', async ({ page }) => 
   await expect
     .poll(() => page.locator('#start video').evaluate((v) => !v.paused && v.muted))
     .toBe(true);
+  await expect(page.locator('#start')).toHaveAttribute('data-background-tone', 'dark');
   await page.evaluate(() => (document.querySelector('#start').hidden = true));
   await expect.poll(() => page.locator('#start video').evaluate((v) => v.paused)).toBe(true);
   await page.evaluate(() => (document.querySelector('#start').hidden = false));
@@ -216,6 +217,40 @@ test('personalization is usable in the real settings page and updates the start 
     ),
   ).toBe(true);
   expect(playerLoads).toBe(1);
+  await page.getByRole('button', { name: 'Einstellungen', exact: true }).click();
+  await expect(page.locator('#settingsView')).toBeVisible();
+  await expect(page.locator('#settingsView')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('.sp-nav [aria-current="page"]')).toHaveText('Darstellung›');
+  await expect(player).toBeVisible();
+  expect(playerLoads).toBe(1);
+  await page.locator('#url').fill('theme');
+  await expect(page.locator('#themeDrop')).toBeVisible();
+  await page.locator('#themeDrop summary').click();
+  const quick = page.locator('#themeDrop');
+  await quick.locator('[data-personal-contrast]').evaluate((el) => {
+    el.value = '70';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await expect(page.locator('#page')).toHaveCSS('--background-overlay', '70%');
+  await quick.locator('[data-personal-text]').selectOption('dark');
+  await expect(page.locator('#page')).toHaveAttribute('data-background-tone', 'dark');
+  expect(playerLoads).toBe(1);
+  await page.locator('#themeDrop').evaluate(async (el) => {
+    await Promise.all(el.getAnimations().map((a) => a.finished.catch(() => {})));
+  });
+  await quick.locator('[data-personal-contrast]').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('quick-background.png') });
+  await quick.locator('[name=youtube]').fill('https://youtu.be/aqz-KE-bpKQ');
+  await quick.getByRole('button', { name: 'Video verwenden' }).click();
+  await expect(player).toHaveAttribute('src', /aqz-KE-bpKQ/);
+  await quick.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await expect(quick).toHaveCount(0);
+  await page.locator('#settingsView [data-personal-background="image"]').click();
+  await expect(page.locator('#sharedBackground img')).toBeVisible();
+  await page.locator('#settingsView [data-personal-text]').selectOption('auto');
+  await page.locator('#settingsView').evaluate((el) => (el.scrollTop = 0));
+  await expect(page.locator('#settingsView .sp-card')).toHaveCSS('opacity', '1');
+  await page.screenshot({ path: testInfo.outputPath('settings-background.png') });
   expect(errors).toEqual([]);
 });
 
@@ -235,4 +270,76 @@ test('background visibility callbacks do not repeat on ordinary UI updates', asy
   await page.evaluate(() => (document.querySelector('#start').hidden = true));
   await expect.poll(() => page.evaluate(() => visibilityCalls)).toEqual([true, false]);
   await page.evaluate(() => stopWatching());
+});
+
+test('background contrast follows bright and dark images and ignores transparent pixels', async ({
+  page,
+}) => {
+  await setup(page);
+  for (const [color, tone] of [
+    ['#fff', 'light'],
+    ['#000', 'dark'],
+  ]) {
+    await page.evaluate(async (color) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 32;
+      canvas.height = 32;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 32, 32);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve));
+      await P.mediaFile(blob);
+      P.savePersonal({ background: 'image' });
+      mount();
+    }, color);
+    await expect(page.locator('#start')).toHaveAttribute('data-background-tone', tone);
+  }
+  expect(
+    await page.evaluate(async () => {
+      const { contrastTone } = await import('/src/background-contrast.js');
+      return contrastTone(new Uint8ClampedArray([255, 255, 255, 0]), 'dark');
+    }),
+  ).toBe('dark');
+});
+
+test('video contrast follows changing frames without restarting playback', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(async () => {
+    const { trackBackgroundContrast } = await import('/src/background-contrast.js');
+    window.sampleCanvas = document.createElement('canvas');
+    sampleCanvas.width = 160;
+    sampleCanvas.height = 90;
+    window.paint = (color) => {
+      const ctx = sampleCanvas.getContext('2d');
+      ctx.fillStyle = color;
+      ctx.fillRect(0, 0, 160, 90);
+    };
+    paint('#000');
+    window.sampleVideo = document.createElement('video');
+    sampleVideo.muted = true;
+    sampleVideo.playsInline = true;
+    sampleVideo.srcObject = sampleCanvas.captureStream(10);
+    document.querySelector('#start').append(sampleVideo);
+    await sampleVideo.play();
+    window.stopSample = trackBackgroundContrast(
+      sampleVideo,
+      document.querySelector('#start'),
+      () => !document.hidden,
+    );
+  });
+  await expect(page.locator('#start')).toHaveAttribute('data-background-tone', 'dark');
+  await page.evaluate(() => {
+    window.paintTimer = setInterval(() => {
+      paint('#fff');
+      sampleVideo.srcObject.getVideoTracks()[0].requestFrame();
+    }, 100);
+  });
+  await expect(page.locator('#start')).toHaveAttribute('data-background-tone', 'light');
+  expect(await page.evaluate(() => sampleVideo.paused)).toBe(false);
+  await page.evaluate(() => {
+    clearInterval(paintTimer);
+    stopSample();
+    sampleVideo.srcObject.getTracks().forEach((t) => t.stop());
+  });
+  await expect(page.locator('#start')).not.toHaveAttribute('data-background-tone');
 });

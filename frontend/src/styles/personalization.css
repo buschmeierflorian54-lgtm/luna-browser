@@ -68,7 +68,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--panel) 48%, transparent);
+  background: color-mix(in srgb, var(--panel) var(--background-overlay, 48%), transparent);
   pointer-events: none;
 }
 .personal-background iframe {
@@ -111,4 +111,107 @@
 #page.has-personal-background > #start,
 #page.has-personal-background > #searchView {
   background: transparent;
+}
+
+/* Scope adaptive text and surfaces to the page, never to the browser toolbar. */
+#page[data-background-tone='dark'] {
+  --mute2: #c3ccda;
+  --acc: #b5c9e6;
+  --link: #d2e2ff;
+  --link-h: #ffffff;
+  --ink: #f7f9fc;
+  --ink2: #ecf0f6;
+  --mute: #bdc6d4;
+  --panel: #111721;
+  --card: #202937;
+  --soft: #2a3545;
+  --input: #253040;
+  --line: #ffffff26;
+  --line3: #ffffff38;
+  --hover: #ffffff16;
+}
+#page[data-background-tone='light'] {
+  --mute2: #46566b;
+  --acc: #385c86;
+  --link: #24466d;
+  --link-h: #132c4a;
+  --ink: #17202c;
+  --ink2: #253246;
+  --mute: #526175;
+  --panel: #f3f6fb;
+  --card: #ffffff;
+  --soft: #eaf0f7;
+  --input: #f6f8fc;
+  --line: #17202c24;
+  --line3: #17202c35;
+  --hover: #17202c0d;
+}
+#page[data-background-tone] .personal-background::after {
+  background: color-mix(in srgb, var(--panel) var(--background-overlay, 48%), transparent);
+}
+
+.personal-background-controls {
+  display: grid;
+  gap: 12px;
+}
+.personal-contrast,
+.personal-text {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.personal-contrast input {
+  flex: 1;
+  min-width: 80px;
+  accent-color: var(--acc);
+}
+.personal-contrast output {
+  min-width: 38px;
+  text-align: right;
+  color: var(--mute);
+}
+.personal-text select {
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: var(--input);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+.td-background {
+  margin: 12px 16px 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.td-background summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+}
+.td-background summary::-webkit-details-marker {
+  display: none;
+}
+.td-background[open] summary {
+  margin-bottom: 10px;
+}
+#themeDrop {
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+}
+#themeDrop .personal-row {
+  flex-wrap: wrap;
+}
+#themeDrop .personal-background-controls > .muted {
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+#page[data-background-tone] {
+  color: var(--ink);
 }

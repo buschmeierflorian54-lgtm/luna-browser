@@ -14,14 +14,21 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 REPO = "fcore247/luna-browser"
 
 def run(*args, capture=False):
-    return subprocess.run(args, cwd=ROOT, check=True, text=True,
-                          stdout=subprocess.PIPE if capture else None).stdout
+    result = subprocess.run(args, cwd=ROOT, text=True,
+                            stdout=subprocess.PIPE if capture else None)
+    if result.returncode and capture and result.stdout:
+        print(result.stdout, flush=True)
+    result.check_returncode()
+    return result.stdout
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_id", help="Successful 'Build and test both platforms' run ID")
     parser.add_argument("--publish", action="store_true", help="Publish after every asset has uploaded; otherwise leave a reviewable draft")
+    parser.add_argument("--notes-file", type=pathlib.Path, help="Release-specific notes supplied by the operator")
     args = parser.parse_args()
+    if args.notes_file and not args.notes_file.is_file():
+        raise SystemExit("Release notes file not found.")
     if run("git", "status", "--porcelain", capture=True).strip():
         raise SystemExit("Commit all source changes before preparing a release.")
     commit = run("git", "rev-parse", "HEAD", capture=True).strip()
@@ -87,11 +94,19 @@ def main():
                          f"Beide Plattformen erfolgreich geprüft: https://github.com/{REPO}/actions/runs/{args.run_id}\n\n"
                          "Windows: ZIP vollständig in einen eigenen Ordner entpacken, dann Luna Browser.exe starten. "
                          "Der native-Unterordner muss daneben bleiben. macOS: vorhandenen Installer verwenden.\n")
+        if args.notes_file:
+            notes.write_text(args.notes_file.read_text())
         assets = [str(f) for f in sorted(output.iterdir()) if f != notes]
         run("gh", "release", "create", "v"+version, *assets, "--repo", REPO, "--target", commit,
             "--draft", "--title", f"Luna Browser {version} · Windows experimentell", "--notes-file", str(notes))
         if args.publish:
             run("gh", "release", "edit", "v"+version, "--repo", REPO, "--draft=false", "--latest")
+        if args.publish:
+            for name in ("appcast.xml", "windows-update.json", "windows-update.sig", "SHA256SUMS"):
+                live = subprocess.check_output(["curl", "-fsSL", "--retry", "3", "--max-time", "45", f"https://github.com/{REPO}/releases/latest/download/{name}"])
+                if live != (output/name).read_bytes():
+                    raise SystemExit(f"Published, but public channel verification failed for {name}. Do not republish blindly.")
+            print("Public Mac and Windows update channels verified.")
         print(f"{'Published' if args.publish else 'Draft prepared'}: https://github.com/{REPO}/releases/tag/v{version}")
 
 if __name__ == "__main__":

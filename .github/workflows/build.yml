@@ -105,6 +105,7 @@ jobs:
             if ($app.HasExited) { throw "Luna exited: $($app.ExitCode)" }
             $app.Refresh()
             if ($app.MainWindowHandle -eq 0) { throw 'No native Luna window' }
+            & ./scripts/test-window-chrome.ps1 -WindowHandle $app.MainWindowHandle.ToInt64()
             Add-Type -AssemblyName System.Windows.Forms, System.Drawing
             $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
             $shot = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)

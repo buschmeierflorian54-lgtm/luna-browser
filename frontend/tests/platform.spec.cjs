@@ -20,10 +20,10 @@ test('Windows labels and unavailable local Spotify fallback', async ({ browser }
     route.fulfill({
       contentType: 'text/html; charset=utf-8',
       body: `<body><div id="toolbar"></div><script type="module">
-    import { WINDOWS, shortcut } from '/src/platform.js';
+    import { WINDOWS, shortcut, windowsCommand } from '/src/platform.js';
     import { spotifySettingsHTML } from '/src/spotify-view.js';
     import { initAutoNext } from '/src/music-autonext.js';
-    window.windows=WINDOWS; window.keys=shortcut('⌥⌘S');
+    window.keyCommand=windowsCommand;window.windows=WINDOWS; window.keys=shortcut('⌥⌘S');
     document.body.insertAdjacentHTML('beforeend', spotifySettingsHTML({}, false));
     const enqueue=initAutoNext({cover(){},toast(message){window.notice=message},notifications:{ask(){window.asked=true}}});
     await enqueue('spotify:track:1234567890123456789012','Test song');window.ready=true;
@@ -39,5 +39,15 @@ test('Windows labels and unavailable local Spotify fallback', async ({ browser }
   ).toBeDisabled();
   expect(await page.evaluate(() => window.asked || window.scheduled || false)).toBe(false);
   expect(await page.evaluate(() => window.notice)).toContain('unter Windows noch nicht verfügbar');
+  expect(
+    await page.evaluate(() =>
+      ['t', 'w', 'l', 'f'].map((key) => keyCommand({ key, ctrlKey: true })),
+    ),
+  ).toEqual(['new-tab', 'close-tab', 'focus-url', 'find']);
+  expect(
+    await page.evaluate(() =>
+      keyCommand({ key: 'l', ctrlKey: true, getModifierState: () => true }),
+    ),
+  ).toBe(null);
   await page.close();
 });

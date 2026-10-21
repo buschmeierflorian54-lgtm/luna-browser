@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/menu"
@@ -45,6 +46,9 @@ var pageControl string
 // buildMenu: Tastenkürzel müssen im Menü liegen, damit sie auch gelten, wenn eine Webseite den Fokus hat.
 // Jeder Eintrag schickt ein "cmd"-Ereignis ans Frontend.
 func buildMenu(app *App) *menu.Menu {
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
 	cmd := func(name string) menu.Callback {
 		return func(*menu.CallbackData) { app.emit("cmd", name) }
 	}
@@ -121,12 +125,13 @@ func main() {
 		}
 	}
 	app := NewApp()
+	width, height := platformWindowSize()
 	err := wails.Run(&options.App{
 		Title:            platformTitle(),
-		Width:            1280,
-		Height:           820,
-		MinWidth:         760,
-		MinHeight:        480,
+		Width:            width,
+		Height:           height,
+		MinWidth:         min(760, width),
+		MinHeight:        min(480, height),
 		BackgroundColour: &options.RGBA{R: 239, G: 182, B: 213, A: 1},
 		AssetServer:      &assetserver.Options{Assets: assets},
 		OnStartup:        app.startup,

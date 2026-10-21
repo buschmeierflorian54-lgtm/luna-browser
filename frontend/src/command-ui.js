@@ -1,6 +1,7 @@
 // Befehls-Seite („commands“) und Theme-Leiste („theme“) für die Adressleiste.
 // Beide erscheinen sofort beim Tippen, ohne Enter, und übernehmen die Farben des gewählten Themes über CSS-Variablen.
 import { COLOR_THEMES, colorTheme, colorThemesHTML } from './color-themes.js';
+import { backgroundSettingsHTML } from './personalization.js';
 import { esc } from './ui.js';
 import { COMMANDS, commandOn, commandSwitchHTML, setCommandOn } from './command-data.js';
 
@@ -173,8 +174,18 @@ export function createCommandUI({
       )
       .join(
         '',
-      )}</span><button type="button" class="td-close" data-close aria-label="Schließen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>${themes}`;
+      )}</span><button type="button" class="td-close" data-close aria-label="Schließen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>${themes}<details class="td-background"><summary>Hintergrund <span aria-hidden="true">＋</span></summary>${backgroundSettingsHTML()}</details>`;
   }
+  window.addEventListener('luna-personalization', (event) => {
+    if (
+      !dropEl ||
+      !event.detail ||
+      !['background', 'youtube', 'motion', 'mediaRevision'].some((key) => key in event.detail)
+    )
+      return;
+    const controls = dropEl.querySelector('.personal-background-controls');
+    if (controls) controls.outerHTML = backgroundSettingsHTML();
+  });
   function openDrop() {
     if (dropEl && !dropClosing) return;
     closePage();
