@@ -192,7 +192,9 @@ export function createCommandUI({
       );
   }
   function selectDesignTab(name, focus = false) {
-    dropEl.getAnimations({ subtree: true }).forEach((animation) => animation.finish());
+    dropEl.getAnimations({ subtree: true }).forEach((animation) => {
+      if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish();
+    });
     dropEl.style.overflow = '';
     dropEl.querySelectorAll('[data-design-tab]').forEach((button) => {
       const active = button.dataset.designTab === name;

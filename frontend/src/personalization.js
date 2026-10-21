@@ -200,8 +200,20 @@ export function wirePersonalSettings({ refresh, setIcon, resetIcon, toast }) {
         savePersonal({ motion: input.checked });
         return;
       }
-      const file = input.files?.[0];
+      let file = input.files?.[0];
       if (!file) return;
+      if (!file.type) {
+        const types = {
+          png: 'image/png',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          webp: 'image/webp',
+          mp4: 'video/mp4',
+          webm: 'video/webm',
+        };
+        const type = types[file.name.split('.').pop().toLowerCase()];
+        if (type) file = new File([file], file.name, { type });
+      }
       input.disabled = true;
       try {
         if (input.matches('[data-personal-icon]')) await setIcon(file);

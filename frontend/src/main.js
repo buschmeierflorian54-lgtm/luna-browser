@@ -1,3 +1,4 @@
+import { initWindowChrome } from './window-chrome.js';
 import {
   browserName,
   personal,
@@ -36,6 +37,7 @@ import {
 import { lunaPageAction } from './page-control.js';
 import { updateSonosSettings } from './sonos-view.js';
 import './style.css';
+initWindowChrome();
 import { spotifyResultsHTML } from './spotify-view.js';
 import {
   bindSpotifySearch,
