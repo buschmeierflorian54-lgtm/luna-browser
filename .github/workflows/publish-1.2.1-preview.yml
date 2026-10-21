@@ -1,4 +1,4 @@
-name: Publish tested 1.2.1 preview
+name: Publish tested 1.2.2 preview
 on:
   push:
     branches: [main]
@@ -8,7 +8,7 @@ permissions:
   contents: write
   actions: read
 concurrency:
-  group: release-v1.2.1
+  group: release-v1.2.2
   cancel-in-progress: false
 jobs:
   publish:
@@ -16,8 +16,8 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: fcore247/luna-browser
-      SOURCE_COMMIT: e31777a0aec44f7c0e641e536f8543a89f2ac7db
-      SOURCE_RUN: '39492415680'
+      SOURCE_COMMIT: beb294d975a74d6ef16f34f9edaf60d91f710ab4
+      SOURCE_RUN: '39557482332'
     steps:
       - name: Verify successful two-platform source build
         shell: bash
@@ -31,7 +31,7 @@ jobs:
         with:
           github-token: ${{ github.token }}
           repository: fcore247/luna-browser
-          run-id: 39492415680
+          run-id: 39557482332
           pattern: luna-*
           path: artifacts
       - name: Verify package provenance and stage downloads
@@ -45,14 +45,14 @@ jobs:
           for folder, platform in [('luna-macos-arm64', 'macos-arm64'), ('luna-windows-amd64-EXPERIMENTAL', 'windows-amd64')]:
               source = root / folder
               assert (source / 'source-commit.txt').read_text(encoding='utf-8-sig').strip() == os.environ['SOURCE_COMMIT']
-              package = source / f'Luna-Browser-1.2.1-{platform}.zip'
+              package = source / f'Luna-Browser-1.2.2-{platform}.zip'
               with zipfile.ZipFile(package) as archive:
                   if platform == 'windows-amd64':
                       meta = json.loads(archive.read('luna-package.json').decode('utf-8-sig'))
-                      assert meta['version'] == '1.2.1' and meta['commit'] == os.environ['SOURCE_COMMIT'] and meta['experimental']
+                      assert meta['version'] == '1.2.2' and meta['commit'] == os.environ['SOURCE_COMMIT'] and meta['experimental']
                   else:
                       info = plistlib.loads(archive.read('Luna Browser.app/Contents/Info.plist'), fmt=plistlib.FMT_XML)
-                      assert info['CFBundleShortVersionString'] == '1.2.1'
+                      assert info['CFBundleShortVersionString'] == '1.2.2'
               shutil.copy2(package, out / package.name)
           checksums = ''.join(f'{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}\n' for f in sorted(out.iterdir()))
           (out / 'SHA256SUMS').write_text(checksums)
@@ -62,24 +62,28 @@ jobs:
         run: |
           set -euo pipefail
           cat > release-notes.md <<'NOTES'
-          Luna Browser 1.2.1 – Windows-Fokuskorrektur
+          Luna Browser 1.2.2 – einfachere Einrichtung und kompaktes Windows-Paket
 
-          - Korrigiert die Einbettung des nativen Windows-Browserfensters.
+          - Kompaktes Windows-Paket mit einer einzelnen gebündelten EXE im Ordner `native`.
+          - Entfernt die dauerhafte Windows-Experimentell-Einblendung und den Testversionszusatz im Fenstertitel.
+          - Entfernt die Kopfzeile „Luna Browser / Dein Start mit Luna“ aus der Einrichtung.
+          - „Diesen Schritt überspringen“ ist bei jedem Einrichtungsschritt sichtbar, auch auf Anbieterseiten.
+          - Überspringen der Suche ohne Brave-Key wählt Google als funktionsfähige Standardsuche.
           - Wiederholte Layoutaufrufe erhalten den Tastaturfokus.
           - Enthält die bisherigen Korrekturen für hängende Windows-Starts.
           - Zusätzliche native Regressionstests für Einbettung und Fokus.
 
           **Windows ist weiterhin experimentell.** Beide Plattformen wurden im selben CI-Lauf erfolgreich gebaut und getestet:
-          https://github.com/fcore247/luna-browser/actions/runs/39492415680
+          https://github.com/fcore247/luna-browser/actions/runs/39557482332
 
-          Quellstand: e31777a0aec44f7c0e641e536f8543a89f2ac7db
+          Quellstand: beb294d975a74d6ef16f34f9edaf60d91f710ab4
 
           **Manuelle Downloads / Vorabrelease:** ZIP vollständig entpacken. Unter Windows den Unterordner `native` neben `Luna Browser.exe` belassen. Prüfsummen stehen in `SHA256SUMS`.
 
           Dieses Vorabrelease enthält keine neu signierten Auto-Update-Metadaten und keine DMG. Für das reguläre automatische Update ist der bestehende Release-Ablauf mit dem Signierschlüssel auf dem Mac erforderlich. Das bisherige stabile Release bleibt unverändert.
           NOTES
-          gh release create v1.2.1 --target "$SOURCE_COMMIT" --draft --prerelease --latest=false --title 'Luna Browser 1.2.1 · Windows-Testversion' --notes-file release-notes.md
-          gh release upload v1.2.1 release/*
-          gh release edit v1.2.1 --draft=false --prerelease --latest=false
+          gh release create v1.2.2 --target "$SOURCE_COMMIT" --draft --prerelease --latest=false --title 'Luna Browser 1.2.2 · Windows-Testversion' --notes-file release-notes.md
+          gh release upload v1.2.2 release/*
+          gh release edit v1.2.2 --draft=false --prerelease --latest=false
 
 
