@@ -159,11 +159,11 @@ test('personalization is usable in the real settings page and updates the start 
   );
   await page.locator('#newtab').click();
   await expect(page.locator('.st-custom-name')).toHaveText('Florins Browser');
-  await expect(page.locator('#start .personal-background img')).toBeVisible();
+  await expect(page.locator('#sharedBackground .personal-background img')).toBeVisible();
   await page.locator('#url').fill('luna hintergrund');
   await page.locator('#url').press('Enter');
   await expect(page.locator('#searchView .sr-t')).toHaveText('Luna Hintergrund');
-  const backdrop = page.locator('#searchView .personal-background img');
+  const backdrop = page.locator('#sharedBackground .personal-background img');
   await expect(backdrop).toBeVisible();
   await expect
     .poll(() => backdrop.evaluate((img) => img.complete && img.naturalWidth > 0))
@@ -173,7 +173,49 @@ test('personalization is usable in the real settings page and updates the start 
   await page.screenshot({ path: testInfo.outputPath('search-personal-background.png') });
   await page.locator('#newtab').click();
   await expect(page.locator('#searchView')).toBeHidden();
-  await expect(page.locator('#start .personal-background img')).toBeVisible();
+  await expect(page.locator('#sharedBackground .personal-background img')).toBeVisible();
+  let playerLoads = 0;
+  await page.route('https://luna-browser.com/youtube-background.html*', (route) => {
+    playerLoads++;
+    return route.fulfill({ contentType: 'text/html', body: '<p>Persistent player</p>' });
+  });
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem('luna-personalization'));
+    localStorage.setItem(
+      'luna-personalization',
+      JSON.stringify({ ...p, background: 'youtube', youtube: 'https://youtu.be/M7lc1UVf-VE' }),
+    );
+    window.dispatchEvent(new Event('luna-personalization'));
+  });
+  const player = page.locator('#sharedBackground iframe');
+  await expect(player).toBeVisible();
+  await expect.poll(() => playerLoads).toBe(1);
+  await page.evaluate(
+    () => (window.originalPlayer = document.querySelector('#sharedBackground iframe')),
+  );
+  for (const query of ['luna hintergrund', 'spotify-search:', 'luna neues ergebnis']) {
+    if (query === 'luna neues ergebnis')
+      await page.getByRole('button', { name: 'Spotify-Suchmodus beenden' }).click();
+    await page.locator('#url').fill(query);
+    await page.locator('#url').press('Enter');
+    await expect(page.locator('#searchView')).toBeVisible();
+    if (query === 'spotify-search:') await expect(page.locator('.music-welcome')).toBeVisible();
+    else await expect(page.locator('#searchView .sr-t')).toHaveText('Luna Hintergrund');
+    await expect
+      .poll(() =>
+        page.evaluate(() => originalPlayer === document.querySelector('#sharedBackground iframe')),
+      )
+      .toBe(true);
+    await expect(player).toBeVisible();
+  }
+  await page.locator('#newtab').click();
+  await expect(page.locator('#start')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => originalPlayer === document.querySelector('#sharedBackground iframe'),
+    ),
+  ).toBe(true);
+  expect(playerLoads).toBe(1);
   expect(errors).toEqual([]);
 });
 

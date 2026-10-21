@@ -99,3 +99,16 @@
 .start-motion-paused .st-bg * {
   animation-play-state: paused !important;
 }
+
+#sharedBackground {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#sharedBackground[hidden] {
+  display: none;
+}
+#page.has-personal-background > #start,
+#page.has-personal-background > #searchView {
+  background: transparent;
+}
