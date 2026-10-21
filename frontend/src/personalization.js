@@ -162,7 +162,11 @@ export function wirePersonalSettings({ refresh, setIcon, resetIcon, toast }) {
           if (!image && !video) throw Error('Bitte wähle PNG, JPG, WebP, MP4 oder WebM.');
           if (file.size > (image ? 20 : 100) * 1024 * 1024) throw Error('Diese Datei ist zu groß.');
           await mediaFile(file);
-          savePersonal({ background: image ? 'image' : 'video', fileName: file.name });
+          savePersonal({
+            background: image ? 'image' : 'video',
+            fileName: file.name,
+            mediaRevision: Date.now(),
+          });
         }
         refresh();
         feedback('Gespeichert.');

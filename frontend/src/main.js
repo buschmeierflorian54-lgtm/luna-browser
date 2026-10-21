@@ -827,7 +827,7 @@ function startHTML() {
   const d = new Date();
   const date = d.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
   const delay = (i) => `style="--d:${120 + i * 55}ms"`;
-  return `${startBackgroundHTML}
+  return `${personal().background === 'waves' ? startBackgroundHTML : ''}
   <div class="st-scroll"><div class="st-wrap">
     <header class="st-hero">
       <div class="st-logo-w"><img class="st-logo" src="${themeIconURL()}" alt="" draggable="false"><span class="st-halo"></span></div>
@@ -866,7 +866,6 @@ function stopStartMotion() {
 function startMotion(el) {
   stopStartMotion();
   const reduce = !personal().motion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-  startStop.push(mountPersonalBackground(el));
   const cv = el.querySelector('.st-waves');
   if (cv) startStop.push(startWaves(cv, cv.parentElement, reduce));
   const clock = $('#stClock');
@@ -980,6 +979,30 @@ async function renderStart() {
         .join('')
     : '<div class="hint">Noch nichts besucht – leg einfach los.</div>';
 }
+// Keep media outside view markup: replacing a view must not reload its player.
+let sharedBackground, sharedBackgroundKey, stopSharedBackground;
+function syncSharedBackground() {
+  const p = personal();
+  const page = $('#page');
+  if (!sharedBackground) {
+    sharedBackground = document.createElement('div');
+    sharedBackground.id = 'sharedBackground';
+    sharedBackground.hidden = true;
+    page.prepend(sharedBackground);
+  }
+  const custom = p.background !== 'waves';
+  const key = JSON.stringify([p.background, p.youtube, p.motion, p.fileName, p.mediaRevision]);
+  if (key !== sharedBackgroundKey) {
+    stopSharedBackground?.();
+    sharedBackgroundKey = key;
+    sharedBackground.innerHTML = custom ? startBackgroundHTML : '';
+    stopSharedBackground = custom ? mountPersonalBackground(sharedBackground) : null;
+  }
+  // Internal Luna pages share one player. Native websites do not need a background.
+  sharedBackground.hidden =
+    !custom || !['start', 'search', 'settings', 'chat'].includes(cur()?.mode);
+  page.classList.toggle('has-personal-background', custom);
+}
 let stopSearchBackground;
 function renderSearchView() {
   stopSearchBackground?.();
@@ -992,13 +1015,12 @@ function renderSearchView() {
   const top = el.scrollTop;
   el.classList.toggle('spotify-results-page', t.provider === 'spotify');
   const content = t.provider === 'spotify' ? spotifyResultsHTML(t) : searchHTML(t, isBookmarked);
-  el.innerHTML = `<div class="search-scene"><div class="search-backdrop">${startBackgroundHTML}</div><div class="search-content">${content}</div></div>`;
+  el.innerHTML = `<div class="search-scene"><div class="search-backdrop">${personal().background === 'waves' ? startBackgroundHTML : ''}</div><div class="search-content">${content}</div></div>`;
   const resizeBackground = () =>
     el.style.setProperty('--search-viewport-height', el.clientHeight + 'px');
   resizeBackground();
   const observer = new ResizeObserver(resizeBackground);
   observer.observe(el);
-  const stopPersonal = mountPersonalBackground(el);
   const waves = el.querySelector('.st-waves');
   const stopWaves = waves
     ? startWaves(
@@ -1009,7 +1031,6 @@ function renderSearchView() {
     : () => {};
   stopSearchBackground = () => {
     observer.disconnect();
-    stopPersonal();
     stopWaves();
   };
   el.scrollTop = t.sLoading ? 0 : top;
@@ -1021,6 +1042,7 @@ function renderAll() {
   renderStart();
   renderSearchView();
   renderSettingsView();
+  syncSharedBackground();
   chatUI.show(cur()?.mode === 'chat');
   renderSide();
   updateFrame();
@@ -3193,6 +3215,7 @@ wirePersonalSettings({
 applyBrowserName();
 window.addEventListener('luna-personalization', () => {
   applyBrowserName();
+  syncSharedBackground();
   renderStart();
   renderSearchView();
 });
