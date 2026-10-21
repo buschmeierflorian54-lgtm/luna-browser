@@ -835,3 +835,50 @@ input {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+/* Windows shares one caption row with tabs, like Edge. */
+.windows-chrome #titlebar {
+  padding-left: 8px;
+  align-items: stretch;
+  gap: 0;
+}
+.windows-chrome #tabs {
+  margin-right: 0;
+  padding-right: 32px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.windows-chrome #tabs::-webkit-scrollbar {
+  display: none;
+}
+.window-controls {
+  display: flex;
+  align-self: stretch;
+  flex: 0 0 auto;
+  --wails-draggable: no-drag;
+}
+.window-controls button {
+  width: 46px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  --wails-draggable: no-drag;
+}
+.window-controls button:hover {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.window-controls button:active {
+  background: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.window-controls [data-window='close']:hover {
+  background: #c42b1c;
+  color: white;
+}
+.window-controls button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -4px;
+}

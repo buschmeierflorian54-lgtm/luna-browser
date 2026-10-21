@@ -11,6 +11,7 @@ const DEFAULT = {
   motion: true,
   contrast: 48,
   textContrast: 'auto',
+  menuBlur: 18,
 };
 export function personal() {
   try {
@@ -88,7 +89,8 @@ export function personalSettingsHTML() {
     <p class="muted">Dein Name erscheint auf der Startseite und im Fenstertitel.</p>
     <div class="personal-row"><label class="btn personal-file">Foto als App-Icon<input type="file" data-personal-icon accept="image/png,image/jpeg,image/webp"></label><button class="btn" type="button" data-personal-reset-icon>Standard-Icon</button></div>
     <p class="muted">Das Foto wird mittig quadratisch zugeschnitten.</p>
-    ${backgroundSettingsHTML()}</div>`;
+    ${backgroundSettingsHTML()}
+    <h3>Schnelleinstellungen</h3><label class="personal-contrast">Unschärfe<input aria-label="Unschärfe im Theme-Menü" type="range" min="0" max="32" step="1" data-personal-blur value="${p.menuBlur}"><output>${p.menuBlur} px</output></label><p class="muted">Unschärfe hinter dem transparenten Theme-Menü. 0 schaltet sie aus.</p></div>`;
 }
 export function backgroundSettingsHTML() {
   const p = personal();
@@ -175,6 +177,12 @@ export function wirePersonalSettings({ refresh, setIcon, resetIcon, toast }) {
     });
   });
   document.addEventListener('input', (event) => {
+    if (event.target.matches('[data-personal-blur]')) {
+      const menuBlur = Math.max(0, Math.min(32, Number(event.target.value)));
+      event.target.nextElementSibling.textContent = menuBlur + ' px';
+      savePersonal({ menuBlur });
+      return;
+    }
     if (!event.target.matches('[data-personal-contrast]')) return;
     const contrast = Math.max(0, Math.min(85, Number(event.target.value)));
     event.target.nextElementSibling.textContent = contrast + '%';
@@ -192,8 +200,20 @@ export function wirePersonalSettings({ refresh, setIcon, resetIcon, toast }) {
         savePersonal({ motion: input.checked });
         return;
       }
-      const file = input.files?.[0];
+      let file = input.files?.[0];
       if (!file) return;
+      if (!file.type) {
+        const types = {
+          png: 'image/png',
+          jpg: 'image/jpeg',
+          jpeg: 'image/jpeg',
+          webp: 'image/webp',
+          mp4: 'video/mp4',
+          webm: 'video/webm',
+        };
+        const type = types[file.name.split('.').pop().toLowerCase()];
+        if (type) file = new File([file], file.name, { type });
+      }
       input.disabled = true;
       try {
         if (input.matches('[data-personal-icon]')) await setIcon(file);

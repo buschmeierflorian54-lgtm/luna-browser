@@ -1,7 +1,8 @@
+import { backgroundMenuHTML, wireBackgroundMenu } from './background-menu.js';
 // Befehls-Seite („commands“) und Theme-Leiste („theme“) für die Adressleiste.
 // Beide erscheinen sofort beim Tippen, ohne Enter, und übernehmen die Farben des gewählten Themes über CSS-Variablen.
 import { COLOR_THEMES, colorTheme, colorThemesHTML } from './color-themes.js';
-import { backgroundSettingsHTML } from './personalization.js';
+import { personal } from './personalization.js';
 import { esc } from './ui.js';
 import { COMMANDS, commandOn, commandSwitchHTML, setCommandOn } from './command-data.js';
 
@@ -24,6 +25,7 @@ export function createCommandUI({
     dropEl = null,
     dropKey = null,
     dropClosing = false,
+    backgroundMenu = null,
     demoTimers = [];
 
   /* ---------- Befehls-Seite ---------- */
@@ -163,32 +165,57 @@ export function createCommandUI({
   function dropHTML() {
     const mode = getMode();
     const themes = colorThemesHTML().replace(/data-act="color-theme" data-color=/g, 'data-pick=');
-    return `<div class="td-head"><b>Deine Farbwelt</b><span class="td-modes" role="group" aria-label="Darstellung">${[
-      ['light', 'Hell'],
-      ['dark', 'Dunkel'],
-      ['auto', 'Auto'],
-    ]
-      .map(
-        ([id, label]) =>
-          `<button type="button" data-mode="${id}" aria-pressed="${id === mode}">${label}</button>`,
-      )
-      .join(
-        '',
-      )}</span><button type="button" class="td-close" data-close aria-label="Schließen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>${themes}<details class="td-background"><summary>Hintergrund <span aria-hidden="true">＋</span></summary>${backgroundSettingsHTML()}</details>`;
+    return `<div class="td-head"><b>Dein Design</b><button type="button" class="td-close" data-close aria-label="Schließen"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="td-tabs" role="tablist" aria-label="Designbereiche">
+      <button role="tab" id="td-colors-tab" aria-controls="td-colors" aria-selected="true" data-design-tab="colors">Farben</button>
+      <button role="tab" id="td-background-tab" aria-controls="td-background" aria-selected="false" tabindex="-1" data-design-tab="background">Hintergrund</button>
+    </div>
+    <section id="td-colors" role="tabpanel" aria-labelledby="td-colors-tab">
+      <div class="td-modes" role="group" aria-label="Darstellung">${[
+        ['light', 'Hell'],
+        ['dark', 'Dunkel'],
+        ['auto', 'Auto'],
+      ]
+        .map(
+          ([id, label]) =>
+            `<button type="button" data-mode="${id}" aria-pressed="${id === mode}">${label}</button>`,
+        )
+        .join('')}</div>${themes}
+    </section>
+    <section id="td-background" role="tabpanel" aria-labelledby="td-background-tab" hidden>${backgroundMenuHTML()}</section>`;
   }
+  function applyDropBlur() {
+    if (dropEl)
+      dropEl.style.setProperty(
+        '--theme-menu-blur',
+        Math.max(0, Math.min(32, Number(personal().menuBlur) || 0)) + 'px',
+      );
+  }
+  function selectDesignTab(name, focus = false) {
+    dropEl.getAnimations({ subtree: true }).forEach((animation) => {
+      if (Number.isFinite(animation.effect?.getComputedTiming().endTime)) animation.finish();
+    });
+    dropEl.style.overflow = '';
+    dropEl.querySelectorAll('[data-design-tab]').forEach((button) => {
+      const active = button.dataset.designTab === name;
+      button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
+      if (active && focus) button.focus();
+    });
+    dropEl.querySelector('#td-colors').hidden = name !== 'colors';
+    dropEl.querySelector('#td-background').hidden = name !== 'background';
+    dropEl.scrollTop = 0;
+    dropEl.classList.toggle('background-open', name === 'background');
+    if (name !== 'background') backgroundMenu?.suspend();
+  }
+
   window.addEventListener('luna-personalization', (event) => {
-    if (
-      !dropEl ||
-      !event.detail ||
-      !['background', 'youtube', 'motion', 'mediaRevision'].some((key) => key in event.detail)
-    )
-      return;
-    const controls = dropEl.querySelector('.personal-background-controls');
-    if (controls) controls.outerHTML = backgroundSettingsHTML();
+    applyDropBlur();
   });
   function openDrop() {
     if (dropEl && !dropClosing) return;
     closePage();
+    backgroundMenu?.dispose();
     dropEl?.remove();
     dropClosing = false;
     dropEl = document.createElement('div');
@@ -196,6 +223,23 @@ export function createCommandUI({
     dropEl.setAttribute('role', 'dialog');
     dropEl.setAttribute('aria-label', 'Farbwelt wählen');
     dropEl.innerHTML = dropHTML();
+    backgroundMenu = wireBackgroundMenu(dropEl.querySelector('#td-background'));
+    applyDropBlur();
+    dropEl.addEventListener('keydown', (event) => {
+      const tab = event.target.closest('[data-design-tab]');
+      if (!tab || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      selectDesignTab(
+        event.key === 'Home'
+          ? 'colors'
+          : event.key === 'End'
+            ? 'background'
+            : tab.dataset.designTab === 'colors'
+              ? 'background'
+              : 'colors',
+        true,
+      );
+    });
     document.body.append(dropEl);
     urlbox.classList.add('drop-open');
     placeDrop();
@@ -225,6 +269,11 @@ export function createCommandUI({
     }
     dropEl.addEventListener('click', (ev) => {
       if (ev.target.closest('[data-close]')) return closeDrop();
+      const designTab = ev.target.closest('[data-design-tab]');
+      if (designTab) {
+        selectDesignTab(designTab.dataset.designTab);
+        return;
+      }
       const pick = ev.target.closest('[data-pick]');
       if (pick) {
         pickColor(pick.dataset.pick);
@@ -255,6 +304,8 @@ export function createCommandUI({
   function closeDrop(immediate = false) {
     if (!dropEl || dropClosing) return;
     const el = dropEl;
+    backgroundMenu?.dispose();
+    backgroundMenu = null;
     dropClosing = true;
     document.removeEventListener('keydown', dropKey);
     document.removeEventListener('pointerdown', dropKey, true);

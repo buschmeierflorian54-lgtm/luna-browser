@@ -3,6 +3,9 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class LunaChrome {
+ [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
+ [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
+ [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hwnd);
  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
  [DllImport("user32.dll")] public static extern long GetWindowLongPtrW(IntPtr hwnd, int index);
  [DllImport("user32.dll")] public static extern IntPtr GetMenu(IntPtr hwnd);
@@ -14,9 +17,15 @@ public static class LunaChrome {
 Add-Type -AssemblyName System.Windows.Forms
 $hwnd = [IntPtr]$WindowHandle
 $style = [LunaChrome]::GetWindowLongPtrW($hwnd, -16)
-# Caption, system menu, minimize and maximize buttons must all be native.
+# Keep native resize, system-menu and minimize/maximize capabilities.
+# The visible caption buttons are in the trusted WebView tab row.
 $required = 0x00CF0000
 if (($style -band $required) -ne $required) { throw 'Native caption or window controls missing' }
+$origin = New-Object LunaChrome+Point
+[LunaChrome]::ClientToScreen($hwnd, [ref]$origin) | Out-Null
+$frame = New-Object LunaChrome+Rect
+[LunaChrome]::GetWindowRect($hwnd, [ref]$frame) | Out-Null
+if (($origin.Y - $frame.Top) -gt 12) { throw 'Extra native title row above tabs' }
 if ([LunaChrome]::GetMenu($hwnd) -ne [IntPtr]::Zero) { throw 'Unexpected Windows menu bar' }
 $rect = New-Object LunaChrome+Rect
 [LunaChrome]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
@@ -25,5 +34,9 @@ if ($rect.Top -lt $area.Top -or $rect.Right -gt $area.Right -or $rect.Left -lt $
 [LunaChrome]::ShowWindow($hwnd, 6) | Out-Null
 Start-Sleep -Milliseconds 300
 if (![LunaChrome]::IsIconic($hwnd)) { throw 'Minimize failed' }
+[LunaChrome]::ShowWindow($hwnd, 9) | Out-Null
+[LunaChrome]::ShowWindow($hwnd, 3) | Out-Null
+Start-Sleep -Milliseconds 300
+if (![LunaChrome]::IsZoomed($hwnd)) { throw 'Maximize failed' }
 [LunaChrome]::ShowWindow($hwnd, 9) | Out-Null
 Write-Output 'WINDOW_CHROME_PASSED'

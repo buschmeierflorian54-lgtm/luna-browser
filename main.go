@@ -128,6 +128,7 @@ func main() {
 	width, height := platformWindowSize()
 	err := wails.Run(&options.App{
 		Title:            platformTitle(),
+		Frameless:        runtime.GOOS == "windows",
 		Width:            width,
 		Height:           height,
 		MinWidth:         min(760, width),

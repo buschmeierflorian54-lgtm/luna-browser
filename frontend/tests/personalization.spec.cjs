@@ -223,10 +223,26 @@ test('personalization is usable in the real settings page and updates the start 
   await expect(page.locator('.sp-nav [aria-current="page"]')).toHaveText('Darstellung›');
   await expect(player).toBeVisible();
   expect(playerLoads).toBe(1);
+  await page.locator('[data-personal-blur]').evaluate((el) => {
+    el.value = '24';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   await page.locator('#url').fill('theme');
   await expect(page.locator('#themeDrop')).toBeVisible();
-  await page.locator('#themeDrop summary').click();
+  await expect(page.locator('#themeDrop')).toHaveCSS('backdrop-filter', 'blur(24px)');
+  await expect(page.locator('#themeDrop [data-personal-blur]')).toHaveCount(0);
+  const colorsTab = page.locator('#themeDrop').getByRole('tab', { name: 'Farben', exact: true });
+  await expect(colorsTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#td-background')).toBeHidden();
+  await colorsTab.focus();
+  await colorsTab.press('ArrowRight');
+  await expect(page.locator('#td-background')).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('#td-colors')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('quick-colors-glass.png') });
+  await page.locator('#themeDrop').getByRole('tab', { name: 'Hintergrund', exact: true }).click();
   const quick = page.locator('#themeDrop');
+  await quick.locator('summary').click();
   await quick.locator('[data-personal-contrast]').evaluate((el) => {
     el.value = '70';
     el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -241,8 +257,55 @@ test('personalization is usable in the real settings page and updates the start 
   await quick.locator('[data-personal-contrast]').scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('quick-background.png') });
   await quick.locator('[name=youtube]').fill('https://youtu.be/aqz-KE-bpKQ');
-  await quick.getByRole('button', { name: 'Video verwenden' }).click();
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(1);
+  await expect(player).not.toHaveAttribute('src', /aqz-KE-bpKQ/);
+  await expect(quick.locator('.bg-preview-loading')).toBeVisible();
+  await page.evaluate(() => {
+    const frame = document.querySelector('.bg-preview iframe');
+    window.dispatchEvent(
+      new MessageEvent('message', {
+        origin: 'https://luna-browser.com',
+        source: frame.contentWindow,
+        data: { type: 'luna-youtube-ready' },
+      }),
+    );
+  });
+  await expect(quick.locator('.bg-preview')).toHaveClass(/is-ready/);
+  expect((await quick.locator('.bg-preview-card').boundingBox()).height).toBeLessThan(230);
+  await page.screenshot({ path: testInfo.outputPath('youtube-preview.png') });
+  await quick.getByRole('button', { name: 'Video übernehmen' }).click();
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(0);
   await expect(player).toHaveAttribute('src', /aqz-KE-bpKQ/);
+  await quick.getByRole('tab', { name: 'Luna-Motive' }).click();
+  await quick.getByRole('button', { name: 'Nordlicht', exact: true }).click();
+  await expect(quick.getByRole('button', { name: 'Nordlicht', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('luna-personalization')).motif),
+  ).toBe('aurora');
+  await page.screenshot({ path: testInfo.outputPath('motifs.png') });
+  await quick.getByRole('tab', { name: 'Foto & Video' }).click();
+  await quick.locator('[data-personal-media]').setInputFiles('../build/appicon.png');
+  await expect(quick.locator('[data-media-summary]')).toContainText('Foto · appicon.png');
+  await expect(quick.locator('.bg-media-art img')).toBeVisible();
+  await expect(quick.getByRole('button', { name: 'Ersetzen', exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('media-preview.png') });
+  await quick.getByRole('button', { name: 'Eigenen Hintergrund entfernen' }).click();
+  await expect(quick.locator('.bg-media-art img')).toHaveCount(0);
+  await expect(quick.getByText('Dein Moment. Dein Hintergrund.')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('media-empty.png') });
+  await quick.locator('[data-personal-media]').setInputFiles('../build/appicon.png');
+  await expect(quick.locator('.bg-media-art img')).toBeVisible();
+  await quick.getByRole('tab', { name: 'YouTube' }).click();
+  await quick.locator('[name=youtube]').fill('https://example.com');
+  await expect(quick.getByRole('button', { name: 'Video übernehmen' })).toBeDisabled();
+  await expect(quick.locator('[data-youtube-status]')).toContainText('gültigen YouTube-Link');
+  await quick.locator('[name=youtube]').fill('https://youtu.be/dQw4w9WgXcQ');
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(1);
+  await quick.getByRole('tab', { name: 'Farben', exact: true }).click();
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(0);
   await quick.getByRole('button', { name: 'Schließen', exact: true }).click();
   await expect(quick).toHaveCount(0);
   await page.locator('#settingsView [data-personal-background="image"]').click();
@@ -251,6 +314,9 @@ test('personalization is usable in the real settings page and updates the start 
   await page.locator('#settingsView').evaluate((el) => (el.scrollTop = 0));
   await expect(page.locator('#settingsView .sp-card')).toHaveCSS('opacity', '1');
   await page.screenshot({ path: testInfo.outputPath('settings-background.png') });
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('luna-personalization')).menuBlur),
+  ).toBe(24);
   expect(errors).toEqual([]);
 });
 
