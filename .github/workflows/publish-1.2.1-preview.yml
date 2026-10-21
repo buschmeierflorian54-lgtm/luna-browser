@@ -51,7 +51,7 @@ jobs:
                       meta = json.loads(archive.read('luna-package.json').decode('utf-8-sig'))
                       assert meta['version'] == '1.2.1' and meta['commit'] == os.environ['SOURCE_COMMIT'] and meta['experimental']
                   else:
-                      info = plistlib.loads(archive.read('Luna Browser.app/Contents/Info.plist'))
+                      info = plistlib.loads(archive.read('Luna Browser.app/Contents/Info.plist'), fmt=plistlib.FMT_XML)
                       assert info['CFBundleShortVersionString'] == '1.2.1'
               shutil.copy2(package, out / package.name)
           checksums = ''.join(f'{hashlib.sha256(f.read_bytes()).hexdigest()}  {f.name}\n' for f in sorted(out.iterdir()))
