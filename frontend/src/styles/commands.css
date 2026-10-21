@@ -498,3 +498,169 @@
   --mute: var(--ink2);
   --mute2: var(--ink2);
 }
+
+/* Connected background navigation and its expanding editor. */
+#themeDrop.background-open .td-tabs {
+  margin-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 0;
+}
+#themeDrop #td-background {
+  padding: 0;
+}
+.bg-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: color-mix(in srgb, var(--panel) 35%, transparent);
+}
+.bg-tabs button {
+  flex: 1;
+  border: 0;
+  padding: 10px 6px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink2);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.bg-tabs button[aria-selected='true'] {
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  color: var(--ink);
+  box-shadow: 0 2px 8px #0001;
+}
+.bg-island {
+  padding: 16px 4px 0;
+}
+.bg-motifs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.bg-motifs button {
+  flex: 1;
+  padding: 5px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.bg-motifs button[aria-pressed='true'] {
+  border-color: var(--ink2);
+  background: color-mix(in srgb, var(--card) 45%, transparent);
+}
+.bg-motifs i {
+  display: block;
+  height: 54px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.motif-waves {
+  background: repeating-radial-gradient(
+    ellipse at 50% 140%,
+    #c6b1ed 0 15px,
+    #f9bedb 18px 32px,
+    #b1d9f2 35px 48px
+  );
+}
+.motif-aurora {
+  background:
+    radial-gradient(ellipse at 20% 20%, #83ecc0, transparent 65%),
+    radial-gradient(ellipse at 80% 80%, #a29be9, #263d61);
+}
+.motif-stars {
+  background:
+    radial-gradient(circle at 20% 30%, white 1px, transparent 2px),
+    radial-gradient(circle at 70% 60%, white 2px, transparent 3px),
+    radial-gradient(circle at 40% 80%, #e4b3ef 1px, transparent 2px), #35334c;
+  background-size:
+    47px 39px,
+    71px 51px,
+    61px 67px,
+    auto;
+}
+.bg-import {
+  display: block;
+  padding: 26px 12px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.bg-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 6px;
+}
+.bg-link input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  color: var(--ink);
+  border: 0;
+  padding: 10px;
+  font: inherit;
+}
+.bg-link button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+  cursor: pointer;
+}
+.bg-link button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.bg-preview {
+  margin-top: 12px;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  border-radius: 12px;
+  animation: bg-expand 0.3s ease-out;
+}
+.bg-preview iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.bg-options {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.bg-options summary {
+  cursor: pointer;
+  color: var(--ink2);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+@keyframes bg-expand {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-preview {
+    animation: none;
+  }
+}

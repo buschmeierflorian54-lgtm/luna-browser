@@ -995,7 +995,14 @@ function syncSharedBackground() {
     '--background-overlay',
     Math.max(0, Math.min(85, Number(p.contrast) || 0)) + '%',
   );
-  const key = JSON.stringify([p.background, p.youtube, p.motion, p.fileName, p.mediaRevision]);
+  const key = JSON.stringify([
+    p.background,
+    p.youtube,
+    p.motion,
+    p.fileName,
+    p.mediaRevision,
+    p.motif,
+  ]);
   if (key !== sharedBackgroundKey) {
     stopSharedBackground?.();
     sharedBackgroundKey = key;
@@ -3239,7 +3246,9 @@ window.addEventListener('luna-personalization', (event) => {
   syncSharedBackground();
   if (
     event.detail &&
-    Object.keys(event.detail).every((key) => ['contrast', 'textContrast', 'menuBlur'].includes(key))
+    Object.keys(event.detail).every((key) =>
+      ['contrast', 'textContrast', 'menuBlur', 'motifSpeed'].includes(key),
+    )
   )
     return;
   renderStart();

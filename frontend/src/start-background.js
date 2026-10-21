@@ -1,4 +1,4 @@
-import { watchStartVisibility } from './personalization.js';
+import { watchStartVisibility, personal } from './personalization.js';
 import { COLOR_THEMES, colorTheme } from './color-themes.js';
 export const startBackgroundHTML = `<div class="st-bg" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i><canvas class="st-waves"></canvas></div>`;
 export function startWaves(canvas, host, still) {
@@ -28,10 +28,36 @@ export function startWaves(canvas, host, still) {
     if (still) draw(0);
   };
   const draw = (t) => {
+    const settings = personal();
+    t *= (settings.motifSpeed || 100) / 100;
     const dark = document.documentElement.dataset.theme === 'dark';
     mx += (tx - mx) * 0.04;
     my += (ty - my) * 0.04; // weiches Nachziehen der Mausposition
     ctx.clearRect(0, 0, w, h);
+    if (settings.motif === 'stars') {
+      for (let i = 0; i < 70; i++) {
+        const x = (((i * 137.508 + t * (2 + (i % 3))) % 1000) / 1000) * w;
+        const y = (((i * 83.17) % 997) / 997) * h;
+        ctx.beginPath();
+        ctx.arc(x + mx * 8, y + my * 8, 1 + (i % 3), 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${230 + (i % 90)},65%,${dark ? 85 : 50}%,${0.25 + (0.35 * (1 + Math.sin(t + i))) / 2})`;
+        ctx.fill();
+      }
+      return;
+    }
+    if (settings.motif === 'aurora') {
+      for (let i = 0; i < 4; i++) {
+        const x = w * (0.2 + i * 0.2) + Math.sin(t * 0.2 + i) * w * 0.18 + mx * 20;
+        const y = h * (0.35 + Math.cos(t * 0.15 + i) * 0.2) + my * 20;
+        const radius = Math.max(w, h) * 0.5;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        g.addColorStop(0, `hsla(${150 + i * 45},75%,65%,0.35)`);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      }
+      return;
+    }
     L.forEach((ly, i) => {
       const [rgb, al] = dark ? ly.d : ly.l;
       const palette = COLOR_THEMES.find((p) => p[0] === colorTheme());

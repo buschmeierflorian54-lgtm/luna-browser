@@ -1,7 +1,8 @@
+import { backgroundMenuHTML, wireBackgroundMenu } from './background-menu.js';
 // Befehls-Seite („commands“) und Theme-Leiste („theme“) für die Adressleiste.
 // Beide erscheinen sofort beim Tippen, ohne Enter, und übernehmen die Farben des gewählten Themes über CSS-Variablen.
 import { COLOR_THEMES, colorTheme, colorThemesHTML } from './color-themes.js';
-import { backgroundSettingsHTML, personal } from './personalization.js';
+import { personal } from './personalization.js';
 import { esc } from './ui.js';
 import { COMMANDS, commandOn, commandSwitchHTML, setCommandOn } from './command-data.js';
 
@@ -24,6 +25,7 @@ export function createCommandUI({
     dropEl = null,
     dropKey = null,
     dropClosing = false,
+    backgroundMenu = null,
     demoTimers = [];
 
   /* ---------- Befehls-Seite ---------- */
@@ -180,7 +182,7 @@ export function createCommandUI({
         )
         .join('')}</div>${themes}
     </section>
-    <section id="td-background" role="tabpanel" aria-labelledby="td-background-tab" hidden>${backgroundSettingsHTML()}</section>`;
+    <section id="td-background" role="tabpanel" aria-labelledby="td-background-tab" hidden>${backgroundMenuHTML()}</section>`;
   }
   function applyDropBlur() {
     if (dropEl)
@@ -201,22 +203,17 @@ export function createCommandUI({
     dropEl.querySelector('#td-colors').hidden = name !== 'colors';
     dropEl.querySelector('#td-background').hidden = name !== 'background';
     dropEl.scrollTop = 0;
+    dropEl.classList.toggle('background-open', name === 'background');
+    if (name !== 'background') backgroundMenu?.suspend();
   }
 
   window.addEventListener('luna-personalization', (event) => {
     applyDropBlur();
-    if (
-      !dropEl ||
-      !event.detail ||
-      !['background', 'youtube', 'motion', 'mediaRevision'].some((key) => key in event.detail)
-    )
-      return;
-    const controls = dropEl.querySelector('.personal-background-controls');
-    if (controls) controls.outerHTML = backgroundSettingsHTML();
   });
   function openDrop() {
     if (dropEl && !dropClosing) return;
     closePage();
+    backgroundMenu?.dispose();
     dropEl?.remove();
     dropClosing = false;
     dropEl = document.createElement('div');
@@ -224,6 +221,7 @@ export function createCommandUI({
     dropEl.setAttribute('role', 'dialog');
     dropEl.setAttribute('aria-label', 'Farbwelt wählen');
     dropEl.innerHTML = dropHTML();
+    backgroundMenu = wireBackgroundMenu(dropEl.querySelector('#td-background'));
     applyDropBlur();
     dropEl.addEventListener('keydown', (event) => {
       const tab = event.target.closest('[data-design-tab]');
@@ -304,6 +302,8 @@ export function createCommandUI({
   function closeDrop(immediate = false) {
     if (!dropEl || dropClosing) return;
     const el = dropEl;
+    backgroundMenu?.dispose();
+    backgroundMenu = null;
     dropClosing = true;
     document.removeEventListener('keydown', dropKey);
     document.removeEventListener('pointerdown', dropKey, true);

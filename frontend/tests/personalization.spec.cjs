@@ -242,6 +242,7 @@ test('personalization is usable in the real settings page and updates the start 
   await page.screenshot({ path: testInfo.outputPath('quick-colors-glass.png') });
   await page.locator('#themeDrop').getByRole('tab', { name: 'Hintergrund', exact: true }).click();
   const quick = page.locator('#themeDrop');
+  await quick.locator('summary').click();
   await quick.locator('[data-personal-contrast]').evaluate((el) => {
     el.value = '70';
     el.dispatchEvent(new Event('input', { bubbles: true }));
@@ -256,8 +257,30 @@ test('personalization is usable in the real settings page and updates the start 
   await quick.locator('[data-personal-contrast]').scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath('quick-background.png') });
   await quick.locator('[name=youtube]').fill('https://youtu.be/aqz-KE-bpKQ');
-  await quick.getByRole('button', { name: 'Video verwenden' }).click();
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(1);
+  await expect(player).not.toHaveAttribute('src', /aqz-KE-bpKQ/);
+  await page.screenshot({ path: testInfo.outputPath('youtube-preview.png') });
+  await quick.getByRole('button', { name: 'Video übernehmen' }).click();
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(0);
   await expect(player).toHaveAttribute('src', /aqz-KE-bpKQ/);
+  await quick.getByRole('tab', { name: 'Luna-Motive' }).click();
+  await quick.getByRole('button', { name: 'Nordlicht', exact: true }).click();
+  await expect(quick.getByRole('button', { name: 'Nordlicht', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('luna-personalization')).motif),
+  ).toBe('aurora');
+  await page.screenshot({ path: testInfo.outputPath('motifs.png') });
+  await quick.getByRole('tab', { name: 'Foto & Video' }).click();
+  await quick.locator('[data-personal-media]').setInputFiles('../build/appicon.png');
+  await expect(quick.locator('[data-media-summary]')).toContainText('Foto · appicon.png');
+  await quick.getByRole('tab', { name: 'YouTube' }).click();
+  await quick.locator('[name=youtube]').fill('https://youtu.be/dQw4w9WgXcQ');
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(1);
+  await quick.getByRole('tab', { name: 'Farben', exact: true }).click();
+  await expect(quick.locator('.bg-preview iframe')).toHaveCount(0);
   await quick.getByRole('button', { name: 'Schließen', exact: true }).click();
   await expect(quick).toHaveCount(0);
   await page.locator('#settingsView [data-personal-background="image"]').click();
