@@ -4,7 +4,7 @@ import './gesture-core.js';
 import * as api from './api.js';
 import { esc } from './ui.js';
 import { playPolaroid } from './polaroid.js';
-import { lunaWordmark, practiceWordmark } from './branding.js';
+import { practiceWordmark } from './branding.js';
 import './styles/onboarding.css';
 
 const SERVICES = [
@@ -131,7 +131,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
     root.onpointerdown = null;
     const s = service();
     root.className = `setup ${view}${step === 2 ? ' setup-gesture-stage' : ''}`;
-    root.innerHTML = `<header class="setup-head"><span class="setup-brand">${lunaWordmark}</span><span>DEIN START MIT LUNA</span>${btn('later', 'Später fortsetzen', 'setup-quiet')}</header><div class="setup-progress" aria-label="Einrichtungsschritte">${['Willkommen', 'Suche', 'Musik', 'Screenshot', 'Groq', 'Bereit'].map((name, i) => `<span class="${i === step + 1 ? 'current' : ''} ${i < step + 1 ? 'done' : ''}">${i + 1}<b>${name}</b></span>`).join('')}</div><div class="setup-layout">
+    root.innerHTML = `<div class="setup-progress" aria-label="Einrichtungsschritte">${['Willkommen', 'Suche', 'Musik', 'Screenshot', 'Groq', 'Bereit'].map((name, i) => `<span class="${i === step + 1 ? 'current' : ''} ${i < step + 1 ? 'done' : ''}">${i + 1}<b>${name}</b></span>`).join('')}</div><div class="setup-layout">
       ${view === 'portal' || view === 'split' ? `<section class="setup-provider"><div class="setup-webbar">${btn('webback', '←')}${btn('webreload', '↻')}<span data-host>${esc(new URL(s.url).host)}</span>${btn('form', 'Key eingeben')}</div><div class="setup-web" aria-label="Anbieterseite in Luna"></div><p class="setup-webhint">${esc(s.name)} ist in Luna geöffnet. Kopiere deinen ${esc(s.label)}. Ein frisch kopierter Key wird ins Eingabefeld übernommen. Du entscheidest, wann es weitergeht.</p></section>` : ''}
       <section class="setup-card">${
         step === -1
@@ -148,7 +148,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
           : `
       ${step === 1 ? `<div class="setup-spotify-guide"><h2>So verbindest du Spotify</h2><ol><li><b>Dashboard öffnen.</b> Melde dich mit deinem Spotify-Konto an und wähle „Create app“.</li><li><b>App anlegen.</b> Gib ihr einen Namen, zum Beispiel „Meine Luna“, und eine kurze Beschreibung. Wähle „Web API“, falls Spotify nach der verwendeten API fragt.</li><li><b>Rücksprungadresse eintragen.</b> Hinterlege unter „Redirect URIs“ genau <code>http://127.0.0.1:8888/callback</code> und speichere die App. Dorthin kehrt Spotify nach deiner Zustimmung zurück.</li><li><b>Client ID kopieren.</b> Du findest sie in den App-Einstellungen. Sie identifiziert deine App. Füge sie unten ein und bestätige sie. Luna benötigt kein Client Secret.</li><li><b>Konto verknüpfen.</b> Klicke auf „Speichern & weiter“ und bestätige bei Spotify die angezeigten Berechtigungen. Nach erfolgreicher Anmeldung geht Luna automatisch weiter.</li></ol><p class="setup-note">Spotify ist freiwillig. Für die Wiedergabe muss die Spotify-App auf diesem Mac installiert sein. Spotify kann je nach Konto und Entwicklungsmodus weitere Voraussetzungen verlangen.</p></div>` : ''}
       ${configured[s.id] || saved ? `<p class="setup-saved">✓ ${step === 1 ? 'Client ID' : 'Key'} ist gespeichert${step === 1 && connected ? ' · Konto verbunden' : ''}.</p>` : ''}
-      <div class="setup-actions">${view === 'form' ? btn('portal', tabs.has(s.id) ? 'Anbieterseite wieder anzeigen' : `${esc(s.name)} öffnen & ${step === 1 ? 'Client ID' : 'Key'} holen`) : ''}${step !== 0 ? btn('skip', 'Überspringen', 'setup-quiet') : ''}</div>
+      <div class="setup-actions">${view === 'form' ? btn('portal', tabs.has(s.id) ? 'Anbieterseite wieder anzeigen' : `${esc(s.name)} öffnen & ${step === 1 ? 'Client ID' : 'Key'} holen`) : ''}</div>
       <form class="setup-keyform" autocomplete="off"><label for="setupKey">${esc(s.label)}</label><div><input id="setupKey" type="password" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Hier selbst einfügen" ${busy ? 'disabled' : ''}><button class="setup-primary" type="submit" ${busy ? 'disabled' : ''}>${busy ? 'Speichert …' : view === 'split' && step !== 1 ? 'Fertig' : 'Speichern & weiter'}</button></div></form>
       ${copied && view === 'form' ? btn('notdone', 'Hey, ich war noch nicht fertig', 'setup-quiet') : ''}
       ${step !== 1 && (configured[s.id] || saved) ? btn('next', 'Weiter →', 'setup-primary') : ''}
@@ -156,7 +156,7 @@ export function createOnboarding({ onFinish, refreshSearch }) {
       }
       <p class="setup-note">Nur neue Kopien auf der geöffneten Key-Seite werden ins Feld übernommen. Gespeichert wird erst mit deinem Klick oder Enter.</p>`
       }
-      <p data-message role="status" class="setup-message"></p>${step >= 0 ? btn('back', '← Zurück', 'setup-quiet') : ''}</section></div>`;
+      <p data-message role="status" class="setup-message"></p>${step >= 0 ? btn('back', '← Zurück', 'setup-quiet') : ''}</section></div><footer class="setup-controls">${btn('later', 'Später fortsetzen', 'setup-quiet')}${btn('skip', 'Diesen Schritt überspringen', 'setup-quiet')}</footer>`;
     if (step === 2) {
       detachPractice = window.__fmCircle({
         target: root,
@@ -459,6 +459,12 @@ export function createOnboarding({ onFinish, refreshSearch }) {
   async function act(action) {
     if (busy) return;
     if (action === 'later') return close(false);
+    if (action === 'skip' && step === 4) return close(true);
+    if (action === 'skip' && step === 0 && !configured.brave && !configured.google) {
+      await api.setPref('googleSearch', true);
+      configured.google = true;
+      await refreshSearch();
+    }
     if (action === 'finish') return close(true);
     if (action === 'portal') return openPortal(false);
     if (action === 'notdone') return openPortal(true);

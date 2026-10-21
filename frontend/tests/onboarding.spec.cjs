@@ -50,6 +50,30 @@ async function setup(page, initial = {}) {
   if (!initial.liveAnimation)
     await page.screenshot({ path: '/tmp/luna-setup-welcome.png', animations: 'disabled' });
 }
+test('every setup step can be skipped without saving provider drafts', async ({ page }) => {
+  await setup(page);
+  await expect(page.locator('.setup-head')).toHaveCount(0);
+  await expect(page.getByText('DEIN START MIT LUNA', { exact: true })).toHaveCount(0);
+  for (let step = -1; step <= 3; step++) {
+    await expect(
+      page.getByRole('button', { name: 'Diesen Schritt überspringen', exact: true }),
+    ).toBeVisible();
+    if (step === 0) {
+      await page.getByRole('button', { name: 'Luna Search öffnen' }).click();
+      await expect(page.locator('.setup.portal')).toBeVisible();
+    }
+    await page.getByRole('button', { name: 'Diesen Schritt überspringen', exact: true }).click();
+    await expect
+      .poll(() => page.evaluate(() => localStorage.getItem('luna-onboarding-step')))
+      .toBe(String(step + 1));
+  }
+  expect(await page.evaluate(() => window.preferences.googleSearch)).toBe(true);
+  expect(await page.evaluate(() => window.savedKeys)).toEqual({});
+  await page.getByRole('button', { name: 'Diesen Schritt überspringen', exact: true }).click();
+  await expect(page.locator('.setup')).toHaveCount(0);
+  expect(await page.evaluate(() => window.preferences.onboardingComplete)).toBe(true);
+});
+
 test('Brave clipboard metadata, Enter, recovery split and preserved provider', async ({ page }) => {
   await setup(page);
   await page.getByRole('button', { name: 'Luna kennenlernen' }).click();
@@ -96,13 +120,13 @@ test('Google without keys, optional providers, completion and resume', async ({ 
   await page.getByRole('button', { name: 'Google · ohne Key' }).click();
   await expect(page.locator('#setupKey')).toHaveCount(0);
   await page.getByRole('button', { name: 'Mit Google weiter' }).click();
-  await page.getByRole('button', { name: 'Überspringen' }).click();
+  await page.getByRole('button', { name: 'Diesen Schritt überspringen' }).click();
   await expect(page.locator('.setup-gesture-stage')).toBeVisible();
   await expect(page.locator('#setupKey')).toHaveCount(0);
   await expect(page.getByText('OpenRouter kannst du später', { exact: false })).toHaveCount(1);
   await page.screenshot({ path: '/tmp/luna-setup-gesture.png', animations: 'disabled' });
   await page.getByRole('button', { name: 'Weiter →', exact: true }).click();
-  await page.getByRole('button', { name: 'Überspringen' }).click();
+  await page.getByRole('button', { name: 'Diesen Schritt überspringen' }).click();
   await expect(page.getByText('Google ist deine Standardsuche.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Los geht’s' }).click();
   await expect(page.locator('.setup')).toHaveCount(0);

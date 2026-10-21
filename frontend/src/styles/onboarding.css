@@ -529,3 +529,30 @@
   text-align: center;
   pointer-events: none;
 }
+
+.setup-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  z-index: 3;
+}
+.setup-gesture-stage .setup-layout {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  position: relative;
+}
+@media (max-width: 600px) {
+  .setup-controls {
+    padding: 8px;
+    gap: 6px;
+  }
+  .setup-controls button {
+    font-size: 12px;
+    padding: 10px;
+  }
+}

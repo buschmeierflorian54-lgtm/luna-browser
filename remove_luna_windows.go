@@ -47,13 +47,13 @@ try {
  Start-Sleep -Milliseconds 800
  [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile(%s,'OnlyErrorDialogs','SendToRecycleBin')
  [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory(%s,'OnlyErrorDialogs','SendToRecycleBin')
- foreach ($f in @(%s,%s)) {
+ foreach ($f in @(%s,%s,%s)) {
   if (Test-Path -LiteralPath $f) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($f,'OnlyErrorDialogs','SendToRecycleBin') }
  }
 } catch {
  Add-Type -AssemblyName PresentationFramework
  [System.Windows.MessageBox]::Show('Luna konnte nicht vollständig entfernt werden. Bitte entferne die verbleibenden App-Dateien im Explorer. Deine Browserdaten bleiben erhalten.','Luna entfernen')
-}`, os.Getpid(), quote(exe), quote(native), quote(filepath.Join(dir, "luna-package.json")), quote(filepath.Join(dir, "WINDOWS-EXPERIMENTAL.txt")))
+}`, os.Getpid(), quote(exe), quote(native), quote(filepath.Join(dir, "luna-package.json")), quote(filepath.Join(dir, "WINDOWS-EXPERIMENTAL.txt")), quote(filepath.Join(dir, "LIESMICH.txt")))
 	units := utf16.Encode([]rune(script))
 	encoded := make([]byte, len(units)*2)
 	for i, u := range units {

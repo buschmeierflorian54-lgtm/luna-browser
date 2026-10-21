@@ -2146,13 +2146,6 @@ async function runCmd(c) {
   }
 }
 api.onCmd(runCmd);
-if (WINDOWS && IS_NATIVE) {
-  const warning = document.createElement('div');
-  warning.className = 'windows-preview';
-  warning.textContent = 'Windows · Experimentell / instabil';
-  warning.title = 'Diese Windows-Version ist eine frühe Testversion. Bitte sichere wichtige Daten.';
-  document.body.append(warning);
-}
 
 document.addEventListener('click', async (ev) => {
   const a = ev.target.closest('[data-act]');

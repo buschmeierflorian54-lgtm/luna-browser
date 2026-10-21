@@ -86,16 +86,20 @@ jobs:
           # Wails may clean build/bin; republish the host into the final bundle.
           dotnet publish native/windows/Luna.Windows.csproj -c Release -r win-x64 --self-contained true -p:Version=$version -o build/bin/native
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          @{version=$version;platform='windows-amd64';experimental=$true;commit=$env:GITHUB_SHA} | ConvertTo-Json | Set-Content build/bin/luna-package.json
-          Copy-Item docs/WINDOWS-TEST.md build/bin/WINDOWS-EXPERIMENTAL.txt
+          # Stage only runtime files: the self-contained host is a single EXE.
+          New-Item -ItemType Directory -Force build/package/native | Out-Null
+          Copy-Item 'build/bin/Luna Browser.exe' build/package/
+          Copy-Item build/bin/native/Luna.Windows.exe build/package/native/
+          @{version=$version;platform='windows-amd64';experimental=$true;commit=$env:GITHUB_SHA} | ConvertTo-Json | Set-Content build/package/luna-package.json
+          Copy-Item docs/WINDOWS-TEST.md build/package/LIESMICH.txt
           New-Item -ItemType Directory -Force build/ci | Out-Null
-          Compress-Archive -Path build/bin/* -DestinationPath "build/ci/Luna-Browser-$version-windows-amd64.zip"
+          Compress-Archive -Path build/package/* -DestinationPath "build/ci/Luna-Browser-$version-windows-amd64.zip"
           $env:GITHUB_SHA | Set-Content build/ci/source-commit.txt
       - name: Test packaged Windows app startup
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $app = Start-Process 'build/bin/Luna Browser.exe' -PassThru
+          $app = Start-Process 'build/package/Luna Browser.exe' -PassThru
           try {
             Start-Sleep 8
             if ($app.HasExited) { throw "Luna exited: $($app.ExitCode)" }

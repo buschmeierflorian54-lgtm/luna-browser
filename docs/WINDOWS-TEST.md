@@ -13,6 +13,13 @@ Automatisierte Tests ersetzen keinen Test auf deinem Windows-Laptop.
 4. Windows 10 ab Version 2004 / Windows 11, x64. Edge WebView2 Runtime erforderlich;
    Wails bietet bei fehlender Runtime den offiziellen Download an. .NET ist mitgeliefert.
 
+Ab 1.2.2 enthält der Ordner `native` nur noch `Luna.Windows.exe`; die benötigten
+.NET- und WebView2-Bibliotheken sind darin gebündelt. Im Hauptordner liegen nur
+`Luna Browser.exe`, `luna-package.json`, `LIESMICH.txt` und dieser Unterordner.
+Die Einrichtung lässt jeden Schritt überspringen. Wird die Suche ohne Brave-Key
+übersprungen, verwendet Luna Google. Die zusätzliche Kopfzeile und der dauerhafte
+Windows-Hinweis in der Oberfläche entfallen; der Teststatus bleibt hier dokumentiert.
+
 Die App ist noch nicht Authenticode-signiert. Windows kann daher einen Hinweis
 für einen unbekannten Herausgeber zeigen. Keine Sicherheitseinstellungen global ausschalten.
 
