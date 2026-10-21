@@ -18,3 +18,5 @@ func closePlatform()                {}
 func handlePlatformCommand() bool { return false }
 
 func platformTitle() string { return "Luna Browser" }
+
+func platformWindowSize() (int, int) { return 1280, 820 }

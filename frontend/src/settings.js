@@ -113,10 +113,25 @@ export function createSettings({
     ['updates', 'Updates'],
     ['data', 'Daten'],
   ];
+  const SET_ICONS = {
+    look: '<circle cx="12" cy="12" r="8"/><path d="M12 4v16M12 4a8 8 0 0 1 0 16"/>',
+    bm: '<path d="M6 4h12v17l-6-4-6 4z"/>',
+    panels: '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/>',
+    start: '<path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-7h6v7"/>',
+    gestures:
+      '<path d="M8 12V5a2 2 0 0 1 4 0v6-2a2 2 0 0 1 4 0v2a2 2 0 0 1 4 0v4c0 4-3 6-6 6h-1c-2 0-4-1-5-3l-4-6a2 2 0 0 1 3-2l1 2"/>',
+    commands: '<path d="m5 6 6 6-6 6M13 18h6"/>',
+    search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>',
+    spotify:
+      '<path d="M9 18V5l11-2v13M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="2"/><ellipse cx="17" cy="16" rx="3" ry="2"/>',
+    mcp: '<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>',
+    updates: '<path d="M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 14-2l1 1M4 17l1 1a8 8 0 0 0 14-2"/>',
+    data: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/>',
+  };
   function settingsPageHTML() {
     const th = themeMode();
     const html = `<div class="sp">
-    <nav class="sp-nav" aria-label="Einstellungen"><h1 class="settings-heading" aria-label="Einstellungen">${settingsWordmark}</h1>${SET_SECTIONS.map(([id, l], i) => `<button class="${id === settingsSection ? 'on' : ''}" data-act="set-nav" data-s="${id}">${l}</button>`).join('')}</nav>
+    <nav class="sp-nav" aria-label="Einstellungen"><h1 class="settings-heading" aria-label="Einstellungen">${settingsWordmark}</h1><p class="sp-nav-caption">Mach Luna zu deinem Browser.</p>${SET_SECTIONS.map(([id, l], i) => `${i === 0 ? '<span class="sp-nav-group">Dein Luna</span>' : i === 6 ? '<span class="sp-nav-group">Verbindungen</span>' : i === 9 ? '<span class="sp-nav-group">System</span>' : ''}<button class="${id === settingsSection ? 'on' : ''}" ${id === settingsSection ? 'aria-current="page"' : ''} data-act="set-nav" data-s="${id}"><span class="sp-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${SET_ICONS[id]}</svg></span><span>${l}</span><span class="sp-nav-arrow" aria-hidden="true">›</span></button>`).join('')}</nav>
     <div class="sp-main">
       <section id="set-look" class="sp-card"><h2>Darstellung</h2>
         <p class="muted">Hell, Dunkel oder passend zum System. Webseiten folgen dem Erscheinungsbild.</p>

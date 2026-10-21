@@ -57,3 +57,15 @@ func handlePlatformCommand() bool {
 }
 
 func platformTitle() string { return "Luna Browser" }
+
+// Wails centres the initial window. A window larger than the work area puts
+// its native caption buttons off screen, especially on small laptops.
+func platformWindowSize() (int, int) {
+	metrics := windows.NewLazySystemDLL("user32.dll").NewProc("GetSystemMetrics")
+	w, _, _ := metrics.Call(0)
+	h, _, _ := metrics.Call(1)
+	if w < 320 || h < 320 {
+		return 960, 640
+	}
+	return min(1280, int(w)-48), min(820, int(h)-96)
+}

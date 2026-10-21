@@ -3,7 +3,7 @@
   position: absolute;
   inset: 0;
   overflow: auto;
-  background: var(--panel);
+  background: transparent;
 }
 #settingsView[hidden] {
   display: none;
@@ -170,5 +170,109 @@
   }
   .sp-nav h1 {
     width: 100%;
+  }
+}
+
+/* Quiet glass navigation lets the shared background remain visible. */
+.sp {
+  max-width: 1120px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 24px;
+}
+.sp-nav {
+  gap: 4px;
+  padding: 20px 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--card) 84%, transparent);
+  box-shadow: 0 10px 40px #0000000a;
+}
+.sp-nav h1.settings-heading {
+  margin: 0 10px 3px;
+}
+.sp-nav-caption {
+  margin: 0 10px 12px;
+  color: var(--mute);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.sp-nav-group {
+  margin: 14px 12px 5px;
+  color: var(--mute);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.sp-nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  height: auto;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+.sp-nav-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  flex-shrink: 0;
+}
+.sp-nav-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.sp-nav-arrow {
+  margin-left: auto;
+  font-size: 21px;
+  opacity: 0;
+}
+.sp-nav button.on .sp-nav-arrow {
+  opacity: 0.8;
+}
+.sp-nav button:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+#page.has-personal-background .sp-card {
+  background: color-mix(in srgb, var(--card) 91%, transparent);
+}
+@media (max-width: 900px) {
+  .sp {
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 16px;
+    padding: 20px 16px 50px;
+  }
+}
+@media (max-width: 760px) {
+  .sp {
+    grid-template-columns: 1fr;
+  }
+  .sp-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 14px;
+  }
+  .sp-nav-caption {
+    width: 100%;
+  }
+  .sp-nav-group {
+    display: none;
+  }
+  .sp-nav button {
+    flex: 1 1 140px;
+  }
+}
+
+@media (min-width: 761px) {
+  .sp-nav {
+    max-height: calc(100dvh - 200px);
+    overflow-y: auto;
+    scrollbar-width: thin;
   }
 }

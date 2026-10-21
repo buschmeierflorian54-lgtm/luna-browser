@@ -1,9 +1,17 @@
+import { trackBackgroundContrast } from './background-contrast.js';
 import { esc } from './ui.js';
 import { WindowSetTitle } from '../wailsjs/runtime/runtime.js';
 import './styles/personalization.css';
 
 const KEY = 'luna-personalization';
-const DEFAULT = { name: 'Luna Browser', background: 'waves', youtube: '', motion: true };
+const DEFAULT = {
+  name: 'Luna Browser',
+  background: 'waves',
+  youtube: '',
+  motion: true,
+  contrast: 48,
+  textContrast: 'auto',
+};
 export function personal() {
   try {
     return { ...DEFAULT, ...JSON.parse(localStorage.getItem(KEY) || '{}') };
@@ -14,7 +22,14 @@ export function personal() {
 export function savePersonal(patch) {
   const next = { ...personal(), ...patch };
   localStorage.setItem(KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event('luna-personalization'));
+  document.querySelectorAll('[data-personal-contrast]').forEach((input) => {
+    input.value = next.contrast;
+    input.nextElementSibling.textContent = next.contrast + '%';
+  });
+  document
+    .querySelectorAll('[data-personal-text]')
+    .forEach((input) => (input.value = next.textContrast));
+  window.dispatchEvent(new CustomEvent('luna-personalization', { detail: patch }));
   return next;
 }
 export function browserName() {
@@ -73,7 +88,11 @@ export function personalSettingsHTML() {
     <p class="muted">Dein Name erscheint auf der Startseite und im Fenstertitel.</p>
     <div class="personal-row"><label class="btn personal-file">Foto als App-Icon<input type="file" data-personal-icon accept="image/png,image/jpeg,image/webp"></label><button class="btn" type="button" data-personal-reset-icon>Standard-Icon</button></div>
     <p class="muted">Das Foto wird mittig quadratisch zugeschnitten.</p>
-    <h3>Dein Hintergrund</h3><div class="personal-options" role="group" aria-label="Hintergrund">
+    ${backgroundSettingsHTML()}</div>`;
+}
+export function backgroundSettingsHTML() {
+  const p = personal();
+  return `<div class="personal-background-controls"><div class="personal-options" role="group" aria-label="Hintergrund">
     ${[
       ['waves', 'Luna-Wellen'],
       ['image', 'Eigenes Foto'],
@@ -87,13 +106,25 @@ export function personalSettingsHTML() {
       .join('')}</div>
     <div class="personal-row"><label class="btn personal-file">Foto oder Video auswählen<input type="file" data-personal-media accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"></label><span class="muted">${esc(p.fileName || 'Foto bis 20 MB · Video bis 100 MB')}</span></div>
     <form data-personal-youtube class="personal-row"><label>YouTube-Link<input type="url" name="youtube" value="${esc(p.youtube)}" placeholder="https://www.youtube.com/watch?v=…" required></label><button class="btn" type="submit">Video verwenden</button></form>
-    <p class="muted">YouTube verbindet sich mit Google. Nur Videos mit erlaubter Einbettung funktionieren. Videos starten ohne Ton und pausieren außerhalb der Startseite.</p>
+    <p class="muted">YouTube verbindet sich mit Google. Nur Videos mit erlaubter Einbettung funktionieren. Videos starten ohne Ton und laufen auf Luna-Seiten weiter.</p>
     <label class="personal-motion"><input type="checkbox" data-personal-motion ${p.motion ? 'checked' : ''}> Hintergrund bewegen / Video abspielen</label>
+    <label class="personal-contrast">Kontrast<input type="range" min="0" max="85" step="1" data-personal-contrast value="${p.contrast}"><output>${p.contrast}%</output></label>
+    <label class="personal-text">Schrift<select data-personal-text aria-label="Schriftkontrast">${[
+      ['auto', 'Automatisch'],
+      ['dark', 'Hell'],
+      ['light', 'Dunkel'],
+    ]
+      .map(
+        ([v, l]) => `<option value="${v}" ${p.textContrast === v ? 'selected' : ''}>${l}</option>`,
+      )
+      .join('')}</select></label>
     <p class="personal-feedback" data-personal-feedback role="status"></p></div>`;
 }
 export function wirePersonalSettings({ refresh, setIcon, resetIcon, toast }) {
   const feedback = (text) => {
-    const el = document.querySelector('[data-personal-feedback]');
+    const el =
+      document.querySelector('#themeDrop [data-personal-feedback]') ||
+      document.querySelector('[data-personal-feedback]');
     if (el) el.textContent = text;
     else toast(text);
   };
@@ -143,8 +174,18 @@ export function wirePersonalSettings({ refresh, setIcon, resetIcon, toast }) {
       refresh();
     });
   });
+  document.addEventListener('input', (event) => {
+    if (!event.target.matches('[data-personal-contrast]')) return;
+    const contrast = Math.max(0, Math.min(85, Number(event.target.value)));
+    event.target.nextElementSibling.textContent = contrast + '%';
+    savePersonal({ contrast });
+  });
   document.addEventListener('change', (event) => {
     const input = event.target;
+    if (input.matches('[data-personal-text]')) {
+      savePersonal({ textContrast: input.value });
+      return;
+    }
     if (!input.matches('[data-personal-icon],[data-personal-media],[data-personal-motion]')) return;
     run(async () => {
       if (input.matches('[data-personal-motion]')) {
@@ -221,7 +262,8 @@ export function mountPersonalBackground(host) {
   let disposed = false,
     url,
     media,
-    unwatch = () => {};
+    unwatch = () => {},
+    stopContrast = () => {};
   const fail = () => {
     if (!disposed)
       status.textContent =
@@ -286,6 +328,11 @@ export function mountPersonalBackground(host) {
         } else media.alt = '';
         media.src = url;
         layer.append(media);
+        stopContrast = trackBackgroundContrast(
+          media,
+          host,
+          () => startVisible(host) && personal().textContrast === 'auto',
+        );
         if (p.background === 'video')
           unwatch = watchStartVisibility(host, (visible) => {
             if (visible && p.motion && !matchMedia('(prefers-reduced-motion: reduce)').matches)
@@ -300,6 +347,7 @@ export function mountPersonalBackground(host) {
   }
   return () => {
     disposed = true;
+    stopContrast();
     unwatch();
     media?.pause?.();
     media?.removeAttribute('src');
