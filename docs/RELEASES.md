@@ -19,6 +19,23 @@ Jeder Push auf `main` und jeder Pull Request läuft in `.github/workflows/build.
 Unter Actions lassen sich beide ZIP-Artefakte herunterladen. Windows-Artefakte
 tragen ausdrücklich `EXPERIMENTAL`. Keine CI-Schlüssel oder Tokens gelangen in Apps.
 
+## Release-Commit vor der Veröffentlichung festhalten
+
+Vor dem Anlegen eines Releases einen Branch `release/VERSION` exakt auf den
+bereits erfolgreich geprüften Quellcommit setzen (für 1.2.2:
+`release/1.2.2` → `beb294d975a74d6ef16f34f9edaf60d91f710ab4`).
+Den Branch für die Nachvollziehbarkeit behalten und nicht auf spätere Commits verschieben.
+
+GitHub verlangt zusätzliche Workflow-Schreibrechte, wenn ein Release auf einen
+Commit mit Workflow-Änderungen zeigt, der weder Branch-Kopf noch Tag ist. Der
+normale Actions-Token besitzt diese Rechte nicht; die API kann deshalb trotz
+`contents: write` mit 403 „Resource not accessible by integration“ antworten.
+Der Release-Branch hält den geprüften Commit als bestehenden Ref fest, ohne die
+Token-Berechtigungen zu erweitern. Pakete, Quellcommit und erfolgreicher CI-Lauf
+müssen weiterhin exakt zusammenpassen.
+
+GitHub-Regel: https://github.blog/changelog/2023-11-02-github-actions-enforcing-workflow-scope-when-creating-a-release/
+
 ## Gemeinsames Update veröffentlichen
 
 1. Version in `wails.json` erhöhen, Änderungen nach `main` pushen.
