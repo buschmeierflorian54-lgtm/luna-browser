@@ -3,6 +3,8 @@ Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class LunaChrome {
+ [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hwnd);
+ [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr hwnd);
  [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr hwnd, ref Point point);
  [DllImport("user32.dll")] public static extern bool IsZoomed(IntPtr hwnd);
@@ -16,6 +18,7 @@ public static class LunaChrome {
 '@
 Add-Type -AssemblyName System.Windows.Forms
 $hwnd = [IntPtr]$WindowHandle
+if (![LunaChrome]::IsWindowVisible($hwnd)) { throw 'Initial window never became visible' }
 $style = [LunaChrome]::GetWindowLongPtrW($hwnd, -16)
 # Keep native resize, system-menu and minimize/maximize capabilities.
 # The visible caption buttons are in the trusted WebView tab row.
@@ -31,6 +34,9 @@ $rect = New-Object LunaChrome+Rect
 [LunaChrome]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
 $area = [System.Windows.Forms.Screen]::FromHandle($hwnd).WorkingArea
 if ($rect.Top -lt $area.Top -or $rect.Right -gt $area.Right -or $rect.Left -lt $area.Left -or $rect.Bottom -gt $area.Bottom) { throw "Window controls outside work area: $rect / $area" }
+$dpi = [LunaChrome]::GetDpiForWindow($hwnd)
+$margin = [Math]::Floor(12 * $dpi / 96)
+if ($rect.Top -lt ($area.Top + $margin) -or $rect.Left -lt ($area.Left + $margin) -or $rect.Right -gt ($area.Right - $margin) -or $rect.Bottom -gt ($area.Bottom - $margin)) { throw 'Startup window does not preserve the visible work-area margin' }
 [LunaChrome]::ShowWindow($hwnd, 6) | Out-Null
 Start-Sleep -Milliseconds 300
 if (![LunaChrome]::IsIconic($hwnd)) { throw 'Minimize failed' }

@@ -129,6 +129,7 @@ func main() {
 	err := wails.Run(&options.App{
 		Title:            platformTitle(),
 		Frameless:        runtime.GOOS == "windows",
+		StartHidden:      runtime.GOOS == "windows",
 		Width:            width,
 		Height:           height,
 		MinWidth:         min(760, width),
@@ -136,7 +137,7 @@ func main() {
 		BackgroundColour: &options.RGBA{R: 239, G: 182, B: 213, A: 1},
 		AssetServer:      &assetserver.Options{Assets: assets},
 		OnStartup:        app.startup,
-		OnDomReady:       func(context.Context) { web.StartUpdates() },
+		OnDomReady:       func(ctx context.Context) { platformWindowReady(ctx); web.StartUpdates() },
 		OnShutdown:       app.shutdown,
 		Bind:             []interface{}{app},
 		Menu:             buildMenu(app),
