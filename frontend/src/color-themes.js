@@ -208,6 +208,7 @@ export async function setCustomIcon(file) {
     throw Error('Das Foto ist zu detailreich. Bitte wähle ein kleineres Bild.');
   const previous = customIcon();
   localStorage.setItem(CUSTOM_ICON_KEY, url);
+  ++iconGeneration; // Cancel any older asynchronous theme-icon render.
   try {
     await setDockIcon(url.split(',')[1]);
   } catch (error) {

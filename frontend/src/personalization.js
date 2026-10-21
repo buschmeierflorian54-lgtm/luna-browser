@@ -183,7 +183,13 @@ export function startVisible(host) {
   );
 }
 export function watchStartVisibility(host, callback) {
-  const sync = () => callback(startVisible(host));
+  let previous;
+  const sync = () => {
+    const visible = startVisible(host);
+    if (visible === previous) return;
+    previous = visible;
+    callback(visible);
+  };
   const observer = new MutationObserver(sync);
   observer.observe(document.body, {
     childList: true,

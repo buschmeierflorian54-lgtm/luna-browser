@@ -152,3 +152,21 @@ test('personalization is usable in the real settings page and updates the start 
   await expect(page.locator('.st-custom-name')).toHaveText('Florins Browser');
   expect(errors).toEqual([]);
 });
+
+test('background visibility callbacks do not repeat on ordinary UI updates', async ({ page }) => {
+  await setup(page);
+  await page.evaluate(() => {
+    window.visibilityCalls = [];
+    window.stopWatching = P.watchStartVisibility(document.querySelector('#start'), (value) =>
+      visibilityCalls.push(value),
+    );
+    const status = document.createElement('p');
+    status.textContent = 'Playing';
+    document.body.append(status);
+    status.textContent = 'Still playing';
+  });
+  await expect.poll(() => page.evaluate(() => visibilityCalls)).toEqual([true]);
+  await page.evaluate(() => (document.querySelector('#start').hidden = true));
+  await expect.poll(() => page.evaluate(() => visibilityCalls)).toEqual([true, false]);
+  await page.evaluate(() => stopWatching());
+});
