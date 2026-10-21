@@ -180,26 +180,6 @@
   border-radius: 10px;
   padding: 8px 12px;
 }
-.td-background {
-  margin: 12px 16px 16px;
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-}
-.td-background summary {
-  cursor: pointer;
-  list-style: none;
-  font-weight: 600;
-  font-size: 13px;
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-}
-.td-background summary::-webkit-details-marker {
-  display: none;
-}
-.td-background[open] summary {
-  margin-bottom: 10px;
-}
 #themeDrop {
   max-height: calc(100vh - 110px);
   overflow-y: auto;

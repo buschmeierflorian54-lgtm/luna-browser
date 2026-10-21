@@ -3239,7 +3239,7 @@ window.addEventListener('luna-personalization', (event) => {
   syncSharedBackground();
   if (
     event.detail &&
-    Object.keys(event.detail).every((key) => ['contrast', 'textContrast'].includes(key))
+    Object.keys(event.detail).every((key) => ['contrast', 'textContrast', 'menuBlur'].includes(key))
   )
     return;
   renderStart();

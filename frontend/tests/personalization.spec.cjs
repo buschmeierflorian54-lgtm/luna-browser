@@ -223,9 +223,24 @@ test('personalization is usable in the real settings page and updates the start 
   await expect(page.locator('.sp-nav [aria-current="page"]')).toHaveText('Darstellung›');
   await expect(player).toBeVisible();
   expect(playerLoads).toBe(1);
+  await page.locator('[data-personal-blur]').evaluate((el) => {
+    el.value = '24';
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   await page.locator('#url').fill('theme');
   await expect(page.locator('#themeDrop')).toBeVisible();
-  await page.locator('#themeDrop summary').click();
+  await expect(page.locator('#themeDrop')).toHaveCSS('backdrop-filter', 'blur(24px)');
+  await expect(page.locator('#themeDrop [data-personal-blur]')).toHaveCount(0);
+  const colorsTab = page.locator('#themeDrop').getByRole('tab', { name: 'Farben', exact: true });
+  await expect(colorsTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#td-background')).toBeHidden();
+  await colorsTab.focus();
+  await colorsTab.press('ArrowRight');
+  await expect(page.locator('#td-background')).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('#td-colors')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('quick-colors-glass.png') });
+  await page.locator('#themeDrop').getByRole('tab', { name: 'Hintergrund', exact: true }).click();
   const quick = page.locator('#themeDrop');
   await quick.locator('[data-personal-contrast]').evaluate((el) => {
     el.value = '70';
@@ -251,6 +266,9 @@ test('personalization is usable in the real settings page and updates the start 
   await page.locator('#settingsView').evaluate((el) => (el.scrollTop = 0));
   await expect(page.locator('#settingsView .sp-card')).toHaveCSS('opacity', '1');
   await page.screenshot({ path: testInfo.outputPath('settings-background.png') });
+  expect(
+    await page.evaluate(() => JSON.parse(localStorage.getItem('luna-personalization')).menuBlur),
+  ).toBe(24);
   expect(errors).toEqual([]);
 });
 

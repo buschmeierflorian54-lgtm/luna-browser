@@ -208,9 +208,11 @@
   z-index: 70;
   box-sizing: border-box;
   padding: 10px 14px 16px;
-  background: var(--card);
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+  backdrop-filter: blur(var(--theme-menu-blur, 18px));
+  -webkit-backdrop-filter: blur(var(--theme-menu-blur, 18px));
   color: var(--ink);
-  border: 1px solid var(--acc);
+  border: 1px solid var(--line);
   border-top: 0;
   border-radius: 0 0 18px 18px;
   box-shadow: 0 24px 54px rgba(0, 0, 0, 0.28);
@@ -451,4 +453,48 @@
   #bMenu.has-update::after {
     animation: none;
   }
+}
+
+.td-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel) 35%, transparent);
+}
+.td-tabs [role='tab'] {
+  flex: 1;
+  border: 0;
+  padding: 9px 16px;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.td-tabs [aria-selected='true'] {
+  background: color-mix(in srgb, var(--card) 82%, transparent);
+  color: var(--ink);
+  box-shadow: 0 2px 8px #0000000c;
+}
+.td-tabs [role='tab']:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 1px;
+}
+#td-colors > .td-modes {
+  margin-bottom: 14px;
+}
+#td-background {
+  padding: 2px 4px 0;
+}
+#themeDrop [role='tabpanel'][hidden] {
+  display: none;
+}
+
+#themeDrop {
+  --mute: var(--ink2);
+  --mute2: var(--ink2);
 }
