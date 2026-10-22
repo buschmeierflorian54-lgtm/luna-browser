@@ -388,3 +388,5 @@ aside{border-left:3px solid var(--acc);padding-left:16px;margin-top:22px}aside b
 
 .windows-test-note{font-size:.8rem;margin:12px 0;color:var(--mute2)}
 .windows-test-note a{color:inherit;text-underline-offset:3px}
+
+.platform-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0 24px}.platform-option{display:flex;flex-direction:column;gap:10px;padding:20px;border:1.5px solid var(--line3);border-radius:18px;text-decoration:none;color:var(--ink);min-width:0}.platform-option:hover,.platform-option:focus-visible{border-color:var(--acc);background:var(--tile)}.platform-option strong{font-size:24px}.platform-option span,.windows-install p{font-size:14px;color:var(--mute2)}.platform-option b,.windows-install a{font-size:13px;color:var(--acc)}.windows-install{padding-bottom:20px;margin-bottom:22px;border-bottom:1px solid var(--line)}.windows-install p{margin:10px 0}#macInstall{scroll-margin-top:20px}@media(max-width:480px){.platform-options{grid-template-columns:1fr}.platform-option{padding:16px;gap:7px}}
